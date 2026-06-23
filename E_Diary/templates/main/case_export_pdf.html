@@ -1,0 +1,59 @@
+{% load court_extras %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</title>
+    <style>
+        @page { margin: 1.5cm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11pt; color: #222; line-height: 1.5; }
+        h1 { font-size: 16pt; margin-bottom: 0.2cm; }
+        .case-title { font-size: 14pt; font-weight: bold; margin-bottom: 0.5cm; }
+        .meta { color: #555; margin-bottom: 1cm; }
+        .meta span { display: inline-block; margin-right: 1cm; }
+        h2 { font-size: 12pt; color: #c44569; margin-top: 0.5cm; margin-bottom: 0.25cm; border-bottom: 1px solid #ddd; padding-bottom: 0.1cm; }
+        .entry { margin-bottom: 0.75cm; padding-left: 0.25cm; border-left: 3px solid #f2849e; }
+        .entry-date { font-size: 12pt; font-weight: bold; color: #c44569; }
+        .entry-stage { font-weight: bold; margin: 0.15cm 0; }
+        .entry-business { white-space: pre-wrap; margin: 0.25cm 0; }
+        .entry-meta { font-size: 9pt; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>Case Details</h1>
+    <div class="case-title">{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</div>
+    <div class="meta">
+        <span><strong>{{ case.party_1 }}</strong> vs <strong>{{ case.party_2 }}</strong></span><br>
+        <span>Party Types: {{ case.party_1_type }} / {{ case.party_2_type }}</span>
+        <span>Representing: {{ case.representing }}</span><br>
+        <span>Court: {{ court_display }}</span>
+        <span>Hall: {{ case.court_hall }}, Floor: {{ case.floor }}</span><br>
+        <span>Jurisdiction: {{ case.get_jurisdiction_display }}</span>
+        <span>Level: {{ case.get_court_level_display }}</span>
+        <span>Status: {% if case.disposed %}DISPOSED{% else %}ACTIVE{% endif %}</span>
+    </div>
+
+    {% if entries %}
+    <h2>Business History</h2>
+    {% for entry in entries %}
+    <div class="entry">
+        <div class="entry-date">{{ entry.previous_date|date:"d M Y" }} &rarr; {{ entry.next_date|date:"d M Y" }}</div>
+        <div class="entry-stage">Stage: {{ entry.stage }}</div>
+        <div class="entry-business">{{ entry.business }}</div>
+        <div class="entry-meta">
+            {% if entry.list_i or entry.list_ii %}
+            Cause List:
+            {% if entry.list_i %}List I: {{ entry.list_i }}{% endif %}
+            {% if entry.list_i and entry.list_ii %} | {% endif %}
+            {% if entry.list_ii %}List II: {{ entry.list_ii }}{% endif %}
+            &nbsp;|&nbsp;
+            {% endif %}
+            Entered: {{ entry.created_at|date:"d M Y h:i A" }}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No diary entries yet.</p>
+    {% endif %}
+</body>
+</html>

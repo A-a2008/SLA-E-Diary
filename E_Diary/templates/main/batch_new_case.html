@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>Batch Business Entry</h1>
+        <p>Select a case and enter multiple business entries at once. Rows are added at the top — enter from your oldest known date upwards.</p>
+
+        {% if messages %}
+        {% for msg in messages %}
+        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
+        {% endfor %}
+        {% endif %}
+
+        <form method="get" action="{% url 'batch_new_case' %}" style="margin-bottom: 2rem; display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px;">
+                <label for="case_id">Select Case</label>
+                <select name="case_id" id="case_id" onchange="this.form.submit()">
+                    <option value="">— Choose a case —</option>
+                    {% for c in cases %}
+                    <option value="{{ c.id }}" {% if selected_case and selected_case.id == c.id %}selected{% endif %}>
+                        {{ c.case_type }}/{{ c.case_number }}/{{ c.case_year }} — {{ c.party_1 }} vs {{ c.party_2 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <noscript><input type="submit" value="Select" class="button"></noscript>
+        </form>
+
+        {% if selected_case %}
+        <section style="background: rgba(242,132,158,0.04); border: 1px solid rgba(242,132,158,0.12); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <strong style="font-size: 1.15rem;">{{ selected_case.case_type }} {{ selected_case.case_number }}/{{ selected_case.case_year }}</strong>
+                    <span style="color: #585858; margin-left: 1rem;">{{ selected_case.party_1 }} vs {{ selected_case.party_2 }}</span>
+                </div>
+                <a href="{% url 'diary_entry_case' selected_case.id %}" class="button small">View Case &rarr;</a>
+            </div>
+        </section>
+
+        <form method="post" action="{% url 'batch_new_case' %}">
+            {% csrf_token %}
+            <input type="hidden" name="case_id" value="{{ selected_case.id }}">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Business Entries</h2>
+                <button type="button" class="button primary small" onclick="addRow()">+ Add Row (appears at top)</button>
+            </div>
+
+            <div class="table-wrapper" style="overflow-x: auto;">
+                <table class="alt" id="entries-table" style="white-space: nowrap;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Current Date</th>
+                            <th>Next Date</th>
+                            <th>Court Complex</th>
+                            <th>Hall</th>
+                            <th>Fl</th>
+                            <th>Case No.</th>
+                            <th>Rep.</th>
+                            <th>Stage</th>
+                            <th>Business</th>
+                            <th>L.I</th>
+                            <th>L.II</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="entries-tbody"></tbody>
+                </table>
+            </div>
+
+            <p id="no-rows-msg" style="text-align: center; padding: 2rem; color: #585858;">Click <strong>"+ Add Row"</strong> to add entries.</p>
+
+            <ul class="actions" style="margin-top: 1.5rem;">
+                <li><input type="submit" value="Save All Entries" class="primary"></li>
+            </ul>
+        </form>
+        {% if diary_entries %}
+        <section style="margin-top: 2.5rem; border-top: 1px solid rgba(242,132,158,0.2); padding-top: 1.5rem;">
+            <h2 style="margin: 0 0 1rem 0;">Entry History</h2>
+            {% for entry in diary_entries %}
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; background: #fafafa;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <strong style="color: #f2849e;">{{ entry.previous_date|date:"d M Y" }}</strong>
+                        &rarr; <strong>{{ entry.next_date|date:"d M Y" }}</strong>
+                    </div>
+                    <span style="font-size: 0.85rem; color: #585858;">
+                        {% if entry.list_i %}List I: {{ entry.list_i }}{% endif %}
+                        {% if entry.list_i and entry.list_ii %} | {% endif %}
+                        {% if entry.list_ii %}List II: {{ entry.list_ii }}{% endif %}
+                    </span>
+                </div>
+                <p style="margin: 0.5rem 0 0 0; white-space: pre-wrap;">{{ entry.business }}</p>
+                <div style="font-size: 0.85rem; color: #585858; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.4rem;">
+                    <span><strong>Stage:</strong> {{ entry.stage }}</span>
+                    <span><strong>Court:</strong> {{ entry.court }}, Hall {{ entry.court_hall }}, Floor {{ entry.floor }}</span>
+                    <span><strong>Rep:</strong> {{ entry.representing }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .entry-row td { vertical-align: middle; padding: 0.5rem 0.4rem; }
+    .entry-row input, .entry-row textarea, .entry-row select {
+        margin-bottom: 0;
+        font-size: 0.95rem;
+    }
+    .entry-row td textarea {
+        min-height: 2.5em;
+        resize: vertical;
+    }
+    .entry-row .remove-btn {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.5rem;
+    }
+    #entries-table th {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+</style>
+
+<script>
+    var rowCount = 0;
+    var courtLabel = "{{ court_display|escapejs }}";
+    var courtHall = "{{ selected_case.court_hall|escapejs }}";
+    var floorVal = "{{ selected_case.floor|escapejs }}";
+    var caseNumDisplay = "{{ selected_case.case_type }}/{{ selected_case.case_number }}/{{ selected_case.case_year }}";
+    var repVal = "{{ selected_case.representing|escapejs }}";
+
+    function addRow() {
+        var i = rowCount;
+        var tr = document.createElement('tr');
+        tr.className = 'entry-row';
+        tr.id = 'row-' + i;
+        tr.innerHTML = `
+            <td class="row-num">${i + 1}</td>
+            <td><input type="date" name="previous_date_${i}"></td>
+            <td><input type="date" name="next_date_${i}"></td>
+            <td style="font-size:0.9rem;">${courtLabel}</td>
+            <td style="font-size:0.9rem;">${courtHall}</td>
+            <td style="font-size:0.9rem; text-align:center;">${floorVal}</td>
+            <td style="font-size:0.9rem;">${caseNumDisplay}</td>
+            <td style="font-size:0.9rem;">${repVal}</td>
+            <td><input type="text" name="stage_${i}" placeholder="Stage"></td>
+            <td><textarea name="business_${i}" rows="1" placeholder="Business of the day"></textarea></td>
+            <td><input type="text" name="list_i_${i}" style="width:3rem;"></td>
+            <td><input type="text" name="list_ii_${i}" style="width:3rem;"></td>
+            <td><button type="button" class="button small remove-btn" onclick="removeRow(${i})">X</button></td>
+        `;
+        var tbody = document.getElementById('entries-tbody');
+        tbody.insertBefore(tr, tbody.firstChild);
+        rowCount++;
+        document.getElementById('no-rows-msg').style.display = 'none';
+    }
+
+    function removeRow(i) {
+        var el = document.getElementById('row-' + i);
+        if (el) el.remove();
+        renumberRows();
+        if (document.getElementById('entries-tbody').children.length === 0) {
+            document.getElementById('no-rows-msg').style.display = 'block';
+        }
+    }
+
+    function renumberRows() {
+        var rows = document.querySelectorAll('#entries-tbody .entry-row');
+        rows.forEach(function(row, idx) {
+            row.id = 'row-' + idx;
+            row.querySelector('.row-num').textContent = idx + 1;
+            row.querySelectorAll('input, textarea, select').forEach(function(el) {
+                var name = el.name;
+                var prefix = name.substring(0, name.lastIndexOf('_') + 1);
+                el.name = prefix + idx;
+            });
+        });
+        rowCount = rows.length;
+    }
+</script>
+{% endblock %}

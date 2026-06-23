@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>$title$</h1>
+        <!-- <span class="image main"><img src="{% static 'images/pic13.jpg' %}" alt="" /></span> -->
+        <h3>$subtitle$</h3>
+        <p>$content$</p>
+    </div>
+</div>
+{% endblock %}

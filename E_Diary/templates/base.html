@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>SLA E-Diary</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="{% static 'assets/css/main.css' %}" />
+		<noscript><link rel="stylesheet" href="{% static 'assets/css/noscript.css' %}" /></noscript>
+		<style>
+			input[type="number"] { -moz-appearance: textfield; }
+			input[type="number"]::-webkit-outer-spin-button,
+			input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+		</style>
+	</head>
+	<body class="is-preload">
+		<div id="wrapper">
+			<header id="header">
+				<div class="inner">
+					<a href="/" class="logo">
+						<span class="symbol"><img src="{% static 'images/logo.svg' %}" alt="" /></span>
+						<span class="title">SLA E-Diary</span>
+					</a>
+					<nav>
+						<ul>
+							<li><a href="#menu">Menu</a></li>
+						</ul>
+					</nav>
+				</div>
+			</header>
+
+			<nav id="menu">
+				<h2>Menu</h2>
+				<ul>
+					<li><a href="{% url 'home' %}">Home</a></li>
+					{% if user.is_authenticated %}
+					<li><a href="{% url 'diary_entry' %}">Diary Entry</a></li>
+					<li><a href="{% url 'new_case' %}">New Case</a></li>
+					<li><a href="{% url 'batch_new_case' %}">Batch Business Entry</a></li>
+					<li><a href="{% url 'cause_list' %}">Cause List</a></li>
+					<li><a href="{% url 'change_password' %}">Change Password</a></li>
+					{% if user.is_superuser %}
+					<li><a href="{% url 'super_dashboard' %}">Super Admin</a></li>
+					{% elif user.is_authenticated and user.userprofile.role == 'admin' %}
+					<li><a href="{% url 'manage_users' %}">Manage Users</a></li>
+					{% endif %}
+					<li><a href="{% url 'logout' %}">Logout ({{ user.get_full_name }})</a></li>
+					{% else %}
+					<li><a href="{% url 'login' %}">Sign In</a></li>
+					{% endif %}
+				</ul>
+			</nav>
+
+		{% if messages %}
+		<div style="max-width: 1400px; margin: 0 auto; padding: 1rem 2rem 0;">
+			{% for message in messages %}
+			<div style="padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}#d4edda{% elif message.tags == 'error' %}#fce4e4{% else %}#fff3cd{% endif %}; color: {% if message.tags == 'success' %}#155724{% elif message.tags == 'error' %}#c62828{% else %}#856404{% endif %};">
+				{{ message }}
+			</div>
+			{% endfor %}
+		</div>
+		{% endif %}
+
+		{% block content %}
+		<div id="main">
+				<div class="inner">
+					<h1>Generic Page</h1>
+					<span class="image main"><img src="{% static 'images/pic13.jpg' %}" alt="" /></span>
+					<p>Donec eget ex magna.</p>
+				</div>
+			</div>
+			{% endblock %}
+		</div>
+
+		<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+		<script src="{% static 'assets/js/browser.min.js' %}"></script>
+		<script src="{% static 'assets/js/breakpoints.min.js' %}"></script>
+		<script src="{% static 'assets/js/util.js' %}"></script>
+		<script src="{% static 'assets/js/main.js' %}"></script>
+	</body>
+</html>

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>Super Admin Portal</h1>
+        <p>Manage administrators and system settings.</p>
+
+        <section class="tiles" style="margin-top: 2rem;">
+            <article class="style1">
+                <span class="image"><img src="{% static 'images/pic01.jpg' %}" alt="" /></span>
+                <a href="{% url 'super_create_admin' %}">
+                    <h2>Create Admin</h2>
+                    <div class="content"><p>Create new admin users.</p></div>
+                </a>
+            </article>
+            <article class="style2">
+                <span class="image"><img src="{% static 'images/pic02.jpg' %}" alt="" /></span>
+                <a href="{% url 'manage_users' %}">
+                    <h2>Manage All Users</h2>
+                    <div class="content"><p>Manage all users including admins.</p></div>
+                </a>
+            </article>
+            <article class="style3">
+                <span class="image"><img src="{% static 'images/pic03.jpg' %}" alt="" /></span>
+                <a href="{% url 'admin:index' %}">
+                    <h2>Django Admin Panel</h2>
+                    <div class="content"><p>Access the Django administration interface.</p></div>
+                </a>
+            </article>
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+            <h1 style="margin: 0;">Manage Users</h1>
+            <a href="{% url 'admin_create_user' %}" class="button primary small">+ New User</a>
+        </div>
+
+        {% if messages %}
+        {% for msg in messages %}
+        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
+        {% endfor %}
+        {% endif %}
+
+        <div class="table-wrapper">
+            <table class="alt">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td><strong>{{ u.username }}</strong></td>
+                        <td>{{ u.get_full_name|default:"—" }}</td>
+                        <td>{{ u.userprofile.get_role_display|default:"—" }}</td>
+                        <td>
+                            <span style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; font-weight: 700; background: {% if u.is_active %}#e8f5e9{% else %}#fce4e4{% endif %}; color: {% if u.is_active %}#2e7d32{% else %}#c62828{% endif %};">
+                                {{ u.is_active|yesno:"ACTIVE,SUSPENDED" }}
+                            </span>
+                        </td>
+                        <td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            {% if u.id != request.user.id %}
+                            <a href="{% url 'toggle_user_active' u.id %}" class="button small" onclick="return confirm('{% if u.is_active %}Suspend{% else %}Activate{% endif %} {{ u.username }}?')">
+                                {% if u.is_active %}Suspend{% else %}Activate{% endif %}
+                            </a>
+                            <a href="{% url 'admin_reset_password' u.id %}" class="button small" onclick="return confirm('Reset password for {{ u.username }}?')">Reset PW</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

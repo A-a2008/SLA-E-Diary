@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <a href="{% url 'diary_entry_case' case.id %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Case</a>
+
+        <h1 style="margin-bottom: 0.25rem;">Add Business Entry</h1>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            <strong>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</strong>
+            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+        </p>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            Court: {{ court_display }} &mdash; Hall: {{ case.court_hall }}, Floor {{ case.floor }}
+            &nbsp;|&nbsp; Representing: {{ case.representing }}
+        </p>
+
+        <form method="post" action="{% url 'add_business' case.id %}" style="max-width: 700px;">
+            {% csrf_token %}
+
+            <div class="field">
+                <label for="previous_date">Previous Date</label>
+                <input type="date" name="previous_date" id="previous_date" value="{{ latest_data.previous_date|date:'Y-m-d'|default:'' }}" required>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="next_date">Next Date</label>
+                <input type="date" name="next_date" id="next_date" required>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="stage">Stage of the Case</label>
+                <input type="text" name="stage" id="stage" placeholder="e.g. Evidence, Arguments, etc." value="{{ latest_data.stage }}" required>
+            </div>
+            <br>
+
+            <div class="row gtr-uniform" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div class="col-6" style="flex: 1; min-width: 120px;">
+                    <label for="list_i">List I (Cause List No.)</label>
+                    <input type="text" name="list_i" id="list_i" placeholder="Optional" value="{{ latest_data.list_i|default:'' }}">
+                </div>
+                <div class="col-6" style="flex: 1; min-width: 120px;">
+                    <label for="list_ii">List II (Cause List No.)</label>
+                    <input type="text" name="list_ii" id="list_ii" placeholder="Optional" value="{{ latest_data.list_ii|default:'' }}">
+                </div>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="business">Business of the Day</label>
+                <textarea name="business" id="business" rows="5" placeholder="Describe what happened in court today..." required></textarea>
+            </div>
+            <br>
+
+            <ul class="actions">
+                <li><input type="submit" value="Save Entry" class="primary"></li>
+                <li><a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a></li>
+            </ul>
+        </form>
+    </div>
+</div>
+{% endblock %}

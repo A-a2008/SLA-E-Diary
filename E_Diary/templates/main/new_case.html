@@ -1,0 +1,575 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Main -->
+<div id="main">
+    <div class="inner">
+        <h1>New Case</h1>
+        <h3>Register a new case</h3>
+
+        <form action="{% url 'new_case' %}" method="post" id="new-case-form" novalidate>
+            {% csrf_token %}
+
+            <!-- ── COURT LEVEL ── -->
+            <div class="field">
+                <label for="court_level">Court Level</label>
+                <select name="court_level" id="court_level" onchange="onCourtLevelChange()">
+                    <option value="">— Select Court Level —</option>
+                    {% for value, label in court_level_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
+
+            <!-- ── JURISDICTION (district only) ── -->
+            <div class="field" id="jurisdiction-field" style="display:none;">
+                <label for="jurisdiction">Jurisdiction</label>
+                <select name="jurisdiction" id="jurisdiction" onchange="onJurisdictionChange()">
+                    <option value="">— Select Jurisdiction —</option>
+                    {% for value, label in jurisdiction_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
+
+            <!-- ── COURT COMPLEX ── -->
+            <div class="field" id="court-complex-field" style="display:none;">
+                <label for="court">Court Complex</label>
+                <select name="court" id="court">
+                    <option value="">— Select Court Complex —</option>
+                </select>
+            </div>
+            <br>
+
+            <!-- ── COURT HALL + FLOOR ── -->
+            <div class="field half" id="court-hall-field" style="display:none;">
+                <label for="court_hall">Court Hall</label>
+                <input type="text" name="court_hall" id="court_hall" placeholder="e.g. CCH-4">
+            </div>
+            <br>
+            <div class="field half" id="floor-field" style="display:none;">
+                <label for="floor">Floor</label>
+                <input type="number" name="floor" id="floor" placeholder="e.g. 0 for Ground Floor" min="0">
+            </div>
+            <br>
+
+            <!-- ── CASE TYPE (searchable) ── -->
+            <div class="field" id="case-type-field" style="display:none;">
+                <label>Case Type</label>
+                <div id="case-type-wrapper" style="position:relative;">
+                    <div id="case-type-display"
+                         tabindex="0"
+                         role="button"
+                         aria-haspopup="listbox"
+                         style="border-bottom:solid 1px #c9c9c9; height:3em; line-height:3em; cursor:pointer; padding-right:3em; color:#585858; position:relative; user-select:none;">
+                        — Select Case Type —
+                        <span style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);pointer-events:none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 40 40"><path d="M9.4,12.3l10.4,10.4l10.4-10.4c0.2-0.2,0.5-0.4,0.9-0.4c0.3,0,0.6,0.1,0.9,0.4l3.3,3.3c0.2,0.2,0.4,0.5,0.4,0.9c0,0.4-0.1,0.6-0.4,0.9L20.7,31.9c-0.2,0.2-0.5,0.4-0.9,0.4c-0.3,0-0.6-0.1-0.9-0.4L4.3,17.3c-0.2-0.2-0.4-0.5-0.4-0.9c0-0.4,0.1-0.6,0.4-0.9l3.3-3.3c0.2-0.2,0.5-0.4,0.9-0.4S9.1,12.1,9.4,12.3z" fill="#c9c9c9"/></svg>
+                        </span>
+                    </div>
+                    <div id="case-type-panel" style="display:none; position:absolute; top:calc(3em + 2px); left:0; right:0; z-index:999; background:#fff; border:solid 1px #c9c9c9; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,0.1);">
+                        <input type="text" id="case-type-search" placeholder="Search case type…" autocomplete="off"
+                               style="width:100%; border:none; border-bottom:solid 1px #c9c9c9; padding:0.5em 1em; box-sizing:border-box; font-size:0.9em; outline:none; border-radius:4px 4px 0 0;">
+                        <div id="case-type-options" style="max-height:260px; overflow-y:auto;"></div>
+                    </div>
+                    <input type="hidden" name="case_type" id="case_type">
+                </div>
+            </div>
+            <br>
+
+            <!-- ── CASE NUMBER + YEAR ── -->
+            <div class="field half" id="case-number-field" style="display:none;">
+                <label for="case_number">Case Number</label>
+                <input type="text" name="case_number" id="case_number" placeholder="e.g. 1234">
+            </div>
+            <br>
+            <div class="field half" id="case-year-field" style="display:none;">
+                <label for="case_year">Case Year</label>
+                <input type="number" name="case_year" id="case_year" placeholder="e.g. 2024" min="1950" max="2100">
+            </div>
+            <br>
+
+            <!-- ── PARTY 1 ── -->
+            <div class="field" id="party1-field" style="display:none;">
+                <label for="party_1">Party 1</label>
+                <input type="text" name="party_1" id="party_1" placeholder="Full name of Party 1">
+            </div>
+            <br>
+
+            <!-- Party 1 Type -->
+            <div class="field" id="party1-type-field" style="display:none;">
+                <label>Party 1 Type</label>
+                {% for value, label in party1_choices %}
+                <input type="radio" id="p1_{{ value }}" name="party_1_type" value="{{ value }}" class="party-radio">
+                <label for="p1_{{ value }}">{{ label }}</label>
+                {% endfor %}
+            </div>
+            <br>
+
+            <!-- ── PARTY 2 ── -->
+            <div class="field" id="party2-field" style="display:none;">
+                <label for="party_2">Party 2</label>
+                <input type="text" name="party_2" id="party_2" placeholder="Full name of Party 2">
+            </div>
+            <br>
+
+            <!-- Party 2 Type -->
+            <div class="field" id="party2-type-field" style="display:none;">
+                <label>Party 2 Type</label>
+                {% for value, label in party2_choices %}
+                <input type="radio" id="p2_{{ value }}" name="party_2_type" value="{{ value }}" class="party-radio">
+                <label for="p2_{{ value }}">{{ label }}</label>
+                {% endfor %}
+            </div>
+            <br>
+
+            <!-- ── REPRESENTING ── -->
+            <div class="field" id="representing-field" style="display:none;">
+                <label>Representing</label>
+                <div id="representing-options"></div>
+            </div>
+            <br>
+
+            <!-- ── SUBMIT ── -->
+            <ul class="actions" id="submit-actions" style="display:none;">
+                <li><input type="submit" value="Register Case" class="primary"></li>
+                <li><input type="reset" value="Reset" onclick="resetForm(); return false;"></li>
+            </ul>
+        </form>
+    </div>
+</div>
+
+<!-- ── STYLES ── -->
+<style>
+    #case-type-options .ct-group-label {
+        padding: 0.3em 1em;
+        font-size: 0.75em;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgba(88,88,88,0.45);
+        background: rgba(144,144,144,0.05);
+        pointer-events: none;
+    }
+    #case-type-options .ct-item {
+        padding: 0.5em 1em;
+        cursor: pointer;
+        font-size: 0.95em;
+        color: #585858;
+        transition: background 0.15s;
+    }
+    #case-type-options .ct-item:hover {
+        background: rgba(242,132,158,0.1);
+        color: #f2849e;
+    }
+    #case-type-options .ct-item.selected {
+        background: rgba(88,88,88,0.08);
+        font-weight: 700;
+    }
+    #case-type-options .ct-item.hidden {
+        display: none;
+    }
+    #representing-options input[type="radio"] + label {
+        margin-bottom: 0.25em;
+    }
+</style>
+
+<!-- ── JAVASCRIPT ── -->
+<script>
+(function () {
+
+    /* ── DATA ── */
+    const urbanCourts = [
+        { value: 'cmm',            label: 'Chief Metropolitan Magistrate Court Complex, Bangalore' },
+        { value: 'mmtc',           label: 'Metropolitan Magistrate Traffic Courts, Bangalore' },
+        { value: 'mmtc_mayo',      label: 'Metropolitan Magistrate Traffic Court I, Mayo Hall, Bangalore' },
+        { value: 'city_civil',     label: 'City Civil Court Complex, Bangalore' },
+        { value: 'family',         label: 'Family Court Complex, Bangalore' },
+        { value: 'small_causes',   label: 'Small Causes Court Complex, Bangalore' },
+        { value: 'mayo_hall',      label: 'Mayo Hall Court Complex, Bangalore' },
+        { value: 'commercial',     label: 'Commercial Court Complex, Bangalore' },
+        { value: 'consumer',       label: 'Consumer Forum, Shantinagar' },
+        { value: 'urban_consumer', label: 'Urban Consumer Forum, Bangalore' }
+    ];
+    const ruralCourts = [
+        { value: 'city_civil_rural',       label: 'City Civil Court Complex, Bengaluru Rural' },
+        { value: 'dist_session_rural',     label: 'PRL. District and Sessions Judge, Bengaluru Rural' },
+        { value: 'prl_senior_rural',       label: 'PRL. Senior Civil Judge, Bengaluru Rural' },
+        { value: 'prl_junior_rural',       label: 'PRL. Civil Judge, Bengaluru Rural' },
+        { value: 'cjm_cmm_rural',          label: 'Chief Judicial Magistrate, Bengaluru Rural in CMM Court' },
+        { value: 'vacation_court_rural',   label: 'Vacation Court, Bengaluru Rural' },
+        { value: 'commercial_court_rural', label: 'Commercial Court Complex, Bengaluru Rural' },
+        { value: 'labour_court_rural',     label: 'Labour Court, Bengaluru Rural' },
+        { value: 'senior_anekal',          label: 'Senior Civil Judge & JMFC, Anekal' },
+        { value: 'junior_anekal',          label: 'PRL. Civil Judge & JMFC, Anekal' },
+        { value: 'hosakote',               label: 'Court Complex – Hosakote' },
+        { value: 'devanahalli',            label: 'Court Complex – Devanahalli' },
+        { value: 'doddaballapur',          label: 'Court Complex – Doddaballapur' },
+        { value: 'nelamangala',            label: 'Court Complex – Nelamangala' },
+        { value: 'kr_puram',               label: 'KR Puram Court Complex' },
+    ];
+    const caseTypes = {
+        district: [
+            { group: 'Civil', items: [
+                { value: 'OS',    label: 'OS – Original Suit' },
+                { value: 'MC',    label: 'MC – Miscellaneous Case' },
+                { value: 'MFA',   label: 'MFA – Miscellaneous First Appeal' },
+                { value: 'RFA',   label: 'RFA – Regular First Appeal' },
+                { value: 'RSA',   label: 'RSA – Regular Second Appeal' },
+                { value: 'RA',    label: 'RA – Review Application' },
+                { value: 'CRP',   label: 'CRP – Civil Revision Petition' },
+                { value: 'EP',    label: 'EP – Execution Petition' },
+                { value: 'EA',    label: 'EA – Execution Application' },
+                { value: 'IA',    label: 'IA – Interlocutory Application' },
+                { value: 'SC',    label: 'SC – Small Causes' },
+                { value: 'ARB',   label: 'ARB – Arbitration Case' },
+                { value: 'ARBA',  label: 'ARBA – Arbitration Appeal' },
+            ]},
+            { group: 'Family', items: [
+                { value: 'MC_FC', label: 'MC(FC) – Matrimonial Case (Family Court)' },
+                { value: 'OP',    label: 'OP – Original Petition' },
+                { value: 'GWOP',  label: 'GWOP – Guardianship & Wards Original Petition' },
+                { value: 'ADOP',  label: 'ADOP – Adoption Petition' },
+            ]},
+            { group: 'Criminal', items: [
+                { value: 'CC',      label: 'CC – Criminal Case' },
+                { value: 'PCR',     label: 'PCR – Private Complaint (Referred)' },
+                { value: 'SC_CRL',  label: 'SC(Crl) – Sessions Case' },
+                { value: 'CRL_A',   label: 'Crl.A – Criminal Appeal' },
+                { value: 'CRL_RP',  label: 'Crl.RP – Criminal Revision Petition' },
+                { value: 'CRL_MC',  label: 'Crl.MC – Criminal Miscellaneous Case' },
+                { value: 'CRL_P',   label: 'Crl.P – Criminal Petition' },
+                { value: 'BA',      label: 'BA – Bail Application' },
+                { value: 'ABA',     label: 'ABA – Anticipatory Bail Application' },
+                { value: 'TR',      label: 'TR – Transfer Case' },
+                { value: 'SPL_CC',  label: 'SPL.CC – Special Criminal Case' },
+            ]},
+            { group: 'Motor Vehicles', items: [
+                { value: 'MVC',  label: 'MVC – Motor Vehicle Case' },
+                { value: 'MVFA', label: 'MVFA – Motor Vehicle First Appeal' },
+            ]},
+            { group: 'Labour / Industrial', items: [
+                { value: 'LCA', label: 'LCA – Labour Court Application' },
+                { value: 'IDA', label: 'IDA – Industrial Disputes Application' },
+            ]},
+            { group: 'Commercial', items: [
+                { value: 'CS',      label: 'CS – Commercial Suit' },
+                { value: 'CA_COMM', label: 'CA(Comm) – Commercial Appeal' },
+            ]},
+        ],
+        high_court: [
+            { group: 'Civil – Writ', items: [
+                { value: 'WP',     label: 'WP – Writ Petition' },
+                { value: 'WA',     label: 'WA – Writ Appeal' },
+                { value: 'WP_PIL', label: 'WP(PIL) – Writ Petition (Public Interest Litigation)' },
+            ]},
+            { group: 'Civil – Appeals & Revisions', items: [
+                { value: 'RFA',  label: 'RFA – Regular First Appeal' },
+                { value: 'RSA',  label: 'RSA – Regular Second Appeal' },
+                { value: 'MFA',  label: 'MFA – Miscellaneous First Appeal' },
+                { value: 'MSA',  label: 'MSA – Miscellaneous Second Appeal' },
+                { value: 'CRP',  label: 'CRP – Civil Revision Petition' },
+                { value: 'RP',   label: 'RP – Review Petition' },
+                { value: 'RPFC', label: 'RPFC – Revision Petition (Family Court)' },
+            ]},
+            { group: 'Civil – Miscellaneous', items: [
+                { value: 'CMP',     label: 'CMP – Civil Miscellaneous Petition' },
+                { value: 'CCC',     label: 'CCC – Civil Contempt Case' },
+                { value: 'COCP',    label: 'COCP – Contempt of Court Petition' },
+                { value: 'ARB_P',   label: 'ARB.P – Arbitration Petition' },
+                { value: 'ARB_A',   label: 'ARB.A – Arbitration Appeal' },
+            ]},
+            { group: 'Family', items: [
+                { value: 'MAT_APP', label: 'Mat.App – Matrimonial Appeal' },
+                { value: 'FA',      label: 'FA – First Appeal (Family)' },
+            ]},
+            { group: 'Criminal', items: [
+                { value: 'CRL_A',     label: 'Crl.A – Criminal Appeal' },
+                { value: 'CRL_P',     label: 'Crl.P – Criminal Petition' },
+                { value: 'CRL_RP',    label: 'Crl.RP – Criminal Revision Petition' },
+                { value: 'CRL_REV_P', label: 'Crl.Rev.P – Criminal Review Petition' },
+                { value: 'CRL_MC',    label: 'Crl.MC – Criminal Miscellaneous Case' },
+                { value: 'DEATH_REF', label: 'Death Ref. – Death Reference' },
+                { value: 'GOVT_APP',  label: 'Govt.App – Government Appeal' },
+            ]},
+            { group: 'Commercial', items: [
+                { value: 'COM_OS',    label: 'Com.O.S – Commercial Original Suit' },
+                { value: 'COM_AP',    label: 'Com.AP – Commercial Appeal' },
+                { value: 'COM_ARB_P', label: 'Com.ARB.P – Commercial Arbitration Petition' },
+            ]},
+            { group: 'Company / Corporate', items: [
+                { value: 'COP', label: 'COP – Company Petition' },
+                { value: 'COA', label: 'COA – Company Appeal' },
+            ]},
+            { group: 'Tax', items: [
+                { value: 'ITA',  label: 'ITA – Income Tax Appeal' },
+                { value: 'STA',  label: 'STA – Sales Tax Appeal' },
+                { value: 'KVAT', label: 'KVAT – Karnataka VAT Appeal' },
+                { value: 'CTA',  label: 'CTA – Central Tax Appeal' },
+            ]},
+            { group: 'Election', items: [
+                { value: 'EP', label: 'EP – Election Petition' },
+            ]},
+        ],
+        supreme_court: [
+            { group: 'Civil', items: [
+                { value: 'SLP_C', label: 'SLP(C) – Special Leave Petition (Civil)' },
+                { value: 'CA',    label: 'CA – Civil Appeal' },
+                { value: 'WP_C',  label: 'WP(C) – Writ Petition (Civil)' },
+                { value: 'TP_C',  label: 'TP(C) – Transfer Petition (Civil)' },
+                { value: 'RP',    label: 'RP – Review Petition' },
+                { value: 'CP',    label: 'CP – Contempt Petition' },
+                { value: 'MA',    label: 'MA – Miscellaneous Application' },
+                { value: 'ARB_P', label: 'ARB.P – Arbitration Petition' },
+                { value: 'EP',    label: 'EP – Election Petition' },
+                { value: 'OA',    label: 'OA – Original Application' },
+                { value: 'OS',    label: 'OS – Original Suit' },
+            ]},
+            { group: 'Criminal', items: [
+                { value: 'SLP_CRL',  label: 'SLP(Crl) – Special Leave Petition (Criminal)' },
+                { value: 'CRL_A',    label: 'Crl.A – Criminal Appeal' },
+                { value: 'WP_CRL',   label: 'WP(Crl) – Writ Petition (Criminal)' },
+                { value: 'TP_CRL',   label: 'TP(Crl) – Transfer Petition (Criminal)' },
+                { value: 'CRL_MP',   label: 'Crl.MP – Criminal Miscellaneous Petition' },
+                { value: 'DEATH_REF',label: 'Death Ref. – Death Reference' },
+            ]},
+        ],
+    };
+
+    /* ── HELPERS ── */
+    function show(id) { var el = document.getElementById(id); if (el) el.style.display = ''; }
+    function hide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+    function populateSelect(selectEl, items) {
+        selectEl.innerHTML = '<option value="">— Select Court Complex —</option>';
+        items.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.value;
+            opt.textContent = c.label;
+            selectEl.appendChild(opt);
+        });
+    }
+
+    /* ── CASE TYPE SEARCHABLE DROPDOWN ── */
+    function buildCaseTypeDropdown(groups) {
+        var optionsEl = document.getElementById('case-type-options');
+        optionsEl.innerHTML = '';
+        groups.forEach(function(group) {
+            var gl = document.createElement('div');
+            gl.className = 'ct-group-label';
+            gl.textContent = group.group;
+            optionsEl.appendChild(gl);
+            group.items.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'ct-item';
+                div.dataset.value = item.value;
+                div.dataset.label = item.label;
+                div.textContent = item.label;
+                div.addEventListener('click', function() { selectCaseType(item.value, item.label); });
+                optionsEl.appendChild(div);
+            });
+        });
+    }
+
+    function selectCaseType(value, label) {
+        document.getElementById('case_type').value = value;
+        var display = document.getElementById('case-type-display');
+        display.childNodes[0].nodeValue = label;
+        document.querySelectorAll('#case-type-options .ct-item').forEach(function(el) {
+            el.classList.toggle('selected', el.dataset.value === value);
+        });
+        document.getElementById('case-type-panel').style.display = 'none';
+        document.getElementById('case-type-search').value = '';
+        filterCaseTypes('');
+    }
+
+    function filterCaseTypes(q) {
+        q = q.toLowerCase();
+        document.querySelectorAll('#case-type-options .ct-item').forEach(function(el) {
+            el.classList.toggle('hidden', !el.dataset.label.toLowerCase().includes(q));
+        });
+    }
+
+    document.getElementById('case-type-display').addEventListener('click', function() {
+        var panel = document.getElementById('case-type-panel');
+        var open = panel.style.display !== 'none';
+        panel.style.display = open ? 'none' : 'block';
+        if (!open) document.getElementById('case-type-search').focus();
+    });
+
+    document.getElementById('case-type-display').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+    });
+
+    document.getElementById('case-type-search').addEventListener('input', function() {
+        filterCaseTypes(this.value);
+    });
+
+    document.addEventListener('click', function(e) {
+        var wrapper = document.getElementById('case-type-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            document.getElementById('case-type-panel').style.display = 'none';
+        }
+    });
+
+    /* ── FLOW HANDLERS ── */
+    var ALL_BELOW_COURT_LEVEL = [
+        'jurisdiction-field','court-complex-field','court-hall-field','floor-field',
+        'case-type-field','case-number-field','case-year-field',
+        'party1-field','party1-type-field','party2-field','party2-type-field',
+        'representing-field','submit-actions'
+    ];
+    var ALL_BELOW_JURISDICTION = [
+        'court-complex-field','court-hall-field','floor-field',
+        'case-type-field','case-number-field','case-year-field',
+        'party1-field','party1-type-field','party2-field','party2-type-field',
+        'representing-field','submit-actions'
+    ];
+
+    window.onCourtLevelChange = function() {
+        var courtLevel = document.getElementById('court_level').value;
+        document.getElementById('jurisdiction').value = '';
+        document.getElementById('court').innerHTML = '<option value="">— Select Court Complex —</option>';
+        document.getElementById('case_type').value = '';
+        document.getElementById('case-type-display').childNodes[0].nodeValue = '— Select Case Type —';
+        document.getElementById('case-type-options').innerHTML = '';
+        document.getElementById('case-type-panel').style.display = 'none';
+        ALL_BELOW_COURT_LEVEL.forEach(hide);
+
+        if (!courtLevel) return;
+
+        if (courtLevel === 'district') {
+            show('jurisdiction-field');
+        } else {
+            var courtSelect = document.getElementById('court');
+            courtSelect.innerHTML = '';
+            var opt = document.createElement('option');
+            opt.value = courtLevel === 'high_court' ? 'high_court_karnataka' : 'supreme_court_india';
+            opt.textContent = courtLevel === 'high_court'
+                ? 'High Court of Karnataka, Bengaluru'
+                : 'Supreme Court of India, New Delhi';
+            opt.selected = true;
+            courtSelect.appendChild(opt);
+            showCommonFields(courtLevel);
+        }
+    };
+
+    window.onJurisdictionChange = function() {
+        var jurisdiction = document.getElementById('jurisdiction').value;
+        document.getElementById('court').innerHTML = '<option value="">— Select Court Complex —</option>';
+        ALL_BELOW_JURISDICTION.forEach(hide);
+        if (!jurisdiction) return;
+        show('court-complex-field');
+        populateSelect(document.getElementById('court'), jurisdiction === 'urban' ? urbanCourts : ruralCourts);
+        showCommonFields('district');
+    };
+
+    function showCommonFields(courtLevel) {
+        show('court-hall-field');
+        show('floor-field');
+        if (caseTypes[courtLevel]) {
+            buildCaseTypeDropdown(caseTypes[courtLevel]);
+            show('case-type-field');
+        }
+        show('case-number-field');
+        show('case-year-field');
+        show('party1-field');
+        show('party1-type-field');
+        show('party2-field');
+        show('party2-type-field');
+        show('submit-actions');
+    }
+
+    /* ── REPRESENTING ── */
+    var partyLabels = {
+        {% for value, label in party1_choices %}
+        '{{ value }}': '{{ label }}',
+        {% endfor %}
+        {% for value, label in party2_choices %}
+        '{{ value }}': '{{ label }}',
+        {% endfor %}
+    };
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('party-radio')) updateRepresenting();
+    });
+
+    function updateRepresenting() {
+        var p1 = document.querySelector('input[name="party_1_type"]:checked');
+        var p2 = document.querySelector('input[name="party_2_type"]:checked');
+        var container = document.getElementById('representing-options');
+        container.innerHTML = '';
+        var options = [];
+        if (p1) options.push({ value: p1.value, label: partyLabels[p1.value] });
+        if (p2) options.push({ value: p2.value, label: partyLabels[p2.value] });
+        if (!options.length) { hide('representing-field'); return; }
+        show('representing-field');
+        options.forEach(function(opt) {
+            var inp = document.createElement('input');
+            inp.type = 'radio';
+            inp.name = 'representing';
+            inp.value = opt.value;
+            inp.id = 'rep_' + opt.value;
+            var lbl = document.createElement('label');
+            lbl.htmlFor = 'rep_' + opt.value;
+            lbl.textContent = opt.label;
+            container.appendChild(inp);
+            container.appendChild(lbl);
+        });
+    }
+
+    /* ── FORM SUBMIT VALIDATION ── */
+    document.getElementById('new-case-form').addEventListener('submit', function(e) {
+        var courtLevel = document.getElementById('court_level').value;
+        if (!courtLevel) {
+            alert('Please select a Court Level.'); e.preventDefault(); return;
+        }
+        if (courtLevel === 'district') {
+            if (!document.getElementById('jurisdiction').value) {
+                alert('Please select a Jurisdiction.'); e.preventDefault(); return;
+            }
+            if (!document.getElementById('court').value) {
+                alert('Please select a Court Complex.'); e.preventDefault(); return;
+            }
+        }
+        if (!document.getElementById('case_type').value) {
+            alert('Please select a Case Type.'); e.preventDefault(); return;
+        }
+        if (!document.getElementById('case_number').value.trim()) {
+            alert('Please enter a Case Number.'); e.preventDefault(); return;
+        }
+        if (!document.getElementById('case_year').value) {
+            alert('Please enter a Case Year.'); e.preventDefault(); return;
+        }
+        if (!document.getElementById('party_1').value.trim()) {
+            alert('Please enter Party 1 name.'); e.preventDefault(); return;
+        }
+        if (!document.querySelector('input[name="party_1_type"]:checked')) {
+            alert('Please select Party 1 Type.'); e.preventDefault(); return;
+        }
+        if (!document.getElementById('party_2').value.trim()) {
+            alert('Please enter Party 2 name.'); e.preventDefault(); return;
+        }
+        if (!document.querySelector('input[name="party_2_type"]:checked')) {
+            alert('Please select Party 2 Type.'); e.preventDefault(); return;
+        }
+        if (!document.querySelector('input[name="representing"]:checked')) {
+            alert('Please select who you are Representing.'); e.preventDefault(); return;
+        }
+    });
+
+    /* ── RESET ── */
+    window.resetForm = function() {
+        ALL_BELOW_COURT_LEVEL.forEach(hide);
+        document.getElementById('court_level').value = '';
+        document.getElementById('case-type-display').childNodes[0].nodeValue = '— Select Case Type —';
+        document.getElementById('case-type-panel').style.display = 'none';
+        document.getElementById('representing-options').innerHTML = '';
+    };
+
+})();
+</script>
+{% endblock %}

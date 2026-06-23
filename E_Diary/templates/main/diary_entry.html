@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Main -->
+<div id="main">
+    <div class="inner">
+        <h1>Diary Entry</h1>
+        <p>Search for a case to enter daily business or hearing status.</p>
+
+        <!-- ── SEARCH BAR ── -->
+        <section>
+            <form method="GET" action="{% url 'diary_entry' %}" style="margin-bottom: 2rem;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" name="q" id="query" value="{{ query|default:'' }}" 
+                           placeholder="Search by Case No (e.g. 123/25), Parties, or Court..." 
+                           style="flex-grow: 1; height: 3.5rem; min-width: 200px;">
+                    <input type="submit" value="Search" class="primary">
+                    {% if query %}
+                        <a href="{% url 'diary_entry' %}" class="button" style="white-space: nowrap; flex-shrink: 0;">Clear</a>
+                    {% endif %}
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                    <select name="court_level" onchange="this.form.submit()" style="flex: 1; min-width: 140px;">
+                        <option value="">All Court Levels</option>
+                        {% for value, label in court_level_choices %}
+                        <option value="{{ value }}" {% if selected_court_level == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="disposed" onchange="this.form.submit()" style="flex: 1; min-width: 120px;">
+                        <option value="">All Cases</option>
+                        <option value="active" {% if selected_disposed == 'active' %}selected{% endif %}>Active Only</option>
+                        <option value="disposed" {% if selected_disposed == 'disposed' %}selected{% endif %}>Disposed Only</option>
+                    </select>
+                    <noscript><input type="submit" value="Filter" class="button"></noscript>
+                </div>
+            </form>
+        </section>
+
+        <!-- ── CASES TABLE ── -->
+        <section>
+            <div class="table-wrapper">
+                <table class="alt">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Case Number</th>
+                            <th>Parties</th>
+                            <th>Court Complex</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for case in cases %}
+                        <tr class="case-row" style="cursor: pointer;" onclick="window.location='{% url 'diary_entry_case' case.id %}';">
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</strong>
+                                <br/>
+                                <small style="color: #999; font-size: 0.7em; text-transform: uppercase;">ID: #{{ case.id }}</small>
+                            </td>
+                            <td>
+                                <span style="font-weight: 600;">{{ case.party_1 }}</span>
+                                <br/>
+                                <span style="font-size: 0.8em; color: #f2849e; font-weight: 900;">VS</span>
+                                <br/>
+                                <span style="font-weight: 600;">{{ case.party_2 }}</span>
+                            </td>
+                            <td>
+                                <span style="font-size: 0.9em; font-weight: 600;">{{ case.court_display_name }}</span>
+                                <br/>
+                                <small style="color: #585858; font-weight: 600;">Hall: {{ case.court_hall }} &nbsp;|&nbsp; Floor: {{ case.floor }}</small>
+                            </td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <a href="{% url 'diary_entry_case' case.id %}" class="button small primary">Enter Business</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 3rem;">
+                                <h4>No cases found.</h4>
+                                <p>Try a different search term or register a new case.</p>
+                                <a href="{% url 'new_case' %}" class="button primary">Register New Case</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<style>
+    /* Custom hover effect for the entire row since we made it clickable */
+    .case-row:hover {
+        background-color: rgba(242, 132, 158, 0.05) !important;
+    }
+    .case-row td {
+        transition: color 0.2s ease;
+    }
+    .case-row:hover td strong {
+        color: #f2849e;
+    }
+    /* Simple styling for the Party VS Party format */
+    .case-row td:nth-child(3) {
+        line-height: 1.2;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+</style>
+
+{% endblock %}

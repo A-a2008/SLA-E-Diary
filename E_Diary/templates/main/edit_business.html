@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <a href="{% url 'diary_entry_case' case.id %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Case</a>
+
+        <h1 style="margin-bottom: 0.25rem;">Edit Business Entry</h1>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            <strong>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</strong>
+            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+        </p>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            Court: {{ entry.court }} &mdash; Hall: {{ entry.court_hall }}, Floor {{ entry.floor }}
+            &nbsp;|&nbsp; Representing: {{ entry.representing }}
+        </p>
+
+        <form method="post" action="{% url 'edit_business' entry.id %}" style="max-width: 700px;">
+            {% csrf_token %}
+
+            <div class="field">
+                <label for="previous_date">Previous Date</label>
+                <input type="date" name="previous_date" id="previous_date" value="{{ entry.previous_date|date:'Y-m-d' }}" required>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="next_date">Next Date</label>
+                <input type="date" name="next_date" id="next_date" value="{{ entry.next_date|date:'Y-m-d' }}" required>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="stage">Stage of the Case</label>
+                <input type="text" name="stage" id="stage" value="{{ entry.stage }}" required>
+            </div>
+            <br>
+
+            <div class="row gtr-uniform" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div class="col-6" style="flex: 1; min-width: 120px;">
+                    <label for="list_i">List I (Cause List No.)</label>
+                    <input type="text" name="list_i" id="list_i" placeholder="Optional" value="{{ entry.list_i|default:'' }}">
+                </div>
+                <div class="col-6" style="flex: 1; min-width: 120px;">
+                    <label for="list_ii">List II (Cause List No.)</label>
+                    <input type="text" name="list_ii" id="list_ii" placeholder="Optional" value="{{ entry.list_ii|default:'' }}">
+                </div>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="business">Business of the Day</label>
+                <textarea name="business" id="business" rows="5" required>{{ entry.business }}</textarea>
+            </div>
+            <br>
+
+            <ul class="actions">
+                <li><input type="submit" value="Update Entry" class="primary"></li>
+                <li><a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a></li>
+            </ul>
+        </form>
+    </div>
+</div>
+{% endblock %}

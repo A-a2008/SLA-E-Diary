@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+
+        <section style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid rgba(242,132,158,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 style="margin: 0 0 0.5rem 0; font-size: 1.6rem;">{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</h1>
+                    <p style="margin: 0; font-size: 1.1rem; color: #585858;">
+                        <strong style="font-size: 1.15rem;">{{ case.party_1 }}</strong>
+                        <span style="color: #f2849e; font-weight: 900; margin: 0 0.75rem;">VS</span>
+                        <strong style="font-size: 1.15rem;">{{ case.party_2 }}</strong>
+                    </p>
+                    <p style="margin: 0.4rem 0 0 0; color: #585858;">
+                        {{ case.party_1_type }} / {{ case.party_2_type }}
+                        &nbsp;|&nbsp; Representing: <strong>{{ case.representing }}</strong>
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="display: inline-block; padding: 0.35rem 1rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700; background: {% if case.disposed %}#fce4e4{% else %}#fef3e2{% endif %}; color: {% if case.disposed %}#c62828{% else %}#e65100{% endif %};">
+                        {% if case.disposed %}DISPOSED{% else %}ACTIVE{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; color: #585858;">
+                <span><strong>Court:</strong> {{ court_display }}</span>
+                <span><strong>Hall:</strong> {{ case.court_hall }} | <strong>Floor:</strong> {{ case.floor }}</span>
+                <span><strong>Jurisdiction:</strong> {{ case.get_jurisdiction_display }}</span>
+                <span><strong>Level:</strong> {{ case.get_court_level_display }}</span>
+            </div>
+            <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
+                <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
+                <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
+                {% if not case.disposed %}
+                <form method="post" action="{% url 'diary_entry_case' case.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="dispose_case" value="1">
+                    <button type="submit" class="button small" onclick="return confirm('Mark this case as disposed?')">Mark Disposed</button>
+                </form>
+                {% else %}
+                <form method="post" action="{% url 'diary_entry_case' case.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="reinstate_case" value="1">
+                    <button type="submit" class="button small" onclick="return confirm('Reinstate this case?')">Reinstate</button>
+                </form>
+                {% endif %}
+                <a href="{% url 'diary_entry' %}" class="button small">&larr; Back</a>
+            </div>
+        </section>
+
+        <!-- ── ENTRIES ── -->
+        <section>
+            <h2>Business History</h2>
+            {% if entries %}
+            {% for entry in entries %}
+            <div style="background: rgba(242,132,158,0.03); border: 1px solid rgba(242,132,158,0.12); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <strong style="color: #f2849e;">{{ entry.previous_date|date:"d M Y" }}</strong>
+                        &rarr;
+                        <strong>{{ entry.next_date|date:"d M Y" }}</strong>
+                        <span style="color: #585858; margin-left: 0.75rem;">{{ entry.stage }}</span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        {% if entry.list_i or entry.list_ii %}
+                        <span style="color: #585858;">
+                            List: {% if entry.list_i %}{{ entry.list_i }}{% endif %}{% if entry.list_i and entry.list_ii %} / {% endif %}{% if entry.list_ii %}{{ entry.list_ii }}{% endif %}
+                        </span>
+                        {% endif %}
+                        <a href="{% url 'edit_business' entry.id %}" class="button small" style="font-size: 0.8rem;">Edit</a>
+                    </div>
+                </div>
+                <p style="margin: 0.75rem 0 0.5rem 0; white-space: pre-wrap;">{{ entry.business }}</p>
+                <div style="font-size: 0.95em; color: #585858; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                    <span><strong>Court:</strong> {{ entry.court }}</span>
+                    <span><strong>Hall:</strong> {{ entry.court_hall }}, Floor {{ entry.floor }}</span>
+                    <span><strong>Case:</strong> {{ entry.case_number_display }}</span>
+                    <span><strong>Representing:</strong> {{ entry.representing }}</span>
+                    <span><strong>Advocate:</strong> {{ entry.advocate.get_full_name|default:entry.advocate.username|default:"—" }}</span>
+                    <span><strong>Entered:</strong> {{ entry.created_at|date:"d M Y h:i A" }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 3rem; color: #585858;">
+                <h4>No diary entries yet.</h4>
+                <p><a href="{% url 'add_business' case.id %}" class="button primary">Add First Business Entry</a></p>
+            </div>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+{% endblock %}

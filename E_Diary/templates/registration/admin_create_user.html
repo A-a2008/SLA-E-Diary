@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>Create New User</h1>
+        {% if messages %}
+        {% for msg in messages %}
+        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
+        {% endfor %}
+        {% endif %}
+        {% if error %}
+        <p style="color: #c62828; background: #fce4e4; padding: 0.75rem; border-radius: 4px;">{{ error }}</p>
+        {% endif %}
+        <form method="post" style="max-width: 400px;">
+            {% csrf_token %}
+            <div class="field">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            <br>
+            <div class="field">
+                <label for="first_name">First Name</label>
+                <input type="text" name="first_name" id="first_name">
+            </div>
+            <br>
+            <div class="field">
+                <label for="last_name">Last Name</label>
+                <input type="text" name="last_name" id="last_name">
+            </div>
+            <br>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="text" name="password" id="password" required placeholder="Enter a temporary password">
+            </div>
+            <br>
+            <div class="field">
+                <label for="role">Role</label>
+                <select name="role" id="role">
+                    {% for value, label in role_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
+            <div class="field">
+                <label for="phone">Phone (optional)</label>
+                <input type="text" name="phone" id="phone">
+            </div>
+            <br>
+            <ul class="actions">
+                <li><input type="submit" value="Create User" class="primary"></li>
+                <li><a href="{% url 'manage_users' %}" class="button">Cancel</a></li>
+            </ul>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>SLA E-Diary</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="{% static 'assets/css/main.css' %}" />
+		<noscript><link rel="stylesheet" href="{% static 'assets/css/noscript.css' %}" /></noscript>
+		<style>
+			input[type="number"] { -moz-appearance: textfield; }
+			input[type="number"]::-webkit-outer-spin-button,
+			input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+		</style>
+	</head>
+	<body class="is-preload">
+		<div id="wrapper">
+			<header id="header">
+				<div class="inner">
+					<a href="{% url 'home' %}" class="logo">
+						<span class="symbol"><img src="{% static 'images/logo.svg' %}" alt="" /></span>
+						<span class="title">SLA E-Diary</span>
+					</a>
+					<nav>
+						<ul>
+							<li><a href="#menu">Menu</a></li>
+						</ul>
+					</nav>
+				</div>
+			</header>
+
+			<nav id="menu">
+				<h2>Menu</h2>
+				<ul>
+					<li><a href="{% url 'home' %}">Home</a></li>
+					{% if user.is_authenticated %}
+					<li><a href="{% url 'diary_entry' %}">Diary Entry</a></li>
+					<li><a href="{% url 'new_case' %}">New Case</a></li>
+					<li><a href="{% url 'batch_new_case' %}">Batch Business Entry</a></li>
+					<li><a href="{% url 'cause_list' %}">Cause List</a></li>
+					<li><a href="{% url 'change_password' %}">Change Password</a></li>
+					{% if user.is_superuser %}
+					<li><a href="{% url 'super_dashboard' %}">Super Admin</a></li>
+					{% elif user.is_authenticated and user.userprofile.role == 'admin' %}
+					<li><a href="{% url 'manage_users' %}">Manage Users</a></li>
+					{% endif %}
+					<li><a href="{% url 'logout' %}">Logout ({{ user.get_full_name }})</a></li>
+					{% else %}
+					<li><a href="{% url 'login' %}">Sign In</a></li>
+					{% endif %}
+				</ul>
+			</nav>
+
+			<div id="main">
+				<div class="inner">
+					<header>
+						<h1>Platform for automatic diary entry</h1>
+						{% if user.is_authenticated %}
+						<p>Welcome, <strong>{{ user.get_full_name }}</strong>.</p>
+						{% endif %}
+					</header>
+					<section class="tiles">
+						<article class="style1">
+							<span class="image"><img src="{% static 'images/pic07.jpg' %}" alt="" /></span>
+							<a href="{% url 'cause_list' %}">
+								<h2>Cause List</h2>
+								<div class="content"><p>Generate cause list for a specific date.</p></div>
+							</a>
+						</article>
+						<article class="style2">
+							<span class="image"><img src="{% static 'images/pic01.jpg' %}" alt="" /></span>
+							<a href="{% url 'diary_entry' %}">
+								<h2>Diary Entry</h2>
+								<div class="content"><p>Update daily case status.</p></div>
+							</a>
+						</article>
+						<article class="style3">
+							<span class="image"><img src="{% static 'images/pic02.jpg' %}" alt="" /></span>
+							<a href="{% url 'new_case' %}">
+								<h2>New Case</h2>
+								<div class="content"><p>Enter new case details.</p></div>
+							</a>
+						</article>
+						<article class="style4">
+							<span class="image"><img src="{% static 'images/pic03.jpg' %}" alt="" /></span>
+							<a href="{% url 'search_cases' %}">
+								<h2>Search Cases</h2>
+								<div class="content"><p>Search and view case information.</p></div>
+							</a>
+						</article>
+						<article class="style5">
+							<span class="image"><img src="{% static 'images/pic04.jpg' %}" alt="" /></span>
+							<a href="{% url 'diary_entry' %}?disposed=active">
+								<h2>Active Cases</h2>
+								<div class="content"><p>View all active/pending cases.</p></div>
+							</a>
+						</article>
+						<article class="style6">
+							<span class="image"><img src="{% static 'images/pic05.jpg' %}" alt="" /></span>
+							<a href="{% url 'diary_entry' %}?disposed=disposed">
+								<h2>Disposed Cases</h2>
+								<div class="content"><p>View all disposed cases.</p></div>
+							</a>
+						</article>
+						<article class="style1">
+							<span class="image"><img src="{% static 'images/pic06.jpg' %}" alt="" /></span>
+							<a href="{% url 'batch_new_case' %}">
+								<h2>Batch Business</h2>
+								<div class="content"><p>Batch-enter business history for a case.</p></div>
+							</a>
+						</article>
+					</section>
+				</div>
+			</div>
+		</div>
+
+		<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+		<script src="{% static 'assets/js/browser.min.js' %}"></script>
+		<script src="{% static 'assets/js/breakpoints.min.js' %}"></script>
+		<script src="{% static 'assets/js/util.js' %}"></script>
+		<script src="{% static 'assets/js/main.js' %}"></script>
+	</body>
+</html>
