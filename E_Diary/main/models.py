@@ -204,3 +204,14 @@ class Reminder(models.Model):
 
     def __str__(self):
         return f"Reminder: {self.task[:60]} ({'✔' if self.completed else '⏳'})"
+
+
+class OutgoingMessage(models.Model):
+    chat_id = models.CharField(max_length=100)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Msg to {self.chat_id}: {self.text[:60]} ({'sent' if self.sent else 'pending'})"

@@ -26,3 +26,9 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'phone')
     list_filter = ('role',)
     search_fields = ('user__username', 'user__first_name', 'user__last_name')
+
+@admin.register(OutgoingMessage)
+class OutgoingMessageAdmin(admin.ModelAdmin):
+    list_display = ('chat_id', 'text', 'created_at', 'sent', 'sent_at')
+    list_filter = ('sent',)
+    search_fields = ('chat_id',)

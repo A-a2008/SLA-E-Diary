@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import *
+from .api import pending_messages, mark_sent
 
 urlpatterns = [
     path('', home, name='home'),
@@ -32,4 +33,6 @@ urlpatterns = [
     path('court_hall_notes/add/', add_court_hall_note, name='add_court_hall_note'),
     path('reminder/<int:reminder_id>/toggle/', mark_reminder_done, name='mark_reminder_done'),
     path('send_reminders_now/', send_reminders_now, name='send_reminders_now'),
+    path('api/pending-messages/', pending_messages, name='api_pending_messages'),
+    path('api/mark-sent/<int:msg_id>/', mark_sent, name='api_mark_sent'),
 ]

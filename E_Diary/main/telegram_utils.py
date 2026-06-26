@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 from dotenv import load_dotenv
+from django.conf import settings
 
 load_dotenv()
 
@@ -16,6 +17,12 @@ def send_message(chat_id, text, parse_mode='HTML'):
     if not BOT_TOKEN:
         logger.warning('TELEGRAM_BOT_TOKEN not set, skipping message')
         return False
+
+    if not getattr(settings, 'SEND_MESSAGES_DIRECTLY', True):
+        from .models import OutgoingMessage
+        OutgoingMessage.objects.create(chat_id=str(chat_id), text=text)
+        return True
+
     url = f'{BASE_URL}/sendMessage'
     try:
         r = requests.post(url, json={
