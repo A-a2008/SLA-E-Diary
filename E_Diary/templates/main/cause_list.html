@@ -38,6 +38,27 @@
         {% if entries %}
         {% regroup entries by case.court as court_groups %}
 
+        {% if court_hall_notes %}
+        {% regroup entries by case.court as court_groups_for_notes %}
+        {% for court_code, court_entries in court_groups_for_notes %}
+            {% for e in court_entries %}
+                {% with key=e.case.court|stringformat:"s"|add:"__"|add:e.case.court_hall %}
+                {% if court_hall_notes|dict_key_exists:key %}
+                    {% with note_text=court_hall_notes|dict_key:key %}
+                    {% if note_text %}
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                    <strong style="color: #856404;">🏛 Note for {{ e.case.court_hall }}</strong>
+                    <p style="margin: 0.25rem 0 0 0; color: #856404; white-space: pre-wrap;">{{ note_text }}</p>
+                    <small><a href="{% url 'add_court_hall_note' %}?court={{ e.case.court }}&court_hall={{ e.case.court_hall }}&next={% url 'cause_list' %}?date={{ date_str }}" style="color: #856404;">Edit</a></small>
+                </div>
+                    {% endif %}
+                    {% endwith %}
+                {% endif %}
+                {% endwith %}
+            {% endfor %}
+        {% endfor %}
+        {% endif %}
+
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
             <button type="button" id="edit-toggle" class="button primary" onclick="toggleEdit()">Edit Cause List Numbers</button>
         </div>
@@ -65,22 +86,22 @@
                         {% for entry in court_entries %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ entry.floor }}</td>
+                            <td>{{ entry.case.floor }}</td>
                             <td>
-                                {{ entry.court_hall }}<br>
+                                {{ entry.case.court_hall }}<br>
                                 <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
-                                {{ entry.case.party_1 }} vs {{ entry.case.party_2 }}
+                                {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                             </td>
-                            <td>{{ entry.representing }}</td>
-                            <td>{{ entry.stage }}</td>
+                            <td>{{ entry.case.representing }}</td>
+                            <td>{{ entry.stage|default:'—' }}</td>
                             <td>
-                                <span id="display-list-{{ entry.id }}">
+                                <span id="display-list-{{ entry.case.id }}">
                                     List I: {{ entry.list_i|default:'—' }}<br>
                                     List II: {{ entry.list_ii|default:'—' }}
                                 </span>
-                                <span id="edit-list-{{ entry.id }}" style="display:none;">
-                                    List I: <input type="text" name="list_i_{{ entry.id }}" value="{{ entry.list_i|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_i|default:'' }}"><br>
-                                    List II: <input type="text" name="list_ii_{{ entry.id }}" value="{{ entry.list_ii|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_ii|default:'' }}">
+                                <span id="edit-list-{{ entry.case.id }}" style="display:none;">
+                                    List I: <input type="text" name="list_i_{{ entry.case.id }}" value="{{ entry.list_i|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_i|default:'' }}"><br>
+                                    List II: <input type="text" name="list_ii_{{ entry.case.id }}" value="{{ entry.list_ii|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_ii|default:'' }}">
                                 </span>
                             </td>
                         </tr>

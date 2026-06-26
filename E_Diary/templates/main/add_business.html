@@ -9,7 +9,7 @@
         <h1 style="margin-bottom: 0.25rem;">Add Business Entry</h1>
         <p style="color: #585858; margin-bottom: 1.5rem;">
             <strong>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</strong>
-            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+            &mdash; {% if case.represents_party_1 %}<strong>{{ case.party_1 }}</strong>{% else %}{{ case.party_1 }}{% endif %} vs {% if case.represents_party_2 %}<strong>{{ case.party_2 }}</strong>{% else %}{{ case.party_2 }}{% endif %}
         </p>
         <p style="color: #585858; margin-bottom: 1.5rem;">
             Court: {{ court_display }} &mdash; Hall: {{ case.court_hall }}, Floor {{ case.floor }}
@@ -37,21 +37,84 @@
             </div>
             <br>
 
-            <div class="row gtr-uniform" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <div class="col-6" style="flex: 1; min-width: 120px;">
-                    <label for="list_i">List I (Cause List No.)</label>
-                    <input type="text" name="list_i" id="list_i" placeholder="Optional" value="{{ latest_data.list_i|default:'' }}">
-                </div>
-                <div class="col-6" style="flex: 1; min-width: 120px;">
-                    <label for="list_ii">List II (Cause List No.)</label>
-                    <input type="text" name="list_ii" id="list_ii" placeholder="Optional" value="{{ latest_data.list_ii|default:'' }}">
-                </div>
-            </div>
-            <br>
-
             <div class="field">
                 <label for="business">Business of the Day</label>
                 <textarea name="business" id="business" rows="5" placeholder="Describe what happened in court today..." required></textarea>
+            </div>
+            <br>
+
+            <!-- REMINDER TOGGLE -->
+            <div class="field">
+                <label for="needs-reminder-toggle" class="reminder-toggle-label">
+                    <input type="checkbox" name="needs_reminder" id="needs-reminder-toggle" class="reminder-hidden-check" onchange="toggleReminderSection()">
+                    <span class="reminder-toggle-pill" id="reminder-toggle-pill">➕ Needs Reminder</span>
+                </label>
+            </div>
+            <br>
+
+            <!-- REMINDER SECTION -->
+            <div id="reminder-section" style="display:none; background: rgba(242,132,158,0.04); border: 1px solid rgba(242,132,158,0.2); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+                <h4 style="margin:0 0 0.75rem 0; color:#f2849e;">📋 Reminder Details</h4>
+
+                <div class="field">
+                    <label for="reminder_task">What needs to be done?</label>
+                    <input type="text" name="reminder_task" id="reminder_task" placeholder="e.g. File counter affidavit, Prepare arguments, Call client for documents...">
+                </div>
+                <br>
+
+                <div class="field half">
+                    <label for="reminder_start_on">Start reminding from</label>
+                    <input type="date" name="reminder_start_on" id="reminder_start_on" value="{{ today|date:'Y-m-d' }}">
+                </div>
+                <br>
+
+                <div class="field">
+                    <label>How often?</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem;">
+                        <label class="freq-pill active" id="freq-daily" onclick="selectFreq('daily')">
+                            <input type="radio" name="reminder_frequency" value="daily" class="reminder-hidden-check" checked>
+                            <span>Every Day</span>
+                        </label>
+                        <label class="freq-pill" id="freq-alternate" onclick="selectFreq('alternate')">
+                            <input type="radio" name="reminder_frequency" value="alternate" class="reminder-hidden-check">
+                            <span>Alt Days</span>
+                        </label>
+                        <label class="freq-pill" id="freq-twice_week" onclick="selectFreq('twice_week')">
+                            <input type="radio" name="reminder_frequency" value="twice_week" class="reminder-hidden-check">
+                            <span>2×/Week</span>
+                        </label>
+                        <label class="freq-pill" id="freq-weekly" onclick="selectFreq('weekly')">
+                            <input type="radio" name="reminder_frequency" value="weekly" class="reminder-hidden-check">
+                            <span>Weekly</span>
+                        </label>
+                    </div>
+                </div>
+                <br>
+
+                <div class="field">
+                    <label for="reminder-ramp-toggle" class="ramp-toggle-label">
+                        <input type="checkbox" name="reminder_ramp_up" id="reminder-ramp-toggle" class="reminder-hidden-check" value="1" onchange="toggleRampPill()">
+                        <span class="ramp-toggle-pill" id="ramp-toggle-pill">➕ Get more frequent as hearing nears</span>
+                    </label>
+                    <small style="display:block; color:#999; margin-top:0.2rem;">When enabled, reminders become daily during the last week before the hearing.</small>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Representing Particulars</label>
+                <div id="rep-checkboxes" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                    <div id="rep-p1-section">
+                        <strong id="rep-p1-label">{{ case.party_1_type }} count: {{ case.party_1_total }}</strong><br>
+                        <div id="rep-p1-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                    </div>
+                    <div id="rep-p2-section">
+                        <strong id="rep-p2-label">{{ case.party_2_type }} count: {{ case.party_2_total }}</strong><br>
+                        <div id="rep-p2-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                    </div>
+                </div>
+                <input type="hidden" name="representing" value="{{ case.representing }}">
+                <input type="hidden" name="party_1_total" value="{{ case.party_1_total }}">
+                <input type="hidden" name="party_2_total" value="{{ case.party_2_total }}">
             </div>
             <br>
 
@@ -60,6 +123,129 @@
                 <li><a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a></li>
             </ul>
         </form>
+
+        <style>
+            #rep-p1-list, #rep-p2-list { padding-left: 0.25rem; }
+            #rep-p1-list input[type="checkbox"], #rep-p2-list input[type="checkbox"] { vertical-align: middle; margin: 0 0.15em 0 0; }
+            #rep-p1-list label, #rep-p2-list label { vertical-align: middle; margin-right: 0.75em; }
+            .reminder-hidden-check { position:absolute; left:-9999px; opacity:0; width:1px; height:1px; }
+            .reminder-toggle-label { cursor: pointer; display: inline-block !important; }
+            .reminder-toggle-pill {
+                display: inline-flex; align-items: center; justify-content: center;
+                padding: 0.6rem 1.4rem; border: 2px solid #ddd; border-radius: 8px;
+                font-size: 1rem; font-weight: 700; color: #585858; transition: all 0.2s; user-select: none;
+                text-align: center;
+            }
+            .reminder-toggle-pill:hover { border-color: #f2849e; background: rgba(242,132,158,0.06); }
+            .reminder-toggle-pill.active { border-color: #f2849e; background: rgba(242,132,158,0.12); color: #f2849e; }
+            .freq-pill {
+                display: inline-flex; align-items: center; justify-content: center;
+                padding: 0.45rem 0.9rem; border: 2px solid #ddd; border-radius: 5px;
+                cursor: pointer; font-size: 0.8rem; font-weight: 600; color: #585858;
+                transition: all 0.15s; user-select: none; min-width: 4rem;
+            }
+            .freq-pill:hover { border-color: #f2849e; background: rgba(242,132,158,0.06); }
+            .freq-pill.active { border-color: #f2849e; background: #585858; color: #fff; }
+            .ramp-toggle-label { cursor: pointer; display: inline-block !important; margin-top: 0.2rem; }
+            .ramp-toggle-pill {
+                display: inline-flex; align-items: center; justify-content: center;
+                padding: 0.4rem 1rem; border: 2px solid #ddd; border-radius: 6px;
+                font-size: 0.9rem; font-weight: 600; color: #585858; transition: all 0.2s; user-select: none;
+                text-align: center;
+            }
+            .ramp-toggle-pill:hover { border-color: #f2849e; background: rgba(242,132,158,0.06); }
+            .ramp-toggle-pill.active { border-color: #f2849e; background: rgba(242,132,158,0.12); color: #f2849e; }
+        </style>
+
+        <script>
+        (function() {
+            function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+
+            function buildCheckboxes(containerId, name, total) {
+                var list = document.getElementById(containerId);
+                list.innerHTML = '';
+                total = parseInt(total) || 1;
+                for (var i = 1; i <= total; i++) {
+                    var chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.name = name;
+                    chk.value = i;
+                    chk.id = containerId + '_' + i;
+                    if (total === 1) chk.checked = true;
+                    var lbl = document.createElement('label');
+                    lbl.htmlFor = containerId + '_' + i;
+                    lbl.textContent = i;
+                    list.appendChild(chk);
+                    list.appendChild(lbl);
+                }
+            }
+
+            var p1Total = {{ case.party_1_total|default:1 }};
+            var p2Total = {{ case.party_2_total|default:1 }};
+            var rep = slugify('{{ case.representing }}');
+            var p1Type = slugify('{{ case.party_1_type }}');
+            var p2Type = slugify('{{ case.party_2_type }}');
+            var p1Field = 'representing_' + slugify('{{ case.party_1_type }}') + '_indices';
+            var p2Field = 'representing_' + slugify('{{ case.party_2_type }}') + '_indices';
+
+            if (rep === p1Type) {
+                document.getElementById('rep-p2-section').style.display = 'none';
+                buildCheckboxes('rep-p1-list', p1Field, p1Total);
+            } else {
+                document.getElementById('rep-p1-section').style.display = 'none';
+                buildCheckboxes('rep-p2-list', p2Field, p2Total);
+            }
+
+            /* REMINDER SECTION */
+            window.toggleReminderSection = function() {
+                var chk = document.getElementById('needs-reminder-toggle');
+                var section = document.getElementById('reminder-section');
+                var pill = document.getElementById('reminder-toggle-pill');
+                if (chk.checked) {
+                    section.style.display = 'block';
+                    pill.textContent = '✅ Needs Reminder';
+                    pill.className = 'reminder-toggle-pill active';
+                    document.getElementById('reminder_task').required = true;
+                    document.getElementById('reminder_start_on').required = true;
+                } else {
+                    section.style.display = 'none';
+                    pill.textContent = '➕ Needs Reminder';
+                    pill.className = 'reminder-toggle-pill';
+                    document.getElementById('reminder_task').required = false;
+                    document.getElementById('reminder_task').value = '';
+                    document.getElementById('reminder_start_on').required = false;
+                }
+            };
+
+            window.selectFreq = function(val) {
+                document.querySelectorAll('.freq-pill').forEach(function(l) {
+                    l.className = 'freq-pill';
+                });
+                document.getElementById('freq-' + val).className = 'freq-pill active';
+            };
+
+            window.toggleRampPill = function() {
+                var chk = document.getElementById('reminder-ramp-toggle');
+                var pill = document.getElementById('ramp-toggle-pill');
+                if (chk.checked) {
+                    pill.textContent = '✅ Get more frequent as hearing nears';
+                    pill.className = 'ramp-toggle-pill active';
+                } else {
+                    pill.textContent = '➕ Get more frequent as hearing nears';
+                    pill.className = 'ramp-toggle-pill';
+                }
+            };
+
+            var form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                var checked = form.querySelectorAll('#rep-p1-list input:checked, #rep-p2-list input:checked');
+                if (checked.length === 0) {
+                    alert('Please select at least one party you represent.');
+                    e.preventDefault();
+                }
+            });
+        })();
+        </script>
     </div>
 </div>
 {% endblock %}

@@ -47,7 +47,14 @@
             <!-- ── COURT HALL + FLOOR ── -->
             <div class="field half" id="court-hall-field" style="display:none;">
                 <label for="court_hall">Court Hall</label>
-                <input type="text" name="court_hall" id="court_hall" placeholder="e.g. CCH-4">
+                <div id="court-hall-wrapper" style="position:relative;">
+                    <input type="text" name="court_hall" id="court_hall" placeholder="e.g. CCH-4" autocomplete="off"
+                           style="padding-right: 2.5em;">
+                    <div id="court-hall-panel"
+                         style="display:none; position:absolute; top:calc(3em + 2px); left:0; right:0; z-index:999; background:#fff; border:solid 1px #c9c9c9; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,0.1);">
+                        <div id="court-hall-options" style="max-height:200px; overflow-y:auto;"></div>
+                    </div>
+                </div>
             </div>
             <br>
             <div class="field half" id="floor-field" style="display:none;">
@@ -126,10 +133,27 @@
             </div>
             <br>
 
+            <!-- ── PARTY TOTALS ── -->
+            <div class="field half" id="party1-total-field" style="display:none;">
+                <label for="party_1_total">Total <span id="party1-label">Party 1</span> count</label>
+                <input type="number" name="party_1_total" id="party_1_total" value="1" min="1" max="999">
+            </div>
+            <br>
+            <div class="field half" id="party2-total-field" style="display:none;">
+                <label for="party_2_total">Total <span id="party2-label">Party 2</span> count</label>
+                <input type="number" name="party_2_total" id="party_2_total" value="1" min="1" max="999">
+            </div>
+            <br>
+
             <!-- ── REPRESENTING ── -->
             <div class="field" id="representing-field" style="display:none;">
                 <label>Representing</label>
                 <div id="representing-options"></div>
+                <div id="representing-checkboxes" style="display:none; margin-top: 0.75rem;">
+                    <label>Select the parties you represent:</label>
+                    <div id="representing-checkbox-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                    <input type="hidden" name="representing_parties" id="representing_parties" value="">
+                </div>
             </div>
             <br>
 
@@ -174,6 +198,28 @@
     }
     #representing-options input[type="radio"] + label {
         margin-bottom: 0.25em;
+    }
+    .ch-item {
+        padding: 0.5em 1em;
+        cursor: pointer;
+        font-size: 0.95em;
+        color: #585858;
+        transition: background 0.15s;
+    }
+    .ch-item:hover {
+        background: rgba(242,132,158,0.1);
+        color: #f2849e;
+    }
+    #representing-checkbox-list {
+        padding-left: 0.25rem;
+    }
+    #representing-checkbox-list input[type="checkbox"] {
+        margin: 0 0.15em 0 0;
+        vertical-align: middle;
+    }
+    #representing-checkbox-list label {
+        margin-right: 0.75em;
+        vertical-align: middle;
     }
 </style>
 
@@ -492,16 +538,70 @@
         '{{ value }}': '{{ label }}',
         {% endfor %}
     };
+    var party1Label = '';
+    var party2Label = '';
 
     document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('party-radio')) updateRepresenting();
+        if (e.target.classList.contains('party-radio')) {
+            updatePartyLabels();
+            updateRepresenting();
+        }
     });
+
+    function updatePartyLabels() {
+        var p1 = document.querySelector('input[name="party_1_type"]:checked');
+        var p2 = document.querySelector('input[name="party_2_type"]:checked');
+        if (p1) {
+            party1Label = partyLabels[p1.value];
+            document.getElementById('party1-label').textContent = party1Label;
+            show('party1-total-field');
+        }
+        if (p2) {
+            party2Label = partyLabels[p2.value];
+            document.getElementById('party2-label').textContent = party2Label;
+            show('party2-total-field');
+        }
+    }
+
+    function updateCheckboxes(sideLabel, total) {
+        var list = document.getElementById('representing-checkbox-list');
+        var chkSection = document.getElementById('representing-checkboxes');
+        list.innerHTML = '';
+        if (!total || total < 1) { chkSection.style.display = 'none'; return; }
+        chkSection.style.display = 'block';
+        for (var i = 1; i <= total; i++) {
+            var chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.name = 'representing_parties_checkbox';
+            chk.value = i;
+            chk.id = 'rep_chk_' + i;
+            chk.addEventListener('change', updateRepresentingParties);
+            var lbl = document.createElement('label');
+            lbl.htmlFor = 'rep_chk_' + i;
+            lbl.textContent = i;
+            list.appendChild(chk);
+            list.appendChild(lbl);
+            if (total === 1) {
+                chk.checked = true;
+            }
+        }
+        updateRepresentingParties();
+    }
+
+    function updateRepresentingParties() {
+        var checked = document.querySelectorAll('#representing-checkbox-list input:checked');
+        var values = [];
+        checked.forEach(function(c) { values.push(c.value); });
+        document.getElementById('representing_parties').value = values.join(',');
+    }
 
     function updateRepresenting() {
         var p1 = document.querySelector('input[name="party_1_type"]:checked');
         var p2 = document.querySelector('input[name="party_2_type"]:checked');
         var container = document.getElementById('representing-options');
         container.innerHTML = '';
+        var chkSection = document.getElementById('representing-checkboxes');
+        chkSection.style.display = 'none';
         var options = [];
         if (p1) options.push({ value: p1.value, label: partyLabels[p1.value] });
         if (p2) options.push({ value: p2.value, label: partyLabels[p2.value] });
@@ -513,13 +613,98 @@
             inp.name = 'representing';
             inp.value = opt.value;
             inp.id = 'rep_' + opt.value;
+            inp.addEventListener('change', function() {
+                var total = 0;
+                if (this.value === p1?.value) {
+                    total = parseInt(document.getElementById('party_1_total').value) || 0;
+                } else if (this.value === p2?.value) {
+                    total = parseInt(document.getElementById('party_2_total').value) || 0;
+                }
+                updateCheckboxes(this.value, total);
+            });
             var lbl = document.createElement('label');
             lbl.htmlFor = 'rep_' + opt.value;
             lbl.textContent = opt.label;
             container.appendChild(inp);
             container.appendChild(lbl);
         });
+        // Show party totals
+        updatePartyLabels();
     }
+
+    // Rebuild checkboxes when totals change
+    document.getElementById('party_1_total').addEventListener('input', function() {
+        var sel = document.querySelector('input[name="representing"]:checked');
+        if (sel && sel.value === document.querySelector('input[name="party_1_type"]:checked')?.value) {
+            updateCheckboxes(sel.value, parseInt(this.value) || 0);
+        }
+    });
+    document.getElementById('party_2_total').addEventListener('input', function() {
+        var sel = document.querySelector('input[name="representing"]:checked');
+        if (sel && sel.value === document.querySelector('input[name="party_2_type"]:checked')?.value) {
+            updateCheckboxes(sel.value, parseInt(this.value) || 0);
+        }
+    });
+
+    /* ── COURT HALL SUGGESTIONS ── */
+    var courtHallInput = document.getElementById('court_hall');
+    var courtHallPanel = document.getElementById('court-hall-panel');
+    var courtHallOptions = document.getElementById('court-hall-options');
+    var chSuggestTimeout = null;
+    var chSelected = false;
+
+    function showCourtHallPanel() { courtHallPanel.style.display = 'block'; }
+    function hideCourtHallPanel() { courtHallPanel.style.display = 'none'; }
+
+    function fetchCourtHallSuggestions(q) {
+        fetch('/court_halls/suggest/?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                courtHallOptions.innerHTML = '';
+                if (!data.length) {
+                    hideCourtHallPanel();
+                    return;
+                }
+                data.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'ch-item';
+                    div.dataset.value = item.value;
+                    div.textContent = item.label;
+                    div.addEventListener('click', function() {
+                        courtHallInput.value = item.value;
+                        chSelected = true;
+                        hideCourtHallPanel();
+                    });
+                    courtHallOptions.appendChild(div);
+                });
+                showCourtHallPanel();
+            });
+    }
+
+    courtHallInput.addEventListener('input', function() {
+        chSelected = false;
+        clearTimeout(chSuggestTimeout);
+        var val = this.value.trim();
+        if (val.length < 1) { hideCourtHallPanel(); return; }
+        chSuggestTimeout = setTimeout(function() {
+            fetchCourtHallSuggestions(val);
+        }, 200);
+    });
+
+    courtHallInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 1 && courtHallOptions.children.length) {
+            showCourtHallPanel();
+        }
+    });
+
+    courtHallInput.addEventListener('blur', function() {
+        setTimeout(hideCourtHallPanel, 200);
+    });
+
+    courtHallInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !chSelected) return;
+        if (e.key === 'Escape') hideCourtHallPanel();
+    });
 
     /* ── FORM SUBMIT VALIDATION ── */
     document.getElementById('new-case-form').addEventListener('submit', function(e) {
@@ -558,6 +743,10 @@
         }
         if (!document.querySelector('input[name="representing"]:checked')) {
             alert('Please select who you are Representing.'); e.preventDefault(); return;
+        }
+        var repParties = document.getElementById('representing_parties').value;
+        if (!repParties) {
+            alert('Please select at least one party you represent.'); e.preventDefault(); return;
         }
     });
 

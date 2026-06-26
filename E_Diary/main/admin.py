@@ -15,6 +15,12 @@ class DiaryEntryAdmin(admin.ModelAdmin):
     list_filter = ('stage', 'previous_date', 'next_date')
     search_fields = ('case__case_number', 'case__party_1', 'case__party_2', 'business')
 
+@admin.register(CauseListEntry)
+class CauseListEntryAdmin(admin.ModelAdmin):
+    list_display = ('date', 'case', 'list_i', 'list_ii')
+    list_filter = ('date',)
+    search_fields = ('case__case_number',)
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'phone')

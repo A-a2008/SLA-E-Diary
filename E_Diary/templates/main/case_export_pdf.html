@@ -23,9 +23,9 @@
     <h1>Case Details</h1>
     <div class="case-title">{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</div>
     <div class="meta">
-        <span><strong>{{ case.party_1 }}</strong> vs <strong>{{ case.party_2 }}</strong></span><br>
+        <span>{% if case.represents_party_1 %}<strong>{{ case.party_1 }}</strong>{% else %}{{ case.party_1 }}{% endif %} vs {% if case.represents_party_2 %}<strong>{{ case.party_2 }}</strong>{% else %}{{ case.party_2 }}{% endif %}</span><br>
         <span>Party Types: {{ case.party_1_type }} / {{ case.party_2_type }}</span>
-        <span>Representing: {{ case.representing }}</span><br>
+                                <span>Representing: {{ case.representing_display }}</span><br>
         <span>Court: {{ court_display }}</span>
         <span>Hall: {{ case.court_hall }}, Floor: {{ case.floor }}</span><br>
         <span>Jurisdiction: {{ case.get_jurisdiction_display }}</span>
@@ -41,13 +41,6 @@
         <div class="entry-stage">Stage: {{ entry.stage }}</div>
         <div class="entry-business">{{ entry.business }}</div>
         <div class="entry-meta">
-            {% if entry.list_i or entry.list_ii %}
-            Cause List:
-            {% if entry.list_i %}List I: {{ entry.list_i }}{% endif %}
-            {% if entry.list_i and entry.list_ii %} | {% endif %}
-            {% if entry.list_ii %}List II: {{ entry.list_ii }}{% endif %}
-            &nbsp;|&nbsp;
-            {% endif %}
             Entered: {{ entry.created_at|date:"d M Y h:i A" }}
         </div>
     </div>

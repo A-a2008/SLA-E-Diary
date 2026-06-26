@@ -1,0 +1,30 @@
+model_list:
+  - model_name: nemotron-3-ultra-550b-a55b
+    litellm_params:
+      model: openai/nvidia/nemotron-3-ultra-550b-a55b
+      api_key: os.environ/NVIDIA_API_KEY
+      api_base: "https://integrate.api.nvidia.com/v1"
+      rpm: 38
+      tpm: 40000
+      max_tokens: 16384
+      extra_body:
+        chat_template_kwargs: {"enable_thinking": true}
+
+  - model_name: deepseek-ai/deepseek-v4-flash
+    litellm_params:
+      model: openai/deepseek-ai/deepseek-v4-flash
+      api_key: os.environ/NVIDIA_API_KEY
+      api_base: "https://integrate.api.nvidia.com/v1"
+      rpm: 38
+      tpm: 40000
+      max_tokens: 16384
+      extra_body:
+        chat_template_kwargs: {"thinking": true, "reasoning_effort": "high"}
+
+router_settings:
+  enable_pre_call_checks: true
+  num_retries: 0          # don't retry on 429, it makes it worse
+  retry_after: 60         # if retrying, wait 60s
+
+litellm_settings:
+  master_key: sk-opencode-secret-nothingx16

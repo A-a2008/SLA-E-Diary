@@ -1,3 +1,5 @@
+import secrets
+
 from django.db import models
 from django.contrib.auth.models import User, Group
 
@@ -16,14 +18,26 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.INTERN)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    left_on = models.DateField(blank=True, null=True)
+    telegram_code = models.CharField(max_length=6, unique=True, null=True, blank=True)
+    telegram_chat_id = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.role})"
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        if not self.telegram_code:
+            self.telegram_code = self._generate_code()
         super().save(*args, **kwargs)
         self._sync_group(is_new)
+
+    @staticmethod
+    def _generate_code():
+        while True:
+            code = ''.join(secrets.choice('0123456789') for _ in range(6))
+            if not UserProfile.objects.filter(telegram_code=code).exists():
+                return code
 
     def _sync_group(self, is_new=False):
         group_name = UserRole.group_name(self.role)
@@ -75,6 +89,9 @@ class Case(models.Model):
     party_2 = models.CharField(max_length=100)
     party_2_type = models.CharField(max_length=20, choices=Party2Type.choices)
     representing = models.CharField(max_length=100)
+    representing_parties = models.CharField(max_length=100, default='1')
+    party_1_total = models.IntegerField(default=1)
+    party_2_total = models.IntegerField(default=1)
     disposed = models.BooleanField(default=False)
 
     def __str__(self):
@@ -84,7 +101,17 @@ class Case(models.Model):
         return f"{self.case_type}/{self.case_number}/{self.case_year}"
 
     @property
+    def represents_party_1(self):
+        return self.representing == self.party_1_type
+
+    @property
+    def represents_party_2(self):
+        return self.representing == self.party_2_type
+
+    @property
     def representing_display(self):
+        if self.representing_parties != '1':
+            return f"{self.representing} {self.representing_parties}"
         return self.representing
 
 
@@ -96,17 +123,84 @@ class DiaryEntry(models.Model):
     floor = models.IntegerField()
     case_number_display = models.CharField(max_length=200)
     representing = models.CharField(max_length=100)
+    representing_parties = models.CharField(max_length=100, default='1')
+    party_1_total = models.IntegerField(default=1)
+    party_2_total = models.IntegerField(default=1)
     stage = models.CharField(max_length=100)
     business = models.TextField()
-    list_i = models.IntegerField(blank=True, null=True)
-    list_ii = models.IntegerField(blank=True, null=True)
     next_date = models.DateField()
     advocate = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def represents_party_1(self):
+        return self.representing == self.case.party_1_type
+
+    @property
+    def represents_party_2(self):
+        return self.representing == self.case.party_2_type
 
     def __str__(self):
         return f"Diary Entry for {self.case} on {self.previous_date}"
 
     class Meta:
         ordering = ['-previous_date']
+
+
+class CauseListEntry(models.Model):
+    date = models.DateField(db_index=True)
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='cause_list_entries')
+    list_i = models.IntegerField(blank=True, null=True)
+    list_ii = models.IntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"CL {self.date} – {self.case} (I:{self.list_i or '-'} II:{self.list_ii or '-'})"
+
+    class Meta:
+        ordering = ['date']
+        unique_together = ['date', 'case']
+
+
+class CourtHallNote(models.Model):
+    court = models.CharField(max_length=100)
+    court_hall = models.CharField(max_length=100)
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['court', 'court_hall']
+        verbose_name = 'Court Hall Note'
+        verbose_name_plural = 'Court Hall Notes'
+
+    def __str__(self):
+        return f"Note for {self.court_hall}"
+
+
+class ReminderFrequency(models.TextChoices):
+    DAILY = 'daily', 'Every Day'
+    ALTERNATE = 'alternate', 'Alternate Days'
+    TWICE_WEEK = 'twice_week', 'Twice a Week'
+    WEEKLY = 'weekly', 'Once a Week'
+
+
+class Reminder(models.Model):
+    diary_entry = models.ForeignKey(DiaryEntry, on_delete=models.CASCADE, related_name='reminders')
+    task = models.CharField(max_length=300)
+    start_on = models.DateField()
+    frequency = models.CharField(max_length=20, choices=ReminderFrequency.choices, default=ReminderFrequency.DAILY)
+    ramp_up = models.BooleanField(default=False,
+                                   help_text='Increase frequency as next hearing date approaches')
+    completed = models.BooleanField(default=False)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Reminder: {self.task[:60]} ({'✔' if self.completed else '⏳'})"

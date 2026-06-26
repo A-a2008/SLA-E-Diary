@@ -7,12 +7,6 @@
         <h1>Batch Business Entry</h1>
         <p>Select a case and enter multiple business entries at once. Rows are added at the top — enter from your oldest known date upwards.</p>
 
-        {% if messages %}
-        {% for msg in messages %}
-        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
-        {% endfor %}
-        {% endif %}
-
         <form method="get" action="{% url 'batch_new_case' %}" style="margin-bottom: 2rem; display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 300px;">
                 <label for="case_id">Select Case</label>
@@ -20,7 +14,7 @@
                     <option value="">— Choose a case —</option>
                     {% for c in cases %}
                     <option value="{{ c.id }}" {% if selected_case and selected_case.id == c.id %}selected{% endif %}>
-                        {{ c.case_type }}/{{ c.case_number }}/{{ c.case_year }} — {{ c.party_1 }} vs {{ c.party_2 }}
+                        {{ c.case_type }}/{{ c.case_number }}/{{ c.case_year }} — {% if c.represents_party_1 %}<strong>{{ c.party_1 }}</strong>{% else %}{{ c.party_1 }}{% endif %} vs {% if c.represents_party_2 %}<strong>{{ c.party_2 }}</strong>{% else %}{{ c.party_2 }}{% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -33,13 +27,13 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                 <div>
                     <strong style="font-size: 1.15rem;">{{ selected_case.case_type }} {{ selected_case.case_number }}/{{ selected_case.case_year }}</strong>
-                    <span style="color: #585858; margin-left: 1rem;">{{ selected_case.party_1 }} vs {{ selected_case.party_2 }}</span>
+                    <span style="color: #585858; margin-left: 1rem;">{% if selected_case.represents_party_1 %}<strong>{{ selected_case.party_1 }}</strong>{% else %}{{ selected_case.party_1 }}{% endif %} vs {% if selected_case.represents_party_2 %}<strong>{{ selected_case.party_2 }}</strong>{% else %}{{ selected_case.party_2 }}{% endif %}</span>
                 </div>
                 <a href="{% url 'diary_entry_case' selected_case.id %}" class="button small">View Case &rarr;</a>
             </div>
         </section>
 
-        <form method="post" action="{% url 'batch_new_case' %}">
+        <form method="post" action="{% url 'batch_new_case' %}" id="batch-form">
             {% csrf_token %}
             <input type="hidden" name="case_id" value="{{ selected_case.id }}">
 
@@ -62,8 +56,6 @@
                             <th>Rep.</th>
                             <th>Stage</th>
                             <th>Business</th>
-                            <th>L.I</th>
-                            <th>L.II</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -87,11 +79,7 @@
                         <strong style="color: #f2849e;">{{ entry.previous_date|date:"d M Y" }}</strong>
                         &rarr; <strong>{{ entry.next_date|date:"d M Y" }}</strong>
                     </div>
-                    <span style="font-size: 0.85rem; color: #585858;">
-                        {% if entry.list_i %}List I: {{ entry.list_i }}{% endif %}
-                        {% if entry.list_i and entry.list_ii %} | {% endif %}
-                        {% if entry.list_ii %}List II: {{ entry.list_ii }}{% endif %}
-                    </span>
+
                 </div>
                 <p style="margin: 0.5rem 0 0 0; white-space: pre-wrap;">{{ entry.business }}</p>
                 <div style="font-size: 0.85rem; color: #585858; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.4rem;">
@@ -130,11 +118,14 @@
 
 <script>
     var rowCount = 0;
+    var dirty = false;
     var courtLabel = "{{ court_display|escapejs }}";
     var courtHall = "{{ selected_case.court_hall|escapejs }}";
     var floorVal = "{{ selected_case.floor|escapejs }}";
     var caseNumDisplay = "{{ selected_case.case_type }}/{{ selected_case.case_number }}/{{ selected_case.case_year }}";
-    var repVal = "{{ selected_case.representing|escapejs }}";
+    var repVal = "{{ selected_case.representing_display|escapejs }}";
+
+    function markDirty() { dirty = true; }
 
     function addRow() {
         var i = rowCount;
@@ -143,23 +134,22 @@
         tr.id = 'row-' + i;
         tr.innerHTML = `
             <td class="row-num">${i + 1}</td>
-            <td><input type="date" name="previous_date_${i}"></td>
-            <td><input type="date" name="next_date_${i}"></td>
+            <td><input type="date" name="previous_date_${i}" onchange="markDirty()" oninput="markDirty()"></td>
+            <td><input type="date" name="next_date_${i}" onchange="markDirty()" oninput="markDirty()"></td>
             <td style="font-size:0.9rem;">${courtLabel}</td>
             <td style="font-size:0.9rem;">${courtHall}</td>
             <td style="font-size:0.9rem; text-align:center;">${floorVal}</td>
             <td style="font-size:0.9rem;">${caseNumDisplay}</td>
             <td style="font-size:0.9rem;">${repVal}</td>
-            <td><input type="text" name="stage_${i}" placeholder="Stage"></td>
-            <td><textarea name="business_${i}" rows="1" placeholder="Business of the day"></textarea></td>
-            <td><input type="text" name="list_i_${i}" style="width:3rem;"></td>
-            <td><input type="text" name="list_ii_${i}" style="width:3rem;"></td>
+            <td><input type="text" name="stage_${i}" placeholder="Stage" onchange="markDirty()" oninput="markDirty()"></td>
+            <td><textarea name="business_${i}" rows="1" placeholder="Business of the day" onchange="markDirty()" oninput="markDirty()"></textarea></td>
             <td><button type="button" class="button small remove-btn" onclick="removeRow(${i})">X</button></td>
         `;
         var tbody = document.getElementById('entries-tbody');
         tbody.insertBefore(tr, tbody.firstChild);
         rowCount++;
         document.getElementById('no-rows-msg').style.display = 'none';
+        dirty = true;
     }
 
     function removeRow(i) {
@@ -168,6 +158,7 @@
         renumberRows();
         if (document.getElementById('entries-tbody').children.length === 0) {
             document.getElementById('no-rows-msg').style.display = 'block';
+            dirty = false;
         }
     }
 
@@ -184,5 +175,26 @@
         });
         rowCount = rows.length;
     }
+
+    window.addEventListener('beforeunload', function(e) {
+        if (dirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!dirty) return;
+        var a = e.target.closest('a');
+        if (!a) return;
+        if (a.getAttribute('href') === '#') return;
+        if (!confirm('You have unsaved entries. Are you sure you want to leave this page?')) {
+            e.preventDefault();
+        }
+    });
+
+    document.getElementById('batch-form')?.addEventListener('submit', function() {
+        dirty = false;
+    });
 </script>
 {% endblock %}

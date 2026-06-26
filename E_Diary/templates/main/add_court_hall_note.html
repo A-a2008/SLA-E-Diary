@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <a href="{{ next }}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back</a>
+
+        <h1>{% if court_hall %}Edit{% else %}Add{% endif %} Court Hall Note</h1>
+
+        <form method="post" action="{% url 'add_court_hall_note' %}" style="max-width: 600px;">
+            {% csrf_token %}
+
+            <div class="field">
+                <label for="court">Court Complex</label>
+                <select name="court" id="court" required>
+                    <option value="">— Select —</option>
+                    {% for code, label in court_labels.items %}
+                    <option value="{{ code }}" {% if court == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
+
+            <div class="field">
+                <label for="court_hall">Court Hall</label>
+                <input type="text" name="court_hall" id="court_hall" value="{{ court_hall }}" placeholder="e.g. CCH-4" required>
+            </div>
+            <br>
+
+            {% if existing_note and existing_note.note %}
+            <div style="background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 0.5rem;">
+                <strong>Existing notes:</strong>
+                <p style="white-space: pre-wrap; margin: 0.25rem 0 0 0;">{{ existing_note.note }}</p>
+            </div>
+            {% endif %}
+
+            <div class="field">
+                <label for="note">{% if existing_note and existing_note.note %}Additional Note{% else %}Note{% endif %}</label>
+                <textarea name="note" id="note" rows="5" placeholder="Describe the court hall behavior, e.g. 'They call cases in order of filing, not cause list order'" {% if not existing_note or not existing_note.note %}required{% endif %}></textarea>
+            </div>
+            <br>
+
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <ul class="actions">
+                <li><input type="submit" value="Save Note" class="primary"></li>
+                <li><a href="{{ next }}" class="button">Cancel</a></li>
+            </ul>
+        </form>
+    </div>
+</div>
+{% endblock %}

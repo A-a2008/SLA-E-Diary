@@ -5,18 +5,33 @@
 <div id="main">
     <div class="inner">
 
+        {% with has_note=court_hall_notes|first %}
+        {% if has_note and has_note.note %}
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+            <strong style="color: #856404;">🏛 Court Hall Note for {{ case.court_hall }}</strong>
+            <p style="margin: 0.25rem 0 0 0; color: #856404; white-space: pre-wrap;">{{ has_note.note }}</p>
+            <small style="color: #856404;">Last updated: {{ has_note.updated_at|date:"d M Y h:i A" }}</small>
+            <br><a href="{% url 'add_court_hall_note' %}?court={{ case.court }}&court_hall={{ case.court_hall }}&next={% url 'diary_entry_case' case.id %}" style="color: #856404; text-decoration:underline;">Edit Note</a>
+        </div>
+        {% else %}
+        <div style="background: #f0f8ff; border: 1px dashed #aaa; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+            <a href="{% url 'add_court_hall_note' %}?court={{ case.court }}&court_hall={{ case.court_hall }}&next={% url 'diary_entry_case' case.id %}" style="color: #585858;">+ Add note for {{ case.court_hall }}</a>
+        </div>
+        {% endif %}
+        {% endwith %}
+
         <section style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid rgba(242,132,158,0.3);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <h1 style="margin: 0 0 0.5rem 0; font-size: 1.6rem;">{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</h1>
                     <p style="margin: 0; font-size: 1.1rem; color: #585858;">
-                        <strong style="font-size: 1.15rem;">{{ case.party_1 }}</strong>
+                        {% if case.represents_party_1 %}<strong style="font-size: 1.15rem;">{{ case.party_1 }}</strong>{% else %}<span style="font-size: 1.15rem;">{{ case.party_1 }}</span>{% endif %}
                         <span style="color: #f2849e; font-weight: 900; margin: 0 0.75rem;">VS</span>
-                        <strong style="font-size: 1.15rem;">{{ case.party_2 }}</strong>
+                        {% if case.represents_party_2 %}<strong style="font-size: 1.15rem;">{{ case.party_2 }}</strong>{% else %}<span style="font-size: 1.15rem;">{{ case.party_2 }}</span>{% endif %}
                     </p>
                     <p style="margin: 0.4rem 0 0 0; color: #585858;">
                         {{ case.party_1_type }} / {{ case.party_2_type }}
-                        &nbsp;|&nbsp; Representing: <strong>{{ case.representing }}</strong>
+                        &nbsp;|&nbsp; Representing: <strong>{{ case.representing_display }}</strong>
                     </p>
                 </div>
                 <div style="text-align: right;">
@@ -66,11 +81,6 @@
                         <span style="color: #585858; margin-left: 0.75rem;">{{ entry.stage }}</span>
                     </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        {% if entry.list_i or entry.list_ii %}
-                        <span style="color: #585858;">
-                            List: {% if entry.list_i %}{{ entry.list_i }}{% endif %}{% if entry.list_i and entry.list_ii %} / {% endif %}{% if entry.list_ii %}{{ entry.list_ii }}{% endif %}
-                        </span>
-                        {% endif %}
                         <a href="{% url 'edit_business' entry.id %}" class="button small" style="font-size: 0.8rem;">Edit</a>
                     </div>
                 </div>
@@ -79,10 +89,26 @@
                     <span><strong>Court:</strong> {{ entry.court }}</span>
                     <span><strong>Hall:</strong> {{ entry.court_hall }}, Floor {{ entry.floor }}</span>
                     <span><strong>Case:</strong> {{ entry.case_number_display }}</span>
-                    <span><strong>Representing:</strong> {{ entry.representing }}</span>
+                    <span><strong>Representing:</strong> {{ entry.representing }}{% if entry.representing_parties != '1' %} ({{ entry.representing_parties }}){% endif %}</span>
                     <span><strong>Advocate:</strong> {{ entry.advocate.get_full_name|default:entry.advocate.username|default:"—" }}</span>
                     <span><strong>Entered:</strong> {{ entry.created_at|date:"d M Y h:i A" }}</span>
                 </div>
+                {% if entry.reminders.all %}
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed rgba(242,132,158,0.2);">
+                    {% for reminder in entry.reminders.all %}
+                    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.3rem 0;">
+                        <span style="{% if reminder.completed %}text-decoration: line-through; color: #999;{% endif %}">
+                            {% if reminder.completed %}✅{% else %}⏳{% endif %}
+                            <strong>{{ reminder.task }}</strong>
+                            <small style="color: #999;">— {{ reminder.get_frequency_display }}{% if reminder.ramp_up %}, with ramp-up{% endif %}</small>
+                        </span>
+                        <a href="{% url 'mark_reminder_done' reminder.id %}" class="button small" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">
+                            {% if reminder.completed %}Undo{% else %}✓ Done{% endif %}
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
             {% else %}

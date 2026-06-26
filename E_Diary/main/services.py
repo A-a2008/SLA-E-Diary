@@ -28,6 +28,9 @@ def create_case(
     party_2: str,
     party_2_type: str,
     representing: str,
+    representing_parties: str = '1',
+    party_1_total: int = 1,
+    party_2_total: int = 1,
 ) -> Case:
     return Case.objects.create(
         jurisdiction=jurisdiction,
@@ -43,6 +46,9 @@ def create_case(
         party_2=party_2,
         party_2_type=party_2_type,
         representing=representing,
+        representing_parties=representing_parties,
+        party_1_total=party_1_total,
+        party_2_total=party_2_total,
     )
 
 
@@ -99,9 +105,10 @@ def get_latest_entry_data(case: Case) -> dict:
             'floor': latest.floor,
             'case_number_display': latest.case_number_display,
             'representing': latest.representing,
+            'representing_parties': latest.representing_parties,
+            'party_1_total': latest.party_1_total,
+            'party_2_total': latest.party_2_total,
             'stage': latest.stage,
-            'list_i': latest.list_i,
-            'list_ii': latest.list_ii,
         }
     from .constants import COURT_LABELS
     return {
@@ -111,9 +118,10 @@ def get_latest_entry_data(case: Case) -> dict:
         'floor': case.floor,
         'case_number_display': f"{case.case_type}/{case.case_number}/{case.case_year}",
         'representing': case.representing,
+        'representing_parties': case.representing_parties,
+        'party_1_total': case.party_1_total,
+        'party_2_total': case.party_2_total,
         'stage': '',
-        'list_i': None,
-        'list_ii': None,
     }
 
 
@@ -129,8 +137,9 @@ def create_diary_entry(
     business: str,
     next_date,
     advocate: User = None,
-    list_i: int = None,
-    list_ii: int = None,
+    representing_parties: str = '1',
+    party_1_total: int = 1,
+    party_2_total: int = 1,
 ) -> DiaryEntry:
     return DiaryEntry.objects.create(
         case=case,
@@ -140,10 +149,11 @@ def create_diary_entry(
         floor=floor,
         case_number_display=case_number_display,
         representing=representing,
+        representing_parties=representing_parties,
+        party_1_total=party_1_total,
+        party_2_total=party_2_total,
         stage=stage,
         business=business,
-        list_i=list_i,
-        list_ii=list_ii,
         next_date=next_date,
         advocate=advocate,
     )

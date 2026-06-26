@@ -24,4 +24,12 @@ urlpatterns = [
     path('manage/users/create/', admin_create_user, name='admin_create_user'),
     path('manage/users/<int:user_id>/toggle/', toggle_user_active, name='toggle_user_active'),
     path('manage/users/<int:user_id>/reset_password/', admin_reset_password, name='admin_reset_password'),
+    path('manage/users/<int:user_id>/', user_detail, name='user_detail'),
+    path('manage/users/<int:user_id>/regenerate_telegram_code/', regenerate_telegram_code, name='regenerate_telegram_code'),
+    path('telegram/webhook/', telegram_webhook, name='telegram_webhook'),
+    path('court_halls/suggest/', suggest_court_halls, name='suggest_court_halls'),
+    path('court_hall_notes/', court_hall_notes, name='court_hall_notes'),
+    path('court_hall_notes/add/', add_court_hall_note, name='add_court_hall_note'),
+    path('reminder/<int:reminder_id>/toggle/', mark_reminder_done, name='mark_reminder_done'),
+    path('send_reminders_now/', send_reminders_now, name='send_reminders_now'),
 ]

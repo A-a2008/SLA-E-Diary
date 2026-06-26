@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>Court Hall Notes</h1>
+        <p>Manage notes for specific court halls.</p>
+
+        <form method="GET" action="{% url 'court_hall_notes' %}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 2rem;">
+            <div>
+                <label for="court">Court Complex</label>
+                <select name="court" id="court">
+                    <option value="">All</option>
+                    {% for code, label in court_labels.items %}
+                    <option value="{{ code }}" {% if court == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="court_hall">Court Hall</label>
+                <input type="text" name="court_hall" id="court_hall" value="{{ court_hall }}" placeholder="e.g. CCH-4">
+            </div>
+            <div>
+                <input type="submit" value="Filter" class="primary small">
+            </div>
+        </form>
+
+        {% if notes %}
+        <div class="table-wrapper">
+            <table class="alt">
+                <thead>
+                    <tr>
+                        <th>Court Complex</th>
+                        <th>Court Hall</th>
+                        <th>Note</th>
+                        <th>Last Updated</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for note in notes %}
+                    <tr>
+                        <td>{{ note.court }}</td>
+                        <td>{{ note.court_hall }}</td>
+                        <td>{{ note.note }}</td>
+                        <td>{{ note.updated_at|date:"d M Y h:i A" }}</td>
+                        <td><a href="{% url 'add_court_hall_note' %}?court={{ note.court }}&court_hall={{ note.court_hall }}" class="button small">Edit</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: #585858;">
+            <h4>No court hall notes yet.</h4>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

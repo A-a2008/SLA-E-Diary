@@ -5,11 +5,6 @@
 <div id="main">
     <div class="inner">
         <h1>Create New User</h1>
-        {% if messages %}
-        {% for msg in messages %}
-        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
-        {% endfor %}
-        {% endif %}
         {% if error %}
         <p style="color: #c62828; background: #fce4e4; padding: 0.75rem; border-radius: 4px;">{{ error }}</p>
         {% endif %}

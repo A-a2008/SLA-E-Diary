@@ -60,11 +60,11 @@
                                 <small style="color: #999; font-size: 0.7em; text-transform: uppercase;">ID: #{{ case.id }}</small>
                             </td>
                             <td>
-                                <span style="font-weight: 600;">{{ case.party_1 }}</span>
+                                {% if case.represents_party_1 %}<strong>{{ case.party_1 }}</strong>{% else %}<span>{{ case.party_1 }}</span>{% endif %}
                                 <br/>
                                 <span style="font-size: 0.8em; color: #f2849e; font-weight: 900;">VS</span>
                                 <br/>
-                                <span style="font-weight: 600;">{{ case.party_2 }}</span>
+                                {% if case.represents_party_2 %}<strong>{{ case.party_2 }}</strong>{% else %}<span>{{ case.party_2 }}</span>{% endif %}
                             </td>
                             <td>
                                 <span style="font-size: 0.9em; font-weight: 600;">{{ case.court_display_name }}</span>
@@ -72,7 +72,13 @@
                                 <small style="color: #585858; font-weight: 600;">Hall: {{ case.court_hall }} &nbsp;|&nbsp; Floor: {{ case.floor }}</small>
                             </td>
                             <td style="text-align: right; vertical-align: middle;">
+                                {% if case.next_date %}
+                                <div style="font-size: 0.95rem; margin-bottom: 0.35rem;"><strong>Next Date: {{ case.next_date|date:"d-m-Y" }} ({{ case.next_date|date:"l" }})</strong></div>
+                                {% endif %}
                                 <a href="{% url 'diary_entry_case' case.id %}" class="button small primary">Enter Business</a>
+                                {% if case.next_date and today > case.next_date %}
+                                <div style="font-size: 0.95rem; margin-top: 0.35rem; color: #c62828;"><strong>Business hasn't been entered</strong></div>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}

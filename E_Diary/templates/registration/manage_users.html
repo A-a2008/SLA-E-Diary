@@ -9,12 +9,6 @@
             <a href="{% url 'admin_create_user' %}" class="button primary small">+ New User</a>
         </div>
 
-        {% if messages %}
-        {% for msg in messages %}
-        <p style="color: {% if msg.tags == 'success' %}#2e7d32{% else %}#c62828{% endif %}; background: {% if msg.tags == 'success' %}#e8f5e9{% else %}#fce4e4{% endif %}; padding: 0.75rem; border-radius: 4px;">{{ msg }}</p>
-        {% endfor %}
-        {% endif %}
-
         <div class="table-wrapper">
             <table class="alt">
                 <thead>
@@ -22,6 +16,7 @@
                         <th>Username</th>
                         <th>Name</th>
                         <th>Role</th>
+                        <th>Telegram</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -29,9 +24,18 @@
                 <tbody>
                     {% for u in users %}
                     <tr>
-                        <td><strong>{{ u.username }}</strong></td>
+                        <td><strong><a href="{% url 'user_detail' u.id %}">{{ u.username }}</a></strong></td>
                         <td>{{ u.get_full_name|default:"—" }}</td>
                         <td>{{ u.userprofile.get_role_display|default:"—" }}</td>
+                        <td>
+                            {% if u.userprofile.telegram_chat_id %}
+                            <span style="color: #2e7d32;">✅ Linked</span>
+                            {% elif u.userprofile.telegram_code %}
+                            <code style="font-size: 1.2rem; letter-spacing: 0.2em;">{{ u.userprofile.telegram_code }}</code>
+                            {% else %}
+                            <span style="color: #999;">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <span style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; font-weight: 700; background: {% if u.is_active %}#e8f5e9{% else %}#fce4e4{% endif %}; color: {% if u.is_active %}#2e7d32{% else %}#c62828{% endif %};">
                                 {{ u.is_active|yesno:"ACTIVE,SUSPENDED" }}

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner" style="max-width: 600px;">
+        <a href="{% url 'manage_users' %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Users</a>
+
+        <h1 style="margin-bottom: 1.5rem;">User Details</h1>
+
+        <table class="alt">
+            <tr>
+                <th style="width: 180px;">Username</th>
+                <td>{{ profile_user.username }}</td>
+            </tr>
+            <tr>
+                <th>First Name</th>
+                <td>{{ profile_user.first_name|default:'—' }}</td>
+            </tr>
+            <tr>
+                <th>Last Name</th>
+                <td>{{ profile_user.last_name|default:'—' }}</td>
+            </tr>
+            <tr>
+                <th>Email</th>
+                <td>{{ profile_user.email|default:'—' }}</td>
+            </tr>
+            <tr>
+                <th>Role</th>
+                <td>{{ profile.role|title|default:'—' }}</td>
+            </tr>
+            <tr>
+                <th>Phone</th>
+                <td>{{ profile.phone|default:'—' }}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td style="color: {% if profile_user.is_active %}#2e7d32{% else %}#c62828{% endif %}; font-weight: 700;">
+                    {{ profile_user.is_active|yesno:'Active,Suspended' }}
+                </td>
+            </tr>
+            <tr>
+                <th>Date Joined</th>
+                <td>{{ profile_user.date_joined|date:"d M Y h:i A" }}</td>
+            </tr>
+            <tr>
+                <th>Last Login</th>
+                <td>{{ profile_user.last_login|date:"d M Y h:i A"|default:'Never' }}</td>
+            </tr>
+            {% if not profile_user.is_active and profile.left_on %}
+            <tr>
+                <th>Left On</th>
+                <td>{{ profile.left_on|date:"d M Y" }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <th>Telegram Code</th>
+                <td>
+                    {% if profile.telegram_code and not profile.telegram_chat_id %}
+                    <code style="font-size: 1.5rem; letter-spacing: 0.3em;">{{ profile.telegram_code }}</code>
+                    <br><small style="color: #585858;">Send this code to the <a href="https://t.me/sla_ediary_bot" target="_blank">SLA E-Diary bot</a> on Telegram to link your account.</small>
+                    {% elif profile.telegram_chat_id %}
+                    <span style="color: #2e7d32;">✅ Linked to Telegram</span>
+                    {% else %}
+                    <span style="color: #585858;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        {% if not profile.telegram_chat_id %}
+        <a href="{% url 'regenerate_telegram_code' profile_user.id %}" class="button small">Regenerate Telegram Code</a>
+        {% endif %}
+    </div>
+    </div>
+</div>
+{% endblock %}
