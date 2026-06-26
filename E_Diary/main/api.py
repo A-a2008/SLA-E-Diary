@@ -5,11 +5,8 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
-from dotenv import load_dotenv
 
 from .models import OutgoingMessage
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
