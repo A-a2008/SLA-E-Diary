@@ -37,7 +37,7 @@ COURT_TO_BUILDING = {
     'prl_junior_rural':     'city_civil_complex',
     'cmm':                  'magistrates_complex',
     'mmtc':                 'magistrates_complex',
-    'mmtc_mayo':            'magistrates_complex',
+    'mmtc_mayo':            'mayo_hall',
     'cjm_cmm_rural':        'magistrates_complex',
     'vacation_court_rural': 'magistrates_complex',
     'family':               'family_court',
