@@ -67,6 +67,7 @@ class Party2Type(models.TextChoices):
     RESPONDENT = 'Respondent(s)', 'Respondent(s)'
     JUDGMENT_DEBTOR = 'Judgment Debtor', 'Judgment Debtor'
     ACCUSED = 'Accused', 'Accused'
+    OPPOSITE_PARTY = 'Opposite Party/ies', 'Opposite Party/ies'
 
 
 class CourtLevel(models.TextChoices):
