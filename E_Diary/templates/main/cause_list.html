@@ -36,26 +36,23 @@
         {% endif %}
 
         {% if entries %}
-        {% regroup entries by case.court as court_groups %}
+        {% regroup entries by case.court|building_code as building_groups %}
 
-        {% if court_hall_notes %}
-        {% regroup entries by case.court as court_groups_for_notes %}
-        {% for court_code, court_entries in court_groups_for_notes %}
-            {% for e in court_entries %}
-                {% with key=e.case.court|stringformat:"s"|add:"__"|add:e.case.court_hall %}
-                {% if court_hall_notes|dict_key_exists:key %}
-                    {% with note_text=court_hall_notes|dict_key:key %}
-                    {% if note_text %}
-                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
-                    <strong style="color: #856404;">🏛 Note for {{ e.case.court_hall }}</strong>
-                    <p style="margin: 0.25rem 0 0 0; color: #856404; white-space: pre-wrap;">{{ note_text }}</p>
-                    <small><a href="{% url 'add_court_hall_note' %}?court={{ e.case.court }}&court_hall={{ e.case.court_hall }}&next={% url 'cause_list' %}?date={{ date_str }}" style="color: #856404;">Edit</a></small>
-                </div>
-                    {% endif %}
-                    {% endwith %}
+        {% if unique_hall_keys %}
+        {% for court_code, hall_name in unique_hall_keys %}
+            {% with key=court_code|stringformat:"s"|add:"__"|add:hall_name %}
+            {% if court_hall_notes|dict_key_exists:key %}
+                {% with note_text=court_hall_notes|dict_key:key %}
+                {% if note_text %}
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                <strong style="color: #856404;">🏛 Note for {{ hall_name }}</strong>
+                <p style="margin: 0.25rem 0 0 0; color: #856404; white-space: pre-wrap;">{{ note_text }}</p>
+                <small><a href="{% url 'add_court_hall_note' %}?court={{ court_code }}&court_hall={{ hall_name }}&next={% url 'cause_list' %}?date={{ date_str }}" style="color: #856404;">Edit</a></small>
+            </div>
                 {% endif %}
                 {% endwith %}
-            {% endfor %}
+            {% endif %}
+            {% endwith %}
         {% endfor %}
         {% endif %}
 
@@ -67,8 +64,8 @@
             {% csrf_token %}
             <input type="hidden" name="date" value="{{ date_str }}">
 
-            {% for court_code, court_entries in court_groups %}
-            <h2 style="margin-top: 2rem; color: #f2849e;">{{ court_code|court_label }}</h2>
+            {% for bldg_code, bldg_entries in building_groups %}
+            <h2 style="margin-top: 2rem; color: #f2849e;">{{ bldg_code|building_label }}</h2>
 
             <div class="table-wrapper">
                 <table class="alt">
@@ -83,7 +80,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for entry in court_entries %}
+                        {% for entry in bldg_entries %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
                             <td>{{ entry.case.floor }}</td>

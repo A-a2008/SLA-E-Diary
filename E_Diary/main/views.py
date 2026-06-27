@@ -17,7 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder
-from .constants import COURT_LABELS
+from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
 
@@ -616,17 +616,21 @@ def cause_list(request):
             entries = CauseListEntry.objects.filter(date=date_obj).select_related('case')
 
             court_order = [
-                'cmm', 'mmtc', 'mmtc_mayo', 'city_civil', 'family', 'small_causes',
-                'mayo_hall', 'commercial', 'consumer', 'urban_consumer',
-                'city_civil_rural', 'dist_session_rural', 'prl_senior_rural',
-                'prl_junior_rural', 'cjm_cmm_rural', 'vacation_court_rural',
-                'commercial_court_rural', 'labour_court_rural', 'senior_anekal',
-                'junior_anekal', 'hosakote', 'devanahalli', 'doddaballapur',
-                'nelamangala', 'kr_puram',
+                'city_civil', 'small_causes', 'city_civil_rural', 'dist_session_rural',
+                'prl_senior_rural', 'prl_junior_rural',
+                'cmm', 'mmtc', 'mmtc_mayo', 'cjm_cmm_rural', 'vacation_court_rural',
+                'family',
+                'consumer', 'urban_consumer',
+                'commercial', 'commercial_court_rural',
+                'mayo_hall',
+                'labour_court_rural', 'senior_anekal', 'junior_anekal', 'hosakote',
+                'devanahalli', 'doddaballapur', 'nelamangala', 'kr_puram',
                 'high_court_karnataka', 'supreme_court_india',
             ]
 
             entries = sorted(entries, key=lambda e: (
+                BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
+                    if e.case.court in COURT_TO_BUILDING else 999,
                 court_order.index(e.case.court) if e.case.court in court_order else 999,
                 (e.list_i or 0) + (e.list_ii or 0),
             ))
@@ -650,10 +654,19 @@ def cause_list(request):
         key = f"{n.court}__{n.court_hall}"
         court_hall_notes[key] = n.note
 
+    unique_hall_keys = []
+    seen = set()
+    for e in entries:
+        key = f"{e.case.court}__{e.case.court_hall}"
+        if key in court_hall_notes and key not in seen:
+            seen.add(key)
+            unique_hall_keys.append((e.case.court, e.case.court_hall))
+
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'date_str': date_str, 'date_obj': date_obj if date_str else None,
         'court_labels': COURT_LABELS, 'errors': errors,
         'court_hall_notes': court_hall_notes,
+        'unique_hall_keys': unique_hall_keys,
     })
 
 
@@ -676,15 +689,20 @@ def cause_list_docx(request):
     entries = CauseListEntry.objects.filter(date=date_obj).select_related('case')
 
     court_order = [
-        'cmm', 'mmtc', 'mmtc_mayo', 'city_civil', 'family', 'small_causes',
-        'mayo_hall', 'commercial', 'consumer', 'urban_consumer',
-        'city_civil_rural', 'dist_session_rural', 'prl_senior_rural',
-        'prl_junior_rural', 'cjm_cmm_rural', 'vacation_court_rural',
-        'commercial_court_rural', 'labour_court_rural', 'senior_anekal',
-        'junior_anekal', 'hosakote', 'devanahalli', 'doddaballapur',
-        'nelamangala', 'kr_puram', 'high_court_karnataka', 'supreme_court_india',
+        'city_civil', 'small_causes', 'city_civil_rural', 'dist_session_rural',
+        'prl_senior_rural', 'prl_junior_rural',
+        'cmm', 'mmtc', 'mmtc_mayo', 'cjm_cmm_rural', 'vacation_court_rural',
+        'family',
+        'consumer', 'urban_consumer',
+        'commercial', 'commercial_court_rural',
+        'mayo_hall',
+        'labour_court_rural', 'senior_anekal', 'junior_anekal', 'hosakote',
+        'devanahalli', 'doddaballapur', 'nelamangala', 'kr_puram',
+        'high_court_karnataka', 'supreme_court_india',
     ]
     entries = sorted(entries, key=lambda e: (
+        BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
+            if e.case.court in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
         (e.list_i or 0) + (e.list_ii or 0),
     ))
@@ -697,16 +715,26 @@ def cause_list_docx(request):
         e.stage = stage_by_case.get(e.case.id, '')
 
     doc = Document()
+
+    section = doc.sections[0]
+    section.page_height = Cm(29.7)
+    section.page_width = Cm(21.0)
+    section.left_margin = Cm(1.5)
+    section.right_margin = Cm(1.5)
+    section.top_margin = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+
     doc.add_heading(f'Cause List — {date_obj.strftime("%d %B %Y")}', 0)
 
-    current_court = None
+    current_building = None
     sl_no = 0
 
     for entry in entries:
-        court_name = COURT_LABELS.get(entry.case.court, entry.case.court)
-        if court_name != current_court:
-            current_court = court_name
-            doc.add_heading(court_name, level=2)
+        bldg_code = COURT_TO_BUILDING.get(entry.case.court, '')
+        bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(entry.case.court, entry.case.court))
+        if bldg_name != current_building:
+            current_building = bldg_name
+            doc.add_heading(bldg_name, level=2)
             table = doc.add_table(rows=1, cols=6)
             table.style = 'Table Grid'
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -770,15 +798,20 @@ def cause_list_pdf(request):
     entries = CauseListEntry.objects.filter(date=date_obj).select_related('case')
 
     court_order = [
-        'cmm', 'mmtc', 'mmtc_mayo', 'city_civil', 'family', 'small_causes',
-        'mayo_hall', 'commercial', 'consumer', 'urban_consumer',
-        'city_civil_rural', 'dist_session_rural', 'prl_senior_rural',
-        'prl_junior_rural', 'cjm_cmm_rural', 'vacation_court_rural',
-        'commercial_court_rural', 'labour_court_rural', 'senior_anekal',
-        'junior_anekal', 'hosakote', 'devanahalli', 'doddaballapur',
-        'nelamangala', 'kr_puram', 'high_court_karnataka', 'supreme_court_india',
+        'city_civil', 'small_causes', 'city_civil_rural', 'dist_session_rural',
+        'prl_senior_rural', 'prl_junior_rural',
+        'cmm', 'mmtc', 'mmtc_mayo', 'cjm_cmm_rural', 'vacation_court_rural',
+        'family',
+        'consumer', 'urban_consumer',
+        'commercial', 'commercial_court_rural',
+        'mayo_hall',
+        'labour_court_rural', 'senior_anekal', 'junior_anekal', 'hosakote',
+        'devanahalli', 'doddaballapur', 'nelamangala', 'kr_puram',
+        'high_court_karnataka', 'supreme_court_india',
     ]
     entries = sorted(entries, key=lambda e: (
+        BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
+            if e.case.court in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
         (e.list_i or 0) + (e.list_ii or 0),
     ))
@@ -792,7 +825,7 @@ def cause_list_pdf(request):
 
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'date_str': date_str, 'date_obj': date_obj,
-        'court_labels': COURT_LABELS,
+        'court_labels': COURT_LABELS, 'court_to_building': COURT_TO_BUILDING,
     }).content.decode()
 
     pdf_file = BytesIO()

@@ -5,29 +5,30 @@
     <meta charset="utf-8">
     <title>Cause List — {{ date_obj|date:"d F Y" }}</title>
     <style>
-        @page { size: A4 landscape; margin: 1.5cm; }
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #222; }
-        h1 { font-size: 16pt; text-align: center; margin-bottom: 0.25cm; }
-        .subtitle { text-align: center; font-size: 11pt; color: #555; margin-bottom: 1cm; }
-        h2 { font-size: 12pt; color: #c44569; margin-top: 0.75cm; margin-bottom: 0.25cm; border-bottom: 1px solid #ddd; padding-bottom: 0.1cm; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 0.5cm; table-layout: fixed; }
-        th, td { border: 1px solid #ccc; padding: 3px 5px; text-align: left; font-size: 9pt; word-wrap: break-word; }
+        @page { size: A4; margin: 1.2cm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 9pt; color: #222; }
+        h1 { font-size: 14pt; text-align: center; margin-bottom: 0.2cm; }
+        .subtitle { text-align: center; font-size: 10pt; color: #555; margin-bottom: 0.6cm; }
+        h2 { font-size: 11pt; color: #c44569; margin-top: 0.5cm; margin-bottom: 0.15cm; border-bottom: 1px solid #ddd; padding-bottom: 0.05cm; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 0.4cm; table-layout: fixed; }
+        th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: left; font-size: 7.5pt; word-wrap: break-word; }
         th { background: #f5f5f5; font-weight: bold; text-align: center; }
         .sl { text-align: center; width: 4%; }
         .floor { text-align: center; width: 4%; }
         .case-col { width: 50%; }
-        .rep-col { text-align: center; width: 12%; }
-        .stage-col { text-align: center; width: 12%; }
+        .rep-col { text-align: center; width: 14%; }
+        .stage-col { text-align: center; width: 10%; }
         .cl { text-align: center; width: 18%; }
+        .court-hall { font-size: 7pt; color: #555; }
     </style>
 </head>
 <body>
     <h1>Cause List: {{ date_obj|date:"d/m/Y" }}</h1>
     <p class="subtitle"><strong>{{ date_obj|date:"l" }}</strong></p>
 
-    {% regroup entries by case.court as court_groups %}
-    {% for court_code, court_entries in court_groups %}
-    <h2>{{ court_code|court_label }}</h2>
+    {% regroup entries by case.court|building_code as building_groups %}
+    {% for bldg_code, bldg_entries in building_groups %}
+    <h2>{{ bldg_code|building_label }}</h2>
     <table>
         <thead>
             <tr>
@@ -40,12 +41,12 @@
             </tr>
         </thead>
         <tbody>
-            {% for entry in court_entries %}
+            {% for entry in bldg_entries %}
             <tr>
                 <td class="sl">{{ forloop.counter }}</td>
                 <td class="floor">{{ entry.case.floor }}</td>
                 <td class="case-col">
-                    {{ entry.case.court_hall }}<br>
+                    <span class="court-hall">{{ entry.case.court_hall }}</span><br>
                     <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                     {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                 </td>
