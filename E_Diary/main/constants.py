@@ -64,7 +64,7 @@ COURT_TO_BUILDING = {
 
 BUILDING_LABELS = {
     'city_civil_complex': 'City Civil Court Complex',
-    'magistrates_complex': 'Magistrates Court Complex',
+    'magistrates_complex': 'Magistrate Court Complex',
     'family_court': 'Family Court Complex',
     'consumer_court': 'Consumer Court, Shantinagar',
     'cauvery_bhavan': 'Cauvery Bhavan',
