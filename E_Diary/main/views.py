@@ -640,7 +640,8 @@ def cause_list(request):
                 next_date=date_obj
             ).values('case_id', 'stage')
             stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
-            for e in entries:
+            for sl, e in enumerate(entries, 1):
+                e.sl_no = sl
                 e.stage = stage_by_case.get(e.case.id, '')
 
         except ValueError:
@@ -713,7 +714,8 @@ def cause_list_docx(request):
         next_date=date_obj
     ).values('case_id', 'stage')
     stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
-    for e in entries:
+    for sl, e in enumerate(entries, 1):
+        e.sl_no = sl
         e.stage = stage_by_case.get(e.case.id, '')
 
     doc = Document()
@@ -729,7 +731,6 @@ def cause_list_docx(request):
     doc.add_heading(f'Cause List — {date_obj.strftime("%d %B %Y")}', 0)
 
     current_building = None
-    sl_no = 0
 
     for entry in entries:
         bldg_code = COURT_TO_BUILDING.get(entry.case.court, '')
@@ -749,14 +750,12 @@ def cause_list_docx(request):
                     for run in p.runs:
                         run.bold = True
                         run.font.size = Pt(9)
-            sl_no = 0
 
-        sl_no += 1
         row = table.add_row().cells
         case_num = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
         parties = f"{entry.case.party_1} vs {entry.case.party_2}"
         cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
-        data = [str(sl_no), str(entry.case.floor), None, entry.case.representing, entry.stage or '—', cause_list_nos]
+        data = [str(entry.sl_no), str(entry.case.floor), None, entry.case.representing, entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
             if val is None:
                 cell = row[i]
@@ -823,7 +822,8 @@ def cause_list_pdf(request):
         next_date=date_obj
     ).values('case_id', 'stage')
     stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
-    for e in entries:
+    for sl, e in enumerate(entries, 1):
+        e.sl_no = sl
         e.stage = stage_by_case.get(e.case.id, '')
 
     html_str = render(request, 'main/cause_list_pdf.html', {

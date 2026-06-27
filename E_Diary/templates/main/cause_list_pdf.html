@@ -43,7 +43,7 @@
         <tbody>
             {% for entry in bldg_entries %}
             <tr>
-                <td class="sl">{{ forloop.counter }}</td>
+                <td class="sl">{{ entry.sl_no }}</td>
                 <td class="floor">{{ entry.case.floor }}</td>
                 <td class="case-col">
                     <span class="court-hall">{{ entry.case.court_hall }}</span><br>

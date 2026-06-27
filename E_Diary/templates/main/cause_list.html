@@ -82,7 +82,7 @@
                     <tbody>
                         {% for entry in bldg_entries %}
                         <tr>
-                            <td>{{ forloop.counter }}</td>
+                            <td>{{ entry.sl_no }}</td>
                             <td>{{ entry.case.floor }}</td>
                             <td>
                                 {{ entry.case.court_hall }}<br>
