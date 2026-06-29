@@ -68,7 +68,9 @@
             </tr>
         </table>
     <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        {% if not profile.telegram_chat_id %}
+        {% if profile.telegram_chat_id %}
+        <a href="{% url 'regenerate_telegram_code' profile_user.id %}?unlink=1" class="button small" onclick="return confirm('Unlink Telegram from this account and generate a new code? The current Telegram user will lose access.');">Unlink &amp; Regenerate Code</a>
+        {% else %}
         <a href="{% url 'regenerate_telegram_code' profile_user.id %}" class="button small">Regenerate Telegram Code</a>
         {% endif %}
     </div>

@@ -123,9 +123,12 @@ def regenerate_telegram_code(request, user_id):
         messages.error(request, 'User has no profile.')
         return redirect('manage_users')
 
-    if profile.telegram_chat_id:
-        messages.warning(request, f'"{user.username}" already linked to Telegram. Code not regenerated.')
+    unlink = request.GET.get('unlink')
+    if profile.telegram_chat_id and not unlink:
+        messages.warning(request, f'"{user.username}" already linked to Telegram. Use "Unlink & Regenerate" first.')
     else:
+        if profile.telegram_chat_id:
+            profile.telegram_chat_id = None
         profile.telegram_code = UserProfile._generate_code()
         profile.save()
         messages.success(request, f'New Telegram code for "{user.username}": {profile.telegram_code}')
