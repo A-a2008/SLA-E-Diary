@@ -475,10 +475,27 @@ def create_execution_case(request, case_id):
 @login_required
 def add_business(request, case_id):
     case = get_object_or_404(Case, id=case_id)
+
+    if case.mediation_status in ('referred', 'ongoing'):
+        messages.error(request, 'Case is in mediation. Use "Add Mediation Business" instead.')
+        return redirect('diary_entry_case', case_id=case.id)
+
     latest_data = get_latest_entry_data(case)
 
     if request.method == 'POST':
         previous_date = request.POST.get('previous_date')
+
+        # Validate that previous_date matches the last entry's next_date
+        last_entry = DiaryEntry.objects.filter(case=case, entry_type='business').order_by('-previous_date').first()
+        if last_entry and previous_date:
+            try:
+                prev_date_obj = datetime.datetime.strptime(previous_date, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Invalid date.')
+                return redirect('add_business', case_id=case.id)
+            if prev_date_obj != last_entry.next_date:
+                messages.error(request, f'Previous date must be the last court date ({last_entry.next_date}). The next entry can only be added on the scheduled court date.')
+                return redirect('diary_entry_case', case_id=case.id)
         court = COURT_LABELS.get(case.court, case.court)
         court_hall = case.court_hall
         floor = case.floor
@@ -1164,6 +1181,101 @@ def add_court_hall_note(request):
         'next': request.GET.get('next', 'cause_list'),
         'court_labels': COURT_LABELS,
         'existing_note': existing_note,
+    })
+
+
+# ── MEDIATION ──
+
+@login_required
+def add_mediation_business(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+    latest_data = get_latest_entry_data(case)
+
+    if request.method == 'POST':
+        previous_date = request.POST.get('previous_date')
+        stage = request.POST.get('stage', 'Mediation')
+        business = request.POST.get('business')
+        next_date = request.POST.get('next_date')
+        mediation_time = request.POST.get('mediation_time')
+
+        try:
+            if mediation_time:
+                parts = mediation_time.split(':')
+                mediation_time_obj = datetime.time(int(parts[0]), int(parts[1]))
+            else:
+                mediation_time_obj = datetime.time(14, 30)
+        except (ValueError, IndexError):
+            mediation_time_obj = datetime.time(14, 30)
+
+        entry = create_diary_entry(
+            case=case, entry_type='mediation',
+            previous_date=previous_date,
+            court='Karnataka Mediation Centre',
+            court_hall='Mediation',
+            floor=0,
+            case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+            representing=case.representing,
+            representing_parties=case.representing_parties,
+            party_1_total=case.party_1_total,
+            party_2_total=case.party_2_total,
+            stage=stage, business=business, next_date=next_date,
+            mediation_time=mediation_time_obj,
+            advocate=request.user,
+        )
+
+        messages.success(request, 'Mediation business added.')
+        return redirect('diary_entry_case', case_id=case.id)
+
+    return render(request, 'main/add_mediation_business.html', {
+        'case': case, 'latest_data': latest_data,
+        'today': datetime.date.today(),
+        'default_time': '14:30',
+    })
+
+
+@login_required
+def close_mediation(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+
+    if request.method == 'POST':
+        status = request.POST.get('mediation_status')
+        notes = request.POST.get('notes', '').strip()
+
+        if status not in ('settled', 'failed'):
+            messages.error(request, 'Invalid mediation status.')
+            return redirect('diary_entry_case', case_id=case.id)
+
+        case.mediation_status = status
+        case.mediation_next_date = None
+        case.save()
+
+        label = dict(MediationStatus.choices).get(status, status)
+        business_text = f'Mediation {label.lower()}.'
+        if notes:
+            business_text += f'\n\nNotes: {notes}'
+
+        create_diary_entry(
+            case=case, entry_type='mediation',
+            previous_date=datetime.date.today(),
+            court='Karnataka Mediation Centre',
+            court_hall='Mediation', floor=0,
+            case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+            representing=case.representing,
+            representing_parties=case.representing_parties,
+            party_1_total=case.party_1_total,
+            party_2_total=case.party_2_total,
+            stage='Mediation Closed',
+            business=business_text,
+            next_date=datetime.date.today(),
+            advocate=request.user,
+        )
+
+        messages.success(request, f'Mediation closed — {label}.')
+        return redirect('diary_entry_case', case_id=case.id)
+
+    return render(request, 'main/close_mediation.html', {
+        'case': case,
+        'court_display': COURT_LABELS.get(case.court, case.court),
     })
 
 

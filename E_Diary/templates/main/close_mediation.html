@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner" style="max-width: 600px;">
+        <a href="{% url 'diary_entry_case' case.id %}" class="button small">&larr; Back to Case</a>
+        <h1 style="margin-bottom: 0.5rem;">Close Mediation</h1>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            <strong>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</strong>
+            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+        </p>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="mediation_status">Outcome <span style="color: #c62828;">*</span></label>
+                <select name="mediation_status" id="mediation_status" required>
+                    <option value="">— Select —</option>
+                    <option value="settled">Settled at Mediation</option>
+                    <option value="failed">Mediation Failed</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="notes">Notes (optional)</label>
+                <textarea name="notes" id="notes" rows="4" placeholder="Any notes about the mediation outcome..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <input type="submit" value="Close Mediation" class="primary">
+                <a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

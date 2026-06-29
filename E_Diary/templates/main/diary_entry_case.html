@@ -55,13 +55,16 @@
                 {% endif %}
             </div>
             <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                {% if case.mediation_status == mediation_statuses.NONE or case.mediation_status == mediation_statuses.SETTLED or case.mediation_status == mediation_statuses.FAILED %}
                 <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
+                {% endif %}
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
-                {% if case.mediation_status == mediation_statuses.NONE %}
+                {% if case.mediation_status == mediation_statuses.REFERRED or case.mediation_status == mediation_statuses.ONGOING %}
+                <a href="{% url 'add_mediation_business' case.id %}" class="button small" style="background: #81c784;">+ Add Mediation Business</a>
+                <a href="{% url 'close_mediation' case.id %}" class="button small">Close Mediation</a>
+                {% elif case.mediation_status == mediation_statuses.NONE %}
                 <a href="{% url 'refer_to_mediation' case.id %}" class="button small" style="background: #81c784;">Refer to Mediation</a>
-                {% else %}
-                <a href="{% url 'refer_to_mediation' case.id %}" class="button small">Update Mediation</a>
                 {% endif %}
                 {% if case.disposed %}
                 <a href="{% url 'create_execution_case_from' case.id %}" class="button small" style="background: #90caf9;">Create Execution Case</a>

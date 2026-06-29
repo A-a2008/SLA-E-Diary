@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner" style="max-width: 700px;">
+        <a href="{% url 'diary_entry_case' case.id %}" class="button small">&larr; Back to Case</a>
+        <h1 style="margin-bottom: 0.5rem;">Add Mediation Business</h1>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            <strong>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</strong>
+            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+        </p>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="previous_date">Mediation Date <span style="color: #c62828;">*</span></label>
+                    <input type="date" name="previous_date" id="previous_date"
+                        value="{% if latest_data %}{{ latest_data.next_date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
+                </div>
+                <div style="flex: 1; min-width: 120px;">
+                    <label for="mediation_time">Mediation Time</label>
+                    <input type="time" name="mediation_time" id="mediation_time" value="{{ default_time }}">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="stage">Stage</label>
+                <input type="text" name="stage" id="stage" value="Mediation" placeholder="e.g. Mediation Session 1">
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="business">Business <span style="color: #c62828;">*</span></label>
+                <textarea name="business" id="business" rows="5" required placeholder="Describe the mediation proceedings..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="next_date">Next Mediation Date</label>
+                <input type="date" name="next_date" id="next_date">
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <input type="submit" value="Add Mediation Business" class="primary">
+                <a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

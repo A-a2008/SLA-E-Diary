@@ -141,6 +141,7 @@ def create_diary_entry(
     party_1_total: int = 1,
     party_2_total: int = 1,
     entry_type: str = 'business',
+    mediation_time=None,
 ) -> DiaryEntry:
     return DiaryEntry.objects.create(
         case=case,
@@ -157,6 +158,7 @@ def create_diary_entry(
         stage=stage,
         business=business,
         next_date=next_date,
+        mediation_time=mediation_time,
         advocate=advocate,
     )
 
