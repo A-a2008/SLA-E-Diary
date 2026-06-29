@@ -44,12 +44,12 @@
                 <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Parties</label>
                 <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
-                        <label for="party_1">Party 1 — Decree Holder <span style="color: #c62828;">*</span></label>
+                        <label for="party_1">Party 1 <span style="color: #c62828;">*</span></label>
                         <input type="text" name="party_1" id="party_1" value="{{ party_1 }}" required>
                     </div>
                     <button type="button" id="swap-btn" onclick="swapParties()" style="margin-top: 1.5rem; background: #f2849e; border: none; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">⇄ Swap</button>
                     <div style="flex: 1; min-width: 200px;">
-                        <label for="party_2">Party 2 — Judgement Debtor <span style="color: #c62828;">*</span></label>
+                        <label for="party_2">Party 2 <span style="color: #c62828;">*</span></label>
                         <input type="text" name="party_2" id="party_2" value="{{ party_2 }}" required>
                     </div>
                 </div>
@@ -58,11 +58,10 @@
             <div style="margin-bottom: 1.25rem;">
                 <label for="representing">Representing</label>
                 <select name="representing" id="representing">
-                    <option value="Decree Holder" selected>Decree Holder</option>
-                    <option value="Judgement Debtor">Judgement Debtor</option>
+                    <option value="Decree Holder" selected>Party 1 (Decree Holder)</option>
+                    <option value="Judgement Debtor">Party 2 (Judgement Debtor)</option>
                 </select>
                 <small style="color: #585858; display: block; margin-top: 0.25rem;">
-                    Defaults to Decree Holder (your client).
                     {% if default_swap %}Parties were auto-swapped since you represented Party 2 in the original case.{% endif %}
                 </small>
             </div>
