@@ -4,14 +4,14 @@
 {% block content %}
 <div id="main">
     <div class="inner" style="max-width: 700px;">
-        <a href="{% url 'diary_entry_case' original_case.id %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Case</a>
+        <a href="{% url 'diary_entry_case' original_case.id %}" class="button small">&larr; Back to Case</a>
         <h1 style="margin-bottom: 0.5rem;">Create Execution Case</h1>
         <p style="color: #585858; margin-bottom: 1.5rem;">
             From: <strong>{{ original_case.case_type }}/{{ original_case.case_number }}/{{ original_case.case_year }}</strong>
             &mdash; {{ original_case.party_1 }} vs {{ original_case.party_2 }}
         </p>
 
-        <form method="POST" id="execution-form">
+        <form method="POST">
             {% csrf_token %}
             <input type="hidden" name="linked_case_id" value="{{ original_case.id }}">
 
@@ -27,7 +27,7 @@
             </div>
 
             <div style="margin-bottom: 1.25rem; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; padding: 1rem;">
-                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Court Details (from original case)</label>
+                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Court Details</label>
                 <input type="hidden" name="jurisdiction" value="{{ original_case.jurisdiction }}">
                 <input type="hidden" name="court" value="{{ original_case.court }}">
                 <input type="hidden" name="court_hall" value="{{ original_case.court_hall }}">
@@ -41,30 +41,41 @@
             </div>
 
             <div style="margin-bottom: 1.25rem;">
-                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Parties</label>
-                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight: 700; margin-bottom: 0.75rem; display: block;">Parties</label>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
-                        <label for="party_1">Party 1 <span style="color: #c62828;">*</span></label>
-                        <input type="text" name="party_1" id="party_1" value="{{ party_1 }}" required>
+                        <label for="party_1">Party 1</label>
+                        <input type="text" name="party_1" id="party_1" value="{{ party_1 }}" readonly>
                     </div>
-                    <button type="button" id="swap-btn" onclick="swapParties()" style="margin-top: 1.5rem; background: #f2849e; border: none; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">⇄ Swap</button>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label for="party_1_type">Party 1 Type</label>
+                        <select id="party_1_type_display" disabled>
+                            <option value="Decree Holder" selected>Decree Holder</option>
+                            <option value="Judgement Debtor">Judgement Debtor</option>
+                        </select>
+                        <input type="hidden" name="party_1_type" value="Decree Holder">
+                    </div>
+                </div>
+                <div style="text-align: center; margin: 0.75rem 0;">
+                    <button type="button" class="button small" onclick="swapParties()">⇄ Swap</button>
+                </div>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
-                        <label for="party_2">Party 2 <span style="color: #c62828;">*</span></label>
-                        <input type="text" name="party_2" id="party_2" value="{{ party_2 }}" required>
+                        <label for="party_2">Party 2</label>
+                        <input type="text" name="party_2" id="party_2" value="{{ party_2 }}" readonly>
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label for="party_2_type">Party 2 Type</label>
+                        <select id="party_2_type_display" disabled>
+                            <option value="Decree Holder">Decree Holder</option>
+                            <option value="Judgement Debtor" selected>Judgement Debtor</option>
+                        </select>
+                        <input type="hidden" name="party_2_type" value="Judgement Debtor">
                     </div>
                 </div>
             </div>
 
-            <div style="margin-bottom: 1.25rem;">
-                <label for="representing">Representing</label>
-                <select name="representing" id="representing">
-                    <option value="Decree Holder" selected>Party 1 (Decree Holder)</option>
-                    <option value="Judgement Debtor">Party 2 (Judgement Debtor)</option>
-                </select>
-                <small style="color: #585858; display: block; margin-top: 0.25rem;">
-                    {% if default_swap %}Parties were auto-swapped since you represented Party 2 in the original case.{% endif %}
-                </small>
-            </div>
+            <input type="hidden" name="representing" value="Decree Holder">
 
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <input type="submit" value="Create Execution Case" class="primary">
