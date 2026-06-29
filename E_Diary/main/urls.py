@@ -8,7 +8,6 @@ urlpatterns = [
     path('batch_new_case/', batch_new_case, name='batch_new_case'),
     path('diary_entry/', diary_entry, name='diary_entry'),
     path('diary_entry_case/<int:case_id>/', diary_entry_case, name='diary_entry_case'),
-    path('create_execution_case/', create_execution_case, name='create_execution_case'),
     path('diary_entry_case/<int:case_id>/create_execution_case/', create_execution_case, name='create_execution_case_from'),
     path('diary_entry_case/<int:case_id>/add_business/', add_business, name='add_business'),
     path('case/<int:case_id>/export/docx/', case_export_docx, name='case_export_docx'),

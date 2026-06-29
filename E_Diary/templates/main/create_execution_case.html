@@ -4,120 +4,84 @@
 {% block content %}
 <div id="main">
     <div class="inner" style="max-width: 700px;">
-        {% if original_case %}
         <a href="{% url 'diary_entry_case' original_case.id %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Case</a>
         <h1 style="margin-bottom: 0.5rem;">Create Execution Case</h1>
         <p style="color: #585858; margin-bottom: 1.5rem;">
             From: <strong>{{ original_case.case_type }}/{{ original_case.case_number }}/{{ original_case.case_year }}</strong>
             &mdash; {{ original_case.party_1 }} vs {{ original_case.party_2 }}
         </p>
-        {% else %}
-        <a href="{% url 'diary_entry' %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Cases</a>
-        <h1 style="margin-bottom: 1.5rem;">Create Fresh Execution Case</h1>
-        {% endif %}
 
-        <form method="POST">
+        <form method="POST" id="execution-form">
             {% csrf_token %}
-            {% if original_case %}
             <input type="hidden" name="linked_case_id" value="{{ original_case.id }}">
-            {% endif %}
 
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
                 <div style="flex: 1; min-width: 200px;">
                     <label for="case_number">Case Number <span style="color: #c62828;">*</span></label>
-                    <input type="text" name="case_number" id="case_number" value="{{ initial.case_number }}" required placeholder="e.g. 83">
+                    <input type="text" name="case_number" id="case_number" required placeholder="e.g. 83">
                 </div>
                 <div style="flex: 1; min-width: 120px;">
                     <label for="case_year">Year <span style="color: #c62828;">*</span></label>
-                    <input type="number" name="case_year" id="case_year" value="{{ initial.case_year|default:today.year }}" required>
+                    <input type="number" name="case_year" id="case_year" value="{{ today.year }}" required>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.25rem; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; padding: 1rem;">
+                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Court Details (from original case)</label>
+                <input type="hidden" name="jurisdiction" value="{{ original_case.jurisdiction }}">
+                <input type="hidden" name="court" value="{{ original_case.court }}">
+                <input type="hidden" name="court_hall" value="{{ original_case.court_hall }}">
+                <input type="hidden" name="floor" value="{{ original_case.floor }}">
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; color: #585858;">
+                    <span><strong>Jurisdiction:</strong> {{ original_case.get_jurisdiction_display }}</span>
+                    <span><strong>Court:</strong> {{ court_label }}</span>
+                    <span><strong>Hall:</strong> {{ original_case.court_hall }}</span>
+                    <span><strong>Floor:</strong> {{ original_case.floor }}</span>
                 </div>
             </div>
 
             <div style="margin-bottom: 1.25rem;">
-                <label>Jurisdiction <span style="color: #c62828;">*</span></label>
-                <div style="display: flex; gap: 1.5rem;">
-                    <label><input type="radio" name="jurisdiction" value="urban"{% if initial.jurisdiction == 'urban' %} checked{% endif %} required> Bengaluru Urban</label>
-                    <label><input type="radio" name="jurisdiction" value="rural"{% if initial.jurisdiction == 'rural' %} checked{% endif %}> Bengaluru Rural</label>
+                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Parties</label>
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="party_1">Party 1 — Decree Holder <span style="color: #c62828;">*</span></label>
+                        <input type="text" name="party_1" id="party_1" value="{{ party_1 }}" required>
+                    </div>
+                    <button type="button" id="swap-btn" onclick="swapParties()" style="margin-top: 1.5rem; background: #f2849e; border: none; color: #fff; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">⇄ Swap</button>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="party_2">Party 2 — Judgement Debtor <span style="color: #c62828;">*</span></label>
+                        <input type="text" name="party_2" id="party_2" value="{{ party_2 }}" required>
+                    </div>
                 </div>
-            </div>
-
-            <div id="urban-courts-section" style="margin-bottom: 1.25rem;">
-                <label for="court">Court Complex <span style="color: #c62828;">*</span></label>
-                <select name="court" id="court" required>
-                    <option value="">— Select Court Complex —</option>
-                    <optgroup label="Bengaluru Urban">
-                    {% for val, label in urban_courts %}
-                    <option value="{{ val }}"{% if initial.court == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                    </optgroup>
-                    <optgroup label="Bengaluru Rural">
-                    {% for val, label in rural_courts %}
-                    <option value="{{ val }}"{% if initial.court == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                    </optgroup>
-                </select>
-            </div>
-
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
-                <div style="flex: 2; min-width: 200px;">
-                    <label for="court_hall">Court Hall</label>
-                    <input type="text" name="court_hall" id="court_hall" value="{{ initial.court_hall }}" placeholder="e.g. CCH-4">
-                </div>
-                <div style="flex: 1; min-width: 80px;">
-                    <label for="floor">Floor</label>
-                    <input type="number" name="floor" id="floor" value="{{ initial.floor|default:0 }}">
-                </div>
-            </div>
-
-            <div style="margin-bottom: 1.25rem;">
-                <label for="party_1">Party 1 <span style="color: #c62828;">*</span></label>
-                <input type="text" name="party_1" id="party_1" value="{{ initial.party_1 }}" required placeholder="e.g. Judgment Debtor name">
-            </div>
-
-            <div style="margin-bottom: 1.25rem;">
-                <label for="party_1_type">Party 1 Type</label>
-                <select name="party_1_type" id="party_1_type">
-                    {% for val, label in party1_choices %}
-                    <option value="{{ val }}"{% if initial.party_1_type == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="margin-bottom: 1.25rem;">
-                <label for="party_2">Party 2 <span style="color: #c62828;">*</span></label>
-                <input type="text" name="party_2" id="party_2" value="{{ initial.party_2 }}" required placeholder="e.g. Decree Holder name">
-            </div>
-
-            <div style="margin-bottom: 1.25rem;">
-                <label for="party_2_type">Party 2 Type</label>
-                <select name="party_2_type" id="party_2_type">
-                    {% for val, label in party2_choices %}
-                    <option value="{{ val }}"{% if initial.party_2_type == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
             </div>
 
             <div style="margin-bottom: 1.25rem;">
                 <label for="representing">Representing</label>
                 <select name="representing" id="representing">
-                    {% for val, label in party1_choices %}
-                    <option value="{{ val }}"{% if initial.representing == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                    {% for val, label in party2_choices %}
-                    <option value="{{ val }}"{% if initial.representing == val %} selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
+                    <option value="Decree Holder" selected>Decree Holder</option>
+                    <option value="Judgement Debtor">Judgement Debtor</option>
                 </select>
+                <small style="color: #585858; display: block; margin-top: 0.25rem;">
+                    Defaults to Decree Holder (your client).
+                    {% if default_swap %}Parties were auto-swapped since you represented Party 2 in the original case.{% endif %}
+                </small>
             </div>
 
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <input type="submit" value="Create Execution Case" class="primary">
-                {% if original_case %}
                 <a href="{% url 'diary_entry_case' original_case.id %}" class="button">Cancel</a>
-                {% else %}
-                <a href="{% url 'diary_entry' %}" class="button">Cancel</a>
-                {% endif %}
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function swapParties() {
+    const p1 = document.getElementById('party_1');
+    const p2 = document.getElementById('party_2');
+    const tmp = p1.value;
+    p1.value = p2.value;
+    p2.value = tmp;
+}
+</script>
 {% endblock %}
