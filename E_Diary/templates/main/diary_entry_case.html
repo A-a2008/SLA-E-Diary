@@ -59,7 +59,7 @@
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
                 {% if case.mediation_status == mediation_statuses.NONE %}
-                <a href="{% url 'refer_to_mediation' case.id %}" class="button small" style="background: #2e7d32; color: #fff;">Refer to Mediation</a>
+                <a href="{% url 'refer_to_mediation' case.id %}" class="button small" style="background: #81c784;">Refer to Mediation</a>
                 {% else %}
                 <a href="{% url 'refer_to_mediation' case.id %}" class="button small">Update Mediation</a>
                 {% endif %}
