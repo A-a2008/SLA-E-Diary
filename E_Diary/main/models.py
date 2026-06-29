@@ -94,6 +94,7 @@ class Case(models.Model):
     court_level = models.CharField(max_length=20, choices=CourtLevel.choices)
     mediation_status = models.CharField(max_length=20, choices=MediationStatus.choices, default=MediationStatus.NONE)
     mediation_next_date = models.DateField(null=True, blank=True)
+    related_case = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='execution_cases')
     court = models.CharField(max_length=100)
     court_hall = models.CharField(max_length=100)
     floor = models.IntegerField()

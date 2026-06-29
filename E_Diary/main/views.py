@@ -418,6 +418,113 @@ def update_mediation_status(request, case_id):
 
 
 @login_required
+def create_execution_case(request, case_id=None):
+    original_case = None
+    if case_id:
+        original_case = get_object_or_404(Case, id=case_id)
+
+    if request.method == 'POST':
+        court = request.POST.get('court')
+        court_hall = request.POST.get('court_hall', '')
+        floor = request.POST.get('floor', 0)
+        case_number = request.POST.get('case_number')
+        case_year = request.POST.get('case_year')
+        party_1 = request.POST.get('party_1')
+        party_1_type = request.POST.get('party_1_type')
+        party_2 = request.POST.get('party_2')
+        party_2_type = request.POST.get('party_2_type')
+        representing = request.POST.get('representing')
+        jurisdiction = request.POST.get('jurisdiction')
+
+        linked_case_id = request.POST.get('linked_case_id')
+        linked_case = None
+        if linked_case_id:
+            try:
+                linked_case = Case.objects.get(id=int(linked_case_id))
+            except (ValueError, Case.DoesNotExist):
+                pass
+
+        try:
+            case = Case.objects.create(
+                jurisdiction=jurisdiction,
+                court_level='district',
+                court=court,
+                court_hall=court_hall,
+                floor=int(floor) if floor else 0,
+                case_type='EX',
+                case_number=case_number,
+                case_year=int(case_year) if case_year else datetime.date.today().year,
+                party_1=party_1,
+                party_1_type=party_1_type,
+                party_2=party_2,
+                party_2_type=party_2_type,
+                representing=representing,
+                representing_parties='1',
+                related_case=linked_case,
+            )
+            messages.success(request, f'Execution case created: EX/{case_number}/{case_year}')
+            return redirect('diary_entry_case', case_id=case.id)
+        except Exception as e:
+            messages.error(request, f'Error creating case: {e}')
+
+    today = datetime.date.today()
+    party1_choices = Party1Type.choices
+    party2_choices = Party2Type.choices
+
+    # Pre-fill from original case if linked
+    initial = {}
+    if original_case:
+        initial = {
+            'court': original_case.court,
+            'court_hall': original_case.court_hall,
+            'floor': original_case.floor,
+            'party_1': original_case.party_1,
+            'party_1_type': original_case.party_1_type,
+            'party_2': original_case.party_2,
+            'party_2_type': original_case.party_2_type,
+            'representing': original_case.representing,
+            'jurisdiction': original_case.jurisdiction,
+        }
+
+    return render(request, 'main/create_execution_case.html', {
+        'original_case': original_case,
+        'initial': initial,
+        'today': today,
+        'party1_choices': party1_choices,
+        'party2_choices': party2_choices,
+        'urban_courts': [
+            ('cmm', 'Chief Metropolitan Magistrate Court Complex, Bangalore'),
+            ('mmtc', 'Metropolitan Magistrate Traffic Courts, Bangalore'),
+            ('mmtc_mayo', 'Metropolitan Magistrate Traffic Court I, Mayo Hall, Bangalore'),
+            ('city_civil', 'City Civil Court Complex, Bangalore'),
+            ('family', 'Family Court Complex, Bangalore'),
+            ('small_causes', 'Small Causes Court Complex, Bangalore'),
+            ('mayo_hall', 'Mayo Hall Court Complex, Bangalore'),
+            ('commercial', 'Commercial Court Complex, Bangalore'),
+            ('consumer', 'Consumer Forum, Shantinagar'),
+            ('urban_consumer', 'Urban Consumer Forum, Bangalore'),
+        ],
+        'rural_courts': [
+            ('city_civil_rural', 'City Civil Court Complex, Bengaluru Rural'),
+            ('dist_session_rural', 'PRL. District and Sessions Judge, Bengaluru Rural'),
+            ('prl_senior_rural', 'PRL. Senior Civil Judge, Bengaluru Rural'),
+            ('prl_junior_rural', 'PRL. Civil Judge, Bengaluru Rural'),
+            ('cjm_cmm_rural', 'Chief Judicial Magistrate, Bengaluru Rural in CMM Court'),
+            ('vacation_court_rural', 'Vacation Court, Bengaluru Rural'),
+            ('commercial_court_rural', 'Commercial Court Complex, Bengaluru Rural'),
+            ('labour_court_rural', 'Labour Court, Bengaluru Rural'),
+            ('senior_anekal', 'Senior Civil Judge & JMFC, Anekal'),
+            ('junior_anekal', 'PRL. Civil Judge & JMFC, Anekal'),
+            ('hosakote', 'Court Complex – Hosakote'),
+            ('devanahalli', 'Court Complex – Devanahalli'),
+            ('doddaballapur', 'Court Complex – Doddaballapur'),
+            ('nelamangala', 'Court Complex – Nelamangala'),
+            ('kr_puram', 'KR Puram Court Complex'),
+        ],
+    })
+
+
+@login_required
 def add_business(request, case_id):
     case = get_object_or_404(Case, id=case_id)
     latest_data = get_latest_entry_data(case)

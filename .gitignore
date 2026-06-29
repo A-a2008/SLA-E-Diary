@@ -7,3 +7,4 @@ __pycache__/
 .venv/
 venv/
 E_Diary/db.sqlite3
+*.Identifier

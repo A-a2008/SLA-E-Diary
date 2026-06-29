@@ -63,6 +63,7 @@
                 {% else %}
                 <a href="{% url 'refer_to_mediation' case.id %}" class="button small">Update Mediation</a>
                 {% endif %}
+                <a href="{% url 'create_execution_case_from' case.id %}" class="button small" style="background: #90caf9;">Create Execution Case</a>
                 {% if not case.disposed %}
                 <form method="post" action="{% url 'diary_entry_case' case.id %}" style="display:inline;">
                     {% csrf_token %}
@@ -79,6 +80,34 @@
                 <a href="{% url 'diary_entry' %}" class="button small">&larr; Back</a>
             </div>
         </section>
+
+        {% if case.execution_cases.all or case.related_case %}
+        <section style="margin-bottom: 2rem;">
+            <h2>Execution</h2>
+            {% if case.related_case %}
+            <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <strong>Execution of:</strong>
+                <a href="{% url 'diary_entry_case' case.related_case.id %}">
+                    {{ case.related_case.case_type }}/{{ case.related_case.case_number }}/{{ case.related_case.case_year }}
+                </a>
+                &mdash; {{ case.related_case.party_1 }} vs {{ case.related_case.party_2 }}
+            </div>
+            {% endif %}
+            {% if case.execution_cases.all %}
+            <div style="background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; padding: 1rem;">
+                <strong>Execution Case(s):</strong>
+                {% for exec_case in case.execution_cases.all %}
+                <div style="margin-top: 0.5rem;">
+                    <a href="{% url 'diary_entry_case' exec_case.id %}">
+                        EX/{{ exec_case.case_number }}/{{ exec_case.case_year }}
+                    </a>
+                    &mdash; {{ exec_case.party_1 }} vs {{ exec_case.party_2 }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <!-- ── ENTRIES ── -->
         <section>
