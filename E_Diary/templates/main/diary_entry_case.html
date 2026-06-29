@@ -55,9 +55,7 @@
                 {% endif %}
             </div>
             <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                {% if case.mediation_status == mediation_statuses.NONE or case.mediation_status == mediation_statuses.SETTLED or case.mediation_status == mediation_statuses.FAILED %}
                 <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
-                {% endif %}
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
                 {% if case.mediation_status == mediation_statuses.REFERRED or case.mediation_status == mediation_statuses.ONGOING %}
@@ -141,6 +139,7 @@
                     <span><strong>Case:</strong> {{ entry.case_number_display }}</span>
                     <span><strong>Representing:</strong> {{ entry.representing }}{% if entry.representing_parties != '1' %} ({{ entry.representing_parties }}){% endif %}</span>
                     <span><strong>Advocate:</strong> {{ entry.advocate.get_full_name|default:entry.advocate.username|default:"—" }}</span>
+                    {% if entry.mediation_time %}<span><strong>Time:</strong> {{ entry.mediation_time|time:"h:i A" }}</span>{% endif %}
                     <span><strong>Entered:</strong> {{ entry.created_at|date:"d M Y h:i A" }}</span>
                 </div>
                 {% if entry.reminders.all %}

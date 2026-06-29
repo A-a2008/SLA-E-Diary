@@ -476,16 +476,12 @@ def create_execution_case(request, case_id):
 def add_business(request, case_id):
     case = get_object_or_404(Case, id=case_id)
 
-    if case.mediation_status in ('referred', 'ongoing'):
-        messages.error(request, 'Case is in mediation. Use "Add Mediation Business" instead.')
-        return redirect('diary_entry_case', case_id=case.id)
-
     latest_data = get_latest_entry_data(case)
 
     if request.method == 'POST':
         previous_date = request.POST.get('previous_date')
 
-        # Validate that previous_date matches the last entry's next_date
+        # Validate that previous_date matches the last business entry's next_date
         last_entry = DiaryEntry.objects.filter(case=case, entry_type='business').order_by('-previous_date').first()
         if last_entry and previous_date:
             try:
@@ -494,8 +490,16 @@ def add_business(request, case_id):
                 messages.error(request, 'Invalid date.')
                 return redirect('add_business', case_id=case.id)
             if prev_date_obj != last_entry.next_date:
-                messages.error(request, f'Previous date must be the last court date ({last_entry.next_date}). The next entry can only be added on the scheduled court date.')
+                messages.error(request, f'The court date must be {last_entry.next_date}. You can only add a new entry on the scheduled court date.')
                 return redirect('diary_entry_case', case_id=case.id)
+
+        # If case is in mediation, mark it ongoing when a court entry is added
+        if case.mediation_status == 'referred':
+            case.mediation_status = 'ongoing'
+            case.mediation_next_date = None
+            case.save()
+        elif case.mediation_status == 'ongoing':
+            case.save()
         court = COURT_LABELS.get(case.court, case.court)
         court_hall = case.court_hall
         floor = case.floor

@@ -13,7 +13,7 @@ from main.models import UserProfile, DiaryEntry, Reminder, ReminderFrequency
 from main.telegram_utils import send_message, send_group_message
 from main.telegram_bot_ai import (
     classify_message, extract_diary_entry, extract_reminder_details,
-    match_case, create_entry_from_extraction, parse_date,
+    match_case, create_entry_from_extraction, parse_date, DiaryEntryExtraction,
 )
 from main.telegram_conversation import (
     get_state, set_state, clear_state, parse_yes_no,
@@ -110,6 +110,16 @@ def handle_ai_diary_entry(chat_id, text, profile):
         send_message(chat_id, 'Sorry, I had trouble processing that. Please try again.')
         return
 
+    if extraction.mediation_clarification_needed:
+        set_state(chat_id, 'AWAITING_MEDIATION_CLARIFICATION',
+                  extraction_data=extraction.dict())
+        send_message(chat_id,
+                     'I noticed you mentioned mediation, but I\'m not sure whether:\n'
+                     '1️⃣ You attended a regular COURT hearing where mediation was discussed\n'
+                     '2️⃣ You had an actual MEDIATION SESSION at the mediation centre\n\n'
+                     'Please reply with "court" or "mediation".')
+        return
+
     case = match_case(extraction)
     if not case:
         send_message(chat_id,
@@ -118,6 +128,10 @@ def handle_ai_diary_entry(chat_id, text, profile):
                      f'Please check the case details and try again.')
         return
 
+    _finalize_entry(chat_id, extraction, case, profile)
+
+
+def _finalize_entry(chat_id, extraction, case, profile):
     entry = create_entry_from_extraction(extraction, case, advocate=profile.user)
     if not entry:
         send_message(chat_id, 'Failed to create diary entry. Please ensure a next date was provided.')
@@ -145,7 +159,8 @@ def handle_ai_diary_entry(chat_id, text, profile):
                  f'<b>Stage:</b> {entry.stage or "—"}\n\n'
                  f'You can view/edit it on the website.')
 
-    if extraction.is_mediation:
+    needs_reminder_check = extraction.is_mediation and not extraction.mediation_clarification_needed
+    if needs_reminder_check:
         return
 
     if extraction.wants_reminder is False:
@@ -168,6 +183,38 @@ def handle_ai_diary_entry(chat_id, text, profile):
               diary_entry_id=entry.id,
               next_date_str=nxt)
     send_message(chat_id, 'Would you like to set a reminder for this case? (yes/no)')
+
+
+def _handle_mediation_clarification(chat_id, text, state, profile):
+    text_lower = text.strip().lower()
+    extraction_data = state.get('extraction_data')
+    if not extraction_data:
+        send_message(chat_id, 'Something went wrong. Please send your entry again.')
+        clear_state(chat_id)
+        return
+
+    if text_lower in ('court', '1', '1️⃣'):
+        extraction_data['is_mediation'] = False
+        extraction_data['mediation_clarification_needed'] = None
+    elif text_lower in ('mediation', '2', '2️⃣'):
+        extraction_data['is_mediation'] = True
+        extraction_data['mediation_clarification_needed'] = None
+    else:
+        send_message(chat_id, 'Please reply with "court" or "mediation".')
+        return
+
+    extraction = DiaryEntryExtraction(**extraction_data)
+    case = match_case(extraction)
+    if not case:
+        send_message(chat_id,
+                     f'Could not find a matching case with:\n'
+                     f'{extraction.case_type or "?"}/{extraction.case_number or "?"}/{extraction.case_year or "?"} — {extraction.party_1 or "?"} vs {extraction.party_2 or "?"}\n\n'
+                     f'Please check the case details and try again.')
+        clear_state(chat_id)
+        return
+
+    clear_state(chat_id)
+    _finalize_entry(chat_id, extraction, case, profile)
 
 
 def process_update(update):
@@ -224,6 +271,10 @@ def process_update(update):
 
     if current_state == 'AWAITING_REMINDER_DETAILS':
         handle_reminder_details(chat_id, text, state)
+        return
+
+    if current_state == 'AWAITING_MEDIATION_CLARIFICATION':
+        _handle_mediation_clarification(chat_id, text, state, profile)
         return
 
     # IDLE — classify and process

@@ -34,7 +34,8 @@ class DiaryEntryExtraction(BaseModel):
     stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Mediation')")
     mentions_reminder: Optional[bool] = Field(description="Whether the user mentioned anything about reminders at all (true/false/null if unclear)")
     wants_reminder: Optional[bool] = Field(description="If a reminder is mentioned, does the user want one? true/false. If not mentioned, leave null.")
-    is_mediation: bool = Field(description="True if this entry is about mediation/reconciliation/settlement conference instead of a regular court hearing.")
+    is_mediation: bool = Field(description="True ONLY if this entry is about an actual mediation/settlement conference session AT A MEDIATION CENTRE. False for a regular court hearing where mediation was merely mentioned or discussed (e.g. 'mediation report not received, next date given').")
+    mediation_clarification_needed: Optional[bool] = Field(description="Set to True if the user mentions 'mediation' but you CANNOT tell whether they attended a regular court hearing (where mediation was discussed) OR had an actual mediation session at a mediation centre. The system will then ask the user to clarify. If you are confident, leave this null.")
 
 
 class ReminderDetails(BaseModel):
@@ -78,7 +79,17 @@ Rules:
  - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments', 'Mediation'. NEVER leave this blank — infer from context.
  - mentions_reminder: Did the user say anything about reminders?
  - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
- - is_mediation: Set to true if this entry is about mediation, reconciliation, settlement conference, or mediation centre. Do NOT ask about reminders for mediation entries.'''),
+
+CRITICAL — Mediation distinction:
+- is_mediation = True ONLY if the user attended an ACTUAL MEDIATION SESSION at a mediation centre (e.g. "went to mediation centre", "had session with mediator", "mediation held", "parties negotiated at mediation").
+- is_mediation = False if this is a REGULAR COURT HEARING where mediation was merely mentioned (e.g. "mediation report not received", "awaiting mediation report", "court said mediation pending", "next date for mediation report"). These are normal court appearances even though mediation is discussed.
+- If the user's message mentions "mediation" but you genuinely cannot tell whether it was a court appearance or an actual mediation session, set mediation_clarification_needed = True and is_mediation = False.
+- mediation_clarification_needed should be null if you are confident in your classification.
+
+Examples:
+- "Went to CCH-4, mediation report not received, next date 15-07-2026" → is_mediation=False, mediation_clarification_needed=null
+- "Attended mediation centre, session with mediator Mr. Kumar, settlement talks ongoing, next mediation 22-07" → is_mediation=True, mediation_clarification_needed=null
+- "The case went for mediation, next date is 15-07" → mediation_clarification_needed=True, is_mediation=False (unclear if court or mediation centre)'''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
@@ -227,18 +238,35 @@ def create_entry_from_extraction(extraction, case, advocate=None):
         logger.error(f'No valid next_date in extraction: {extraction.next_date}')
         return None
 
-    if extraction.is_mediation:
+    is_mediation = extraction.is_mediation and not extraction.mediation_clarification_needed
+    clarification_needed = extraction.mediation_clarification_needed
+
+    if is_mediation:
         case.mediation_status = MediationStatus.REFERRED
         case.mediation_next_date = next_date
         case.save()
+        court = 'Karnataka Mediation Centre'
+        court_hall = 'Mediation'
+        floor = 0
+        entry_type = 'mediation'
+    else:
+        court = COURT_LABELS.get(case.court, case.court)
+        court_hall = case.court_hall
+        floor = case.floor
+        entry_type = 'business'
 
-    court = 'Karnataka Mediation Centre' if extraction.is_mediation else COURT_LABELS.get(case.court, case.court)
-    court_hall = 'Mediation' if extraction.is_mediation else case.court_hall
-    floor = 0 if extraction.is_mediation else case.floor
+        # If case is in mediation and this is a court entry, mark ongoing
+        if case.mediation_status == MediationStatus.REFERRED:
+            case.mediation_status = MediationStatus.ONGOING
+            case.mediation_next_date = next_date
+            case.save()
+        elif case.mediation_status == MediationStatus.ONGOING:
+            case.mediation_next_date = next_date
+            case.save()
 
     entry = create_diary_entry(
         case=case,
-        entry_type='mediation' if extraction.is_mediation else 'business',
+        entry_type=entry_type,
         previous_date=previous_date,
         court=court,
         court_hall=court_hall,
