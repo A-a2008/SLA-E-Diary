@@ -31,9 +31,10 @@ class DiaryEntryExtraction(BaseModel):
     previous_date: Optional[str] = Field(description="Date of court appearance (DD-MM-YYYY). If the user says 'today' or doesn't mention a previous date, leave this blank.")
     next_date: Optional[str] = Field(description="Next hearing date (DD-MM-YYYY). This MUST be present.")
     business: str = Field(description="What happened in court today — the proceedings/status/order description. Keep it concise but informative.")
-    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment')")
+    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Mediation')")
     mentions_reminder: Optional[bool] = Field(description="Whether the user mentioned anything about reminders at all (true/false/null if unclear)")
     wants_reminder: Optional[bool] = Field(description="If a reminder is mentioned, does the user want one? true/false. If not mentioned, leave null.")
+    is_mediation: bool = Field(description="True if this entry is about mediation/reconciliation/settlement conference instead of a regular court hearing.")
 
 
 class ReminderDetails(BaseModel):
@@ -74,9 +75,10 @@ Rules:
 - business: A concise description of what happened in court.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
- - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments'. NEVER leave this blank — infer from context.
+ - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments', 'Mediation'. NEVER leave this blank — infer from context.
  - mentions_reminder: Did the user say anything about reminders?
- - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.'''),
+ - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
+ - is_mediation: Set to true if this entry is about mediation, reconciliation, settlement conference, or mediation centre. Do NOT ask about reminders for mediation entries.'''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
@@ -216,6 +218,7 @@ def parse_date(date_str):
 def create_entry_from_extraction(extraction, case, advocate=None):
     from main.services import create_diary_entry
     from main.constants import COURT_LABELS
+    from main.models import MediationStatus
 
     today = datetime.date.today()
     previous_date = parse_date(extraction.previous_date) or today
@@ -224,13 +227,22 @@ def create_entry_from_extraction(extraction, case, advocate=None):
         logger.error(f'No valid next_date in extraction: {extraction.next_date}')
         return None
 
-    court = COURT_LABELS.get(case.court, case.court)
+    if extraction.is_mediation:
+        case.mediation_status = MediationStatus.REFERRED
+        case.mediation_next_date = next_date
+        case.save()
+
+    court = 'Karnataka Mediation Centre' if extraction.is_mediation else COURT_LABELS.get(case.court, case.court)
+    court_hall = 'Mediation' if extraction.is_mediation else case.court_hall
+    floor = 0 if extraction.is_mediation else case.floor
+
     entry = create_diary_entry(
         case=case,
+        entry_type='mediation' if extraction.is_mediation else 'business',
         previous_date=previous_date,
         court=court,
-        court_hall=case.court_hall,
-        floor=case.floor,
+        court_hall=court_hall,
+        floor=floor,
         case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
         representing=case.representing,
         stage=extraction.stage or '',

@@ -140,9 +140,11 @@ def create_diary_entry(
     representing_parties: str = '1',
     party_1_total: int = 1,
     party_2_total: int = 1,
+    entry_type: str = 'business',
 ) -> DiaryEntry:
     return DiaryEntry.objects.create(
         case=case,
+        entry_type=entry_type,
         previous_date=previous_date,
         court=court,
         court_hall=court_hall,

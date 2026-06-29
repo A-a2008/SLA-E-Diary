@@ -16,7 +16,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder
+from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder
 from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
@@ -314,7 +314,107 @@ def diary_entry_case(request, case_id):
         'case': case, 'entries': entries, 'court_labels': COURT_LABELS,
         'latest_data': latest_data, 'court_display': COURT_LABELS.get(case.court, case.court),
         'court_hall_notes': court_hall_notes,
+        'mediation_statuses': MediationStatus,
     })
+
+
+@login_required
+def refer_to_mediation(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+
+    if request.method == 'POST':
+        mediation_date = request.POST.get('mediation_date')
+        notes = request.POST.get('notes', '').strip()
+
+        if mediation_date:
+            try:
+                mediation_date_obj = datetime.datetime.strptime(mediation_date, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Invalid date.')
+                return redirect('diary_entry_case', case_id=case.id)
+
+            case.mediation_status = MediationStatus.REFERRED
+            case.mediation_next_date = mediation_date_obj
+            case.save()
+
+            business_text = 'Case referred to Karnataka Mediation Centre.'
+            if notes:
+                business_text += f'\n\nNotes: {notes}'
+
+            create_diary_entry(
+                case=case,
+                entry_type='mediation',
+                previous_date=datetime.date.today(),
+                court='Karnataka Mediation Centre',
+                court_hall='Mediation',
+                floor=0,
+                case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+                representing=case.representing,
+                representing_parties=case.representing_parties,
+                party_1_total=case.party_1_total,
+                party_2_total=case.party_2_total,
+                stage='Mediation',
+                business=business_text,
+                next_date=mediation_date_obj,
+                advocate=request.user,
+            )
+
+            messages.success(request, f'Case referred to mediation. Next mediation date: {mediation_date}')
+        else:
+            messages.error(request, 'Please provide a mediation date.')
+
+        return redirect('diary_entry_case', case_id=case.id)
+
+    return render(request, 'main/refer_to_mediation.html', {
+        'case': case, 'court_display': COURT_LABELS.get(case.court, case.court),
+        'mediation_statuses': MediationStatus,
+    })
+
+
+@login_required
+def update_mediation_status(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+
+    if request.method == 'POST':
+        new_status = request.POST.get('mediation_status')
+        mediation_date = request.POST.get('mediation_date')
+
+        if new_status and new_status in [s.value for s in MediationStatus]:
+            case.mediation_status = new_status
+            if mediation_date:
+                try:
+                    case.mediation_next_date = datetime.datetime.strptime(mediation_date, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            elif new_status in (MediationStatus.SETTLED, MediationStatus.FAILED):
+                case.mediation_next_date = None
+            case.save()
+
+            if new_status in (MediationStatus.SETTLED, MediationStatus.FAILED):
+                label = dict(MediationStatus.choices).get(new_status, new_status)
+                create_diary_entry(
+                    case=case,
+                    entry_type='mediation',
+                    previous_date=datetime.date.today(),
+                    court='Karnataka Mediation Centre',
+                    court_hall='Mediation',
+                    floor=0,
+                    case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+                    representing=case.representing,
+                    representing_parties=case.representing_parties,
+                    party_1_total=case.party_1_total,
+                    party_2_total=case.party_2_total,
+                    stage='Mediation',
+                    business=f'Mediation {label.lower()}.',
+                    next_date=case.mediation_next_date or datetime.date.today(),
+                    advocate=request.user,
+                )
+
+            messages.success(request, f'Mediation status updated to "{dict(MediationStatus.choices).get(new_status, new_status)}".')
+        else:
+            messages.error(request, 'Invalid status.')
+
+        return redirect('diary_entry_case', case_id=case.id)
 
 
 @login_required

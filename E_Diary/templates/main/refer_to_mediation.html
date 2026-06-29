@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="main">
+    <div class="inner" style="max-width: 600px;">
+        <a href="{% url 'diary_entry_case' case.id %}" class="button small" style="margin-bottom: 1.5rem;">&larr; Back to Case</a>
+
+        <h1 style="margin-bottom: 1rem;">
+            {% if case.mediation_status == mediation_statuses.NONE %}Refer to Mediation{% else %}Update Mediation{% endif %}
+        </h1>
+        <p style="color: #585858; margin-bottom: 1.5rem;">
+            <strong>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</strong>
+            &mdash; {{ case.party_1 }} vs {{ case.party_2 }}
+            <br><span style="font-size: 0.95rem;">{{ court_display }}</span>
+        </p>
+
+        {% if case.mediation_status != mediation_statuses.NONE %}
+        <form method="POST" action="{% url 'update_mediation_status' case.id %}" style="margin-bottom: 2rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+            {% csrf_token %}
+            <h3 style="margin-top: 0;">Update Mediation Status</h3>
+            <div style="margin-bottom: 1rem;">
+                <label for="mediation_status">Status</label>
+                <select name="mediation_status" id="mediation_status" required>
+                    <option value="">— Select —</option>
+                    <option value="ongoing" {% if case.mediation_status == 'ongoing' %}selected{% endif %}>Mediation Ongoing</option>
+                    <option value="settled" {% if case.mediation_status == 'settled' %}selected{% endif %}>Settled at Mediation</option>
+                    <option value="failed" {% if case.mediation_status == 'failed' %}selected{% endif %}>Mediation Failed</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label for="mediation_date">Mediation Date</label>
+                <input type="date" name="mediation_date" id="mediation_date" value="{{ case.mediation_next_date|date:'Y-m-d' }}">
+            </div>
+            <input type="submit" value="Update Status" class="primary">
+        </form>
+        <hr style="margin: 2rem 0;">
+        {% endif %}
+
+        <h3>{% if case.mediation_status == mediation_statuses.NONE %}Refer to Mediation{% else %}Re-refer to Mediation{% endif %}</h3>
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="mediation_date">Mediation Date <span style="color: #c62828;">*</span></label>
+                <input type="date" name="mediation_date" id="mediation_date" value="{{ case.mediation_next_date|date:'Y-m-d' }}" required>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label for="notes">Notes (optional)</label>
+                <textarea name="notes" id="notes" rows="4" placeholder="Any additional notes about the mediation...">{% if case.mediation_status != mediation_statuses.NONE %}Re-referred to mediation.{% endif %}</textarea>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <input type="submit" value="{% if case.mediation_status == mediation_statuses.NONE %}Refer to Mediation{% else %}Re-refer to Mediation{% endif %}" class="primary">
+                <a href="{% url 'diary_entry_case' case.id %}" class="button">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

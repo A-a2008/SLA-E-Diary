@@ -38,6 +38,11 @@
                     <span style="display: inline-block; padding: 0.35rem 1rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700; background: {% if case.disposed %}#fce4e4{% else %}#fef3e2{% endif %}; color: {% if case.disposed %}#c62828{% else %}#e65100{% endif %};">
                         {% if case.disposed %}DISPOSED{% else %}ACTIVE{% endif %}
                     </span>
+                    {% if case.mediation_status != mediation_statuses.NONE %}
+                    <span style="display: inline-block; padding: 0.35rem 1rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700; margin-left: 0.5rem; background: #e8f5e9; color: #2e7d32;">
+                        {{ case.get_mediation_status_display }}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
             <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; color: #585858;">
@@ -45,11 +50,19 @@
                 <span><strong>Hall:</strong> {{ case.court_hall }} | <strong>Floor:</strong> {{ case.floor }}</span>
                 <span><strong>Jurisdiction:</strong> {{ case.get_jurisdiction_display }}</span>
                 <span><strong>Level:</strong> {{ case.get_court_level_display }}</span>
+                {% if case.mediation_status != mediation_statuses.NONE and case.mediation_next_date %}
+                <span><strong>Mediation Date:</strong> {{ case.mediation_next_date|date:"d M Y" }}</span>
+                {% endif %}
             </div>
             <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
+                {% if case.mediation_status == mediation_statuses.NONE %}
+                <a href="{% url 'refer_to_mediation' case.id %}" class="button small" style="background: #2e7d32; color: #fff;">Refer to Mediation</a>
+                {% else %}
+                <a href="{% url 'refer_to_mediation' case.id %}" class="button small">Update Mediation</a>
+                {% endif %}
                 {% if not case.disposed %}
                 <form method="post" action="{% url 'diary_entry_case' case.id %}" style="display:inline;">
                     {% csrf_token %}
@@ -69,13 +82,16 @@
 
         <!-- ── ENTRIES ── -->
         <section>
-            <h2>Business History</h2>
+            <h2>Case History</h2>
             {% if entries %}
             {% for entry in entries %}
-            <div style="background: rgba(242,132,158,0.03); border: 1px solid rgba(242,132,158,0.12); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+            <div style="background: {% if entry.entry_type == 'mediation' %}rgba(46,125,50,0.04){% else %}rgba(242,132,158,0.03){% endif %}; border: 1px solid {% if entry.entry_type == 'mediation' %}rgba(46,125,50,0.2){% else %}rgba(242,132,158,0.12){% endif %}; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;{% if entry.entry_type == 'mediation' %} border-left: 4px solid #2e7d32;{% endif %}">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
                     <div>
-                        <strong style="color: #f2849e;">{{ entry.previous_date|date:"d M Y" }}</strong>
+                        {% if entry.entry_type == 'mediation' %}
+                        <span style="display: inline-block; background: #2e7d32; color: #fff; padding: 0.15rem 0.6rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; margin-right: 0.5rem;">MEDIATION</span>
+                        {% endif %}
+                        <strong style="color: {% if entry.entry_type == 'mediation' %}#2e7d32{% else %}#f2849e{% endif %};">{{ entry.previous_date|date:"d M Y" }}</strong>
                         &rarr;
                         <strong>{{ entry.next_date|date:"d M Y" }}</strong>
                         <span style="color: #585858; margin-left: 0.75rem;">{{ entry.stage }}</span>

@@ -145,6 +145,9 @@ def handle_ai_diary_entry(chat_id, text, profile):
                  f'<b>Stage:</b> {entry.stage or "—"}\n\n'
                  f'You can view/edit it on the website.')
 
+    if extraction.is_mediation:
+        return
+
     if extraction.wants_reminder is False:
         send_message(chat_id, '✅ No reminder will be set (as requested).')
         return

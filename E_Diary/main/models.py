@@ -76,9 +76,24 @@ class CourtLevel(models.TextChoices):
     SUPREME_COURT = 'supreme_court', 'Supreme Court of India'
 
 
+class MediationStatus(models.TextChoices):
+    NONE = 'none', 'Not in Mediation'
+    REFERRED = 'referred', 'Referred to Mediation'
+    ONGOING = 'ongoing', 'Mediation Ongoing'
+    SETTLED = 'settled', 'Settled at Mediation'
+    FAILED = 'failed', 'Mediation Failed'
+
+
+class MediationEntryType(models.TextChoices):
+    BUSINESS = 'business', 'Court Business'
+    MEDIATION = 'mediation', 'Mediation'
+
+
 class Case(models.Model):
     jurisdiction = models.CharField(max_length=20, choices=Jurisdiction.choices, default=None)
     court_level = models.CharField(max_length=20, choices=CourtLevel.choices)
+    mediation_status = models.CharField(max_length=20, choices=MediationStatus.choices, default=MediationStatus.NONE)
+    mediation_next_date = models.DateField(null=True, blank=True)
     court = models.CharField(max_length=100)
     court_hall = models.CharField(max_length=100)
     floor = models.IntegerField()
@@ -118,6 +133,7 @@ class Case(models.Model):
 
 class DiaryEntry(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='diary_entries')
+    entry_type = models.CharField(max_length=20, choices=MediationEntryType.choices, default=MediationEntryType.BUSINESS)
     previous_date = models.DateField()
     court = models.CharField(max_length=100)
     court_hall = models.CharField(max_length=100)

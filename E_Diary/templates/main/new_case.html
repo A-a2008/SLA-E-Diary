@@ -15,9 +15,8 @@
             <div class="field">
                 <label for="court_level">Court Level</label>
                 <select name="court_level" id="court_level" onchange="onCourtLevelChange()">
-                    <option value="">— Select Court Level —</option>
                     {% for value, label in court_level_choices %}
-                    <option value="{{ value }}">{{ label }}</option>
+                    <option value="{{ value }}"{% if value == 'district' %} selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
