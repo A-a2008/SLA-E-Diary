@@ -233,7 +233,7 @@ def new_case(request):
 
         existing = Case.objects.filter(court=court, case_type=case_type, case_number=case_number, case_year=case_year).first()
         if existing:
-            messages.error(request, f'A case with this number already exists: {existing.case_number_display} — {existing.party_1} vs {existing.party_2}')
+            messages.error(request, f'A case with this number already exists: {existing.case_type}/{existing.case_number}/{existing.case_year} — {existing.party_1} vs {existing.party_2}')
             return redirect('diary_entry_case', case_id=existing.id)
 
         case = create_case(
@@ -264,7 +264,7 @@ def new_case(request):
 def diary_entry(request):
     query = request.GET.get('q', '').strip()
     court_level = request.GET.get('court_level', '')
-    disposed_filter = request.GET.get('disposed', '')
+    disposed_filter = request.GET.get('disposed', 'active')
     cases = search_cases(query=query, court_level=court_level, disposed=disposed_filter)
 
     today = datetime.date.today()
@@ -287,9 +287,11 @@ def diary_entry(request):
         if last_entry:
             case.next_date = last_entry.next_date
             case.prev_date = last_entry.previous_date
+            case.business_entered = bool(last_entry.business and last_entry.business.strip())
         else:
             case.next_date = None
             case.prev_date = None
+            case.business_entered = False
     return render(request, 'main/diary_entry.html', {
         'today': today, 'cases': case_list, 'query': query, 'court_labels': COURT_LABELS,
         'court_level_choices': CourtLevel.choices,
@@ -487,7 +489,7 @@ def add_business(request, case_id):
         previous_date = request.POST.get('previous_date')
 
         # Validate that previous_date matches the last business entry's next_date
-        last_entry = DiaryEntry.objects.filter(case=case, entry_type='business').order_by('-previous_date').first()
+        last_entry = DiaryEntry.objects.filter(case=case, entry_type='business').order_by('-next_date').first()
         if last_entry and previous_date:
             try:
                 prev_date_obj = datetime.datetime.strptime(previous_date, '%Y-%m-%d').date()

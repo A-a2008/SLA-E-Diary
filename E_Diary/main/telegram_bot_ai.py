@@ -232,7 +232,10 @@ def create_entry_from_extraction(extraction, case, advocate=None):
     from main.models import MediationStatus
 
     today = datetime.date.today()
-    previous_date = parse_date(extraction.previous_date) or today
+    previous_date = parse_date(extraction.previous_date)
+    if not previous_date:
+        last_entry = case.diary_entries.order_by('-next_date').first()
+        previous_date = last_entry.next_date if last_entry else today
     next_date = parse_date(extraction.next_date)
     if not next_date:
         logger.error(f'No valid next_date in extraction: {extraction.next_date}')

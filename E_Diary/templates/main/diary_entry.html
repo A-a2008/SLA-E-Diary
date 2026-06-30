@@ -73,11 +73,15 @@
                             </td>
                             <td style="text-align: right; vertical-align: middle;">
                                 {% if case.next_date %}
-                                <div style="font-size: 0.95rem; margin-bottom: 0.35rem;"><strong>Next Date: {{ case.next_date|date:"d-m-Y" }} ({{ case.next_date|date:"l" }})</strong></div>
+                                <div style="font-size: 0.95rem; margin-bottom: 0.35rem;">
+                                    <strong>{% if case.disposed %}Last Date{% else %}Next Date{% endif %}: {{ case.next_date|date:"d-m-Y" }} ({{ case.next_date|date:"l" }})</strong>
+                                </div>
                                 {% endif %}
+                                {% if not case.disposed %}
                                 <a href="{% url 'diary_entry_case' case.id %}" class="button small primary">Enter Business</a>
-                                {% if case.next_date and today > case.next_date %}
+                                {% if case.next_date and today > case.next_date and not case.business_entered %}
                                 <div style="font-size: 0.95rem; margin-top: 0.35rem; color: #c62828;"><strong>Business hasn't been entered</strong></div>
+                                {% endif %}
                                 {% endif %}
                             </td>
                         </tr>

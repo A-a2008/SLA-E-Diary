@@ -96,7 +96,7 @@ def search_cases(
 
 
 def get_latest_entry_data(case: Case) -> dict:
-    latest = case.diary_entries.order_by('-previous_date').first()
+    latest = case.diary_entries.order_by('-next_date').first()
     if latest:
         return {
             'previous_date': latest.next_date,
