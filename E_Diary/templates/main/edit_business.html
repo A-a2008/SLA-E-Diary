@@ -107,11 +107,11 @@
                 <div id="rep-checkboxes" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
                     <div id="rep-p1-section">
                         <strong id="rep-p1-label">{{ entry.case.party_1_type }} count: {{ entry.party_1_total }}</strong><br>
-                        <div id="rep-p1-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                        <div id="rep-p1-list" style="margin-top: 0.25rem;"></div>
                     </div>
                     <div id="rep-p2-section">
                         <strong id="rep-p2-label">{{ entry.case.party_2_type }} count: {{ entry.party_2_total }}</strong><br>
-                        <div id="rep-p2-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                        <div id="rep-p2-list" style="margin-top: 0.25rem;"></div>
                     </div>
                 </div>
                 <input type="hidden" name="representing" value="{{ entry.representing }}">
@@ -127,9 +127,6 @@
         </form>
 
         <style>
-            #rep-p1-list, #rep-p2-list { padding-left: 0.25rem; }
-            #rep-p1-list input[type="checkbox"], #rep-p2-list input[type="checkbox"] { vertical-align: middle; margin: 0 0.15em 0 0; }
-            #rep-p1-list label, #rep-p2-list label { vertical-align: middle; margin-right: 0.75em; padding-left: 2.55em !important; }
             .reminder-hidden-check { position:absolute; left:-9999px; opacity:0; width:1px; height:1px; }
             .reminder-toggle-label { cursor: pointer; display: inline-block !important; }
             .reminder-toggle-pill {
