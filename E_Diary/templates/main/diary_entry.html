@@ -79,7 +79,7 @@
                                 {% endif %}
                                 {% if not case.disposed %}
                                 <a href="{% url 'diary_entry_case' case.id %}" class="button small primary">Enter Business</a>
-                                {% if case.next_date and today > case.next_date and not case.business_entered %}
+                                {% if case.next_date and today > case.next_date %}
                                 <div style="font-size: 0.95rem; margin-top: 0.35rem; color: #c62828;"><strong>Business hasn't been entered</strong></div>
                                 {% endif %}
                                 {% endif %}

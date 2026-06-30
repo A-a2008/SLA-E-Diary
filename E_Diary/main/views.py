@@ -287,11 +287,9 @@ def diary_entry(request):
         if last_entry:
             case.next_date = last_entry.next_date
             case.prev_date = last_entry.previous_date
-            case.business_entered = bool(last_entry.business and last_entry.business.strip())
         else:
             case.next_date = None
             case.prev_date = None
-            case.business_entered = False
     return render(request, 'main/diary_entry.html', {
         'today': today, 'cases': case_list, 'query': query, 'court_labels': COURT_LABELS,
         'court_level_choices': CourtLevel.choices,
