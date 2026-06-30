@@ -105,11 +105,11 @@
                 <div id="rep-checkboxes" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
                     <div id="rep-p1-section">
                         <strong id="rep-p1-label">{{ case.party_1_type }} count: {{ case.party_1_total }}</strong><br>
-                        <div id="rep-p1-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                        <div id="rep-p1-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; margin-top: 0.25rem;"></div>
                     </div>
                     <div id="rep-p2-section">
                         <strong id="rep-p2-label">{{ case.party_2_type }} count: {{ case.party_2_total }}</strong><br>
-                        <div id="rep-p2-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;"></div>
+                        <div id="rep-p2-list" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; margin-top: 0.25rem;"></div>
                     </div>
                 </div>
                 <input type="hidden" name="representing" value="{{ case.representing }}">
@@ -159,19 +159,21 @@
 
         <script>
         (function() {
-            function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
-
-            function buildCheckboxes(containerId, name, total) {
+            function buildCheckboxes(containerId, name, total, selected) {
                 var list = document.getElementById(containerId);
                 list.innerHTML = '';
                 total = parseInt(total) || 1;
+                var selectedSet = {};
+                if (selected) {
+                    selected.split(',').forEach(function(s) { selectedSet[s.trim()] = true; });
+                }
                 for (var i = 1; i <= total; i++) {
                     var chk = document.createElement('input');
                     chk.type = 'checkbox';
                     chk.name = name;
                     chk.value = i;
                     chk.id = containerId + '_' + i;
-                    if (total === 1) chk.checked = true;
+                    if (selectedSet[i] || (total === 1 && !selected)) chk.checked = true;
                     var lbl = document.createElement('label');
                     lbl.htmlFor = containerId + '_' + i;
                     lbl.textContent = i;
@@ -180,20 +182,23 @@
                 }
             }
 
+            function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+
             var p1Total = {{ case.party_1_total|default:1 }};
             var p2Total = {{ case.party_2_total|default:1 }};
             var rep = slugify('{{ case.representing }}');
             var p1Type = slugify('{{ case.party_1_type }}');
             var p2Type = slugify('{{ case.party_2_type }}');
+            var currentParties = '{{ latest_data.representing_parties|default:case.representing_parties|default:"" }}';
             var p1Field = 'representing_' + slugify('{{ case.party_1_type }}') + '_indices';
             var p2Field = 'representing_' + slugify('{{ case.party_2_type }}') + '_indices';
 
             if (rep === p1Type) {
                 document.getElementById('rep-p2-section').style.display = 'none';
-                buildCheckboxes('rep-p1-list', p1Field, p1Total);
+                buildCheckboxes('rep-p1-list', p1Field, p1Total, currentParties);
             } else {
                 document.getElementById('rep-p1-section').style.display = 'none';
-                buildCheckboxes('rep-p2-list', p2Field, p2Total);
+                buildCheckboxes('rep-p2-list', p2Field, p2Total, currentParties);
             }
 
             /* REMINDER SECTION */
