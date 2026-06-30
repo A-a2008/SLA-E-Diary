@@ -231,6 +231,11 @@ def new_case(request):
         else:
             representing_parties = request.POST.get('representing_parties', '1')
 
+        existing = Case.objects.filter(court=court, case_type=case_type, case_number=case_number, case_year=case_year).first()
+        if existing:
+            messages.error(request, f'A case with this number already exists: {existing.case_number_display} — {existing.party_1} vs {existing.party_2}')
+            return redirect('diary_entry_case', case_id=existing.id)
+
         case = create_case(
             jurisdiction=jurisdiction, court_level=court_level, court=court,
             court_hall=court_hall, floor=floor, case_type=case_type,
