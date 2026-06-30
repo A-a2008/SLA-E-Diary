@@ -128,8 +128,9 @@
 
         <style>
             #rep-p1-list, #rep-p2-list { padding-left: 0.25rem; }
-            #rep-p1-list input[type="checkbox"], #rep-p2-list input[type="checkbox"] { vertical-align: middle; margin: 0 0.15em 0 0; }
-            #rep-p1-list label, #rep-p2-list label { vertical-align: middle; margin-right: 0.75em; }
+            #rep-p1-list .rep-item, #rep-p2-list .rep-item { display: inline-flex; align-items: center; gap: 0.2em; }
+            #rep-p1-list .rep-item label, #rep-p2-list .rep-item label { display: inline; margin: 0; padding: 0; font-weight: 400; font-size: 1em; }
+            #rep-p1-list input[type="checkbox"], #rep-p2-list input[type="checkbox"] { margin: 0; }
             .reminder-hidden-check { position:absolute; left:-9999px; opacity:0; width:1px; height:1px; }
             .reminder-toggle-label { cursor: pointer; display: inline-block !important; }
             .reminder-toggle-pill {
@@ -170,6 +171,8 @@
                     selected.split(',').forEach(function(s) { selectedSet[s.trim()] = true; });
                 }
                 for (var i = 1; i <= total; i++) {
+                    var item = document.createElement('span');
+                    item.className = 'rep-item';
                     var chk = document.createElement('input');
                     chk.type = 'checkbox';
                     chk.name = name;
@@ -179,8 +182,9 @@
                     var lbl = document.createElement('label');
                     lbl.htmlFor = containerId + '_' + i;
                     lbl.textContent = i;
-                    list.appendChild(chk);
-                    list.appendChild(lbl);
+                    item.appendChild(chk);
+                    item.appendChild(lbl);
+                    list.appendChild(item);
                 }
             }
 
