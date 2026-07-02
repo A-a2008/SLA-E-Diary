@@ -875,10 +875,22 @@ def cause_list(request):
         key = f"{court}__{court_hall}"
         if key in court_hall_notes and key not in seen:
             seen.add(key)
-            unique_hall_keys.append((e.case.court, e.case.court_hall))
+            unique_hall_keys.append((court, court_hall))
+
+    building_groups = []
+    if entries:
+        from itertools import groupby
+        def effective_building_code(e):
+            court = getattr(e, 'mediation_court', None) or e.case.court
+            return BUILDING_ORDER.index(COURT_TO_BUILDING.get(court, 'other')) if court in COURT_TO_BUILDING else 999
+        entries_sorted_for_groups = sorted(entries, key=effective_building_code)
+        for bldg_code, group in groupby(entries_sorted_for_groups, key=effective_building_code):
+            actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
+            building_groups.append((actual_code, list(group)))
 
     return render(request, 'main/cause_list.html', {
-        'entries': entries, 'date_str': date_str, 'date_obj': date_obj if date_str else None,
+        'entries': entries, 'building_groups': building_groups,
+        'date_str': date_str, 'date_obj': date_obj if date_str else None,
         'court_labels': COURT_LABELS, 'errors': errors,
         'court_hall_notes': court_hall_notes,
         'unique_hall_keys': unique_hall_keys,
@@ -954,8 +966,9 @@ def cause_list_docx(request):
     current_building = None
 
     for entry in entries:
-        bldg_code = COURT_TO_BUILDING.get(entry.case.court, '')
-        bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(entry.case.court, entry.case.court))
+        effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
+        bldg_code = COURT_TO_BUILDING.get(effective_court, '')
+        bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(effective_court, effective_court))
         if bldg_name != current_building:
             current_building = bldg_name
             doc.add_heading(bldg_name, level=2)
@@ -982,7 +995,7 @@ def cause_list_docx(request):
                 cell = row[i]
                 p = cell.paragraphs[0]
                 p.clear()
-                run = p.add_run(f"{entry.case.court_hall}\n{case_num}\n")
+                run = p.add_run(f"{getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall}\n{case_num}\n")
                 run.font.size = Pt(9)
                 run1 = p.add_run(entry.case.party_1)
                 run1.bold = entry.case.represents_party_1
@@ -1055,8 +1068,19 @@ def cause_list_pdf(request):
         (e.list_i or 0) + (e.list_ii or 0),
     ))
 
+    from itertools import groupby
+    def effective_building_code(e):
+        court = getattr(e, 'mediation_court', None) or e.case.court
+        return BUILDING_ORDER.index(COURT_TO_BUILDING.get(court, 'other')) if court in COURT_TO_BUILDING else 999
+    entries_sorted_for_groups = sorted(entries, key=effective_building_code)
+    building_groups = []
+    for bldg_code, group in groupby(entries_sorted_for_groups, key=effective_building_code):
+        actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
+        building_groups.append((actual_code, list(group)))
+
     html_str = render(request, 'main/cause_list_pdf.html', {
-        'entries': entries, 'date_str': date_str, 'date_obj': date_obj,
+        'entries': entries, 'building_groups': building_groups,
+        'date_str': date_str, 'date_obj': date_obj,
         'court_labels': COURT_LABELS, 'court_to_building': COURT_TO_BUILDING,
     }).content.decode()
 
