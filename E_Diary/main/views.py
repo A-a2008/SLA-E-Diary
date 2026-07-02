@@ -884,8 +884,7 @@ def cause_list(request):
         def effective_building_code(e):
             court = getattr(e, 'mediation_court', None) or e.case.court
             return BUILDING_ORDER.index(COURT_TO_BUILDING.get(court, 'other')) if court in COURT_TO_BUILDING else 999
-        entries_sorted_for_groups = sorted(entries, key=effective_building_code)
-        for bldg_code, group in groupby(entries_sorted_for_groups, key=effective_building_code):
+        for bldg_code, group in groupby(entries, key=effective_building_code):
             actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
             building_groups.append((actual_code, list(group)))
 
@@ -1075,9 +1074,8 @@ def cause_list_pdf(request):
     def effective_building_code(e):
         court = getattr(e, 'mediation_court', None) or e.case.court
         return BUILDING_ORDER.index(COURT_TO_BUILDING.get(court, 'other')) if court in COURT_TO_BUILDING else 999
-    entries_sorted_for_groups = sorted(entries, key=effective_building_code)
     building_groups = []
-    for bldg_code, group in groupby(entries_sorted_for_groups, key=effective_building_code):
+    for bldg_code, group in groupby(entries, key=effective_building_code):
         actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
         building_groups.append((actual_code, list(group)))
 
