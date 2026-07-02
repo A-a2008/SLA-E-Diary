@@ -28,6 +28,7 @@ COURT_LABELS = {
     'kr_puram':               'KR Puram Court Complex',
     'high_court_karnataka': 'High Court of Karnataka, Bengaluru',
     'supreme_court_india':  'Supreme Court of India, New Delhi',
+    'Karnataka Mediation Centre': 'Karnataka Mediation Centre',
 }
 
 COURT_TO_BUILDING = {
@@ -60,6 +61,7 @@ COURT_TO_BUILDING = {
     'kr_puram':             'kr_puram',
     'high_court_karnataka': 'high_court',
     'supreme_court_india':  'supreme_court',
+    'Karnataka Mediation Centre': 'mediation_centre',
 }
 
 BUILDING_LABELS = {
@@ -78,6 +80,7 @@ BUILDING_LABELS = {
     'kr_puram': 'KR Puram',
     'high_court': 'High Court of Karnataka, Bengaluru',
     'supreme_court': 'Supreme Court of India, New Delhi',
+    'mediation_centre': 'Karnataka Mediation Centre',
 }
 
 BUILDING_ORDER = [
@@ -96,4 +99,5 @@ BUILDING_ORDER = [
     'kr_puram',
     'high_court',
     'supreme_court',
+    'mediation_centre',
 ]

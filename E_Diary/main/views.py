@@ -272,10 +272,15 @@ def diary_entry(request):
     case_list = list(cases)
 
     def sort_key(case):
-        last_entry = case.diary_entries.order_by('-next_date').first()
-        if last_entry is None:
+        nd = None
+        if case.mediation_status in ('referred', 'ongoing') and case.mediation_next_date:
+            nd = case.mediation_next_date
+        else:
+            last_entry = case.diary_entries.order_by('-next_date').first()
+            if last_entry:
+                nd = last_entry.next_date
+        if nd is None:
             return (0, datetime.date.min, -case.id)
-        nd = last_entry.next_date
         if nd >= today:
             return (1, nd, -case.id)
         return (2, nd, -case.id)
@@ -284,13 +289,19 @@ def diary_entry(request):
 
     for case in case_list:
         case.court_display_name = COURT_LABELS.get(case.court, case.court)
-        last_entry = case.diary_entries.order_by('-next_date').first()
-        if last_entry:
-            case.next_date = last_entry.next_date
-            case.prev_date = last_entry.previous_date
-        else:
-            case.next_date = None
+        if case.mediation_status in ('referred', 'ongoing') and case.mediation_next_date:
+            case.next_date = case.mediation_next_date
             case.prev_date = None
+            case.is_mediation = True
+        else:
+            case.is_mediation = False
+            last_entry = case.diary_entries.order_by('-next_date').first()
+            if last_entry:
+                case.next_date = last_entry.next_date
+                case.prev_date = last_entry.previous_date
+            else:
+                case.next_date = None
+                case.prev_date = None
 
     paginator = Paginator(case_list, 20)
     page_number = request.GET.get('page', 1)
@@ -820,20 +831,28 @@ def cause_list(request):
                 'high_court_karnataka', 'supreme_court_india',
             ]
 
-            entries = sorted(entries, key=lambda e: (
-                BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
-                    if e.case.court in COURT_TO_BUILDING else 999,
-                court_order.index(e.case.court) if e.case.court in court_order else 999,
-                (e.list_i or 0) + (e.list_ii or 0),
-            ))
-
             diary_entries_for_stage = DiaryEntry.objects.filter(
                 next_date=date_obj
-            ).values('case_id', 'stage')
-            stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
+            ).values('case_id', 'stage', 'entry_type', 'court', 'court_hall')
+            stage_by_case = {}
+            mediation_court_by_case = {}
+            for de in diary_entries_for_stage:
+                stage_by_case[de['case_id']] = de['stage']
+                if de['entry_type'] == 'mediation':
+                    mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
             for sl, e in enumerate(entries, 1):
                 e.sl_no = sl
                 e.stage = stage_by_case.get(e.case.id, '')
+                if e.case.id in mediation_court_by_case:
+                    e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
+
+            entries = sorted(entries, key=lambda e: (
+                BUILDING_ORDER.index(COURT_TO_BUILDING.get(
+                    getattr(e, 'mediation_court', None) or e.case.court, 'other'))
+                    if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
+                court_order.index(e.case.court) if e.case.court in court_order else 999,
+                (e.list_i or 0) + (e.list_ii or 0),
+            ))
 
         except ValueError:
             pass
@@ -841,7 +860,8 @@ def cause_list(request):
     court_halls_on_date = set()
     if date_str:
         for e in entries:
-            court_halls_on_date.add((e.case.court, e.case.court_hall))
+            court_halls_on_date.add((getattr(e, 'mediation_court', None) or e.case.court,
+                                     getattr(e, 'mediation_court_hall', None) or e.case.court_hall))
     court_hall_notes = dict()
     for n in CourtHallNote.objects.all():
         key = f"{n.court}__{n.court_hall}"
@@ -850,7 +870,9 @@ def cause_list(request):
     unique_hall_keys = []
     seen = set()
     for e in entries:
-        key = f"{e.case.court}__{e.case.court_hall}"
+        court = getattr(e, 'mediation_court', None) or e.case.court
+        court_hall = getattr(e, 'mediation_court_hall', None) or e.case.court_hall
+        key = f"{court}__{court_hall}"
         if key in court_hall_notes and key not in seen:
             seen.add(key)
             unique_hall_keys.append((e.case.court, e.case.court_hall))
@@ -894,20 +916,28 @@ def cause_list_docx(request):
         'devanahalli', 'doddaballapur', 'nelamangala', 'kr_puram',
         'high_court_karnataka', 'supreme_court_india',
     ]
-    entries = sorted(entries, key=lambda e: (
-        BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
-            if e.case.court in COURT_TO_BUILDING else 999,
-        court_order.index(e.case.court) if e.case.court in court_order else 999,
-        (e.list_i or 0) + (e.list_ii or 0),
-    ))
-
     diary_entries_for_stage = DiaryEntry.objects.filter(
         next_date=date_obj
-    ).values('case_id', 'stage')
-    stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
+    ).values('case_id', 'stage', 'entry_type', 'court', 'court_hall')
+    stage_by_case = {}
+    mediation_court_by_case = {}
+    for de in diary_entries_for_stage:
+        stage_by_case[de['case_id']] = de['stage']
+        if de['entry_type'] == 'mediation':
+            mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
         e.stage = stage_by_case.get(e.case.id, '')
+        if e.case.id in mediation_court_by_case:
+            e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
+
+    entries = sorted(entries, key=lambda e: (
+        BUILDING_ORDER.index(COURT_TO_BUILDING.get(
+            getattr(e, 'mediation_court', None) or e.case.court, 'other'))
+            if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
+        court_order.index(e.case.court) if e.case.court in court_order else 999,
+        (e.list_i or 0) + (e.list_ii or 0),
+    ))
 
     doc = Document()
 
@@ -1002,20 +1032,28 @@ def cause_list_pdf(request):
         'devanahalli', 'doddaballapur', 'nelamangala', 'kr_puram',
         'high_court_karnataka', 'supreme_court_india',
     ]
-    entries = sorted(entries, key=lambda e: (
-        BUILDING_ORDER.index(COURT_TO_BUILDING.get(e.case.court, 'other'))
-            if e.case.court in COURT_TO_BUILDING else 999,
-        court_order.index(e.case.court) if e.case.court in court_order else 999,
-        (e.list_i or 0) + (e.list_ii or 0),
-    ))
-
     diary_entries_for_stage = DiaryEntry.objects.filter(
         next_date=date_obj
-    ).values('case_id', 'stage')
-    stage_by_case = {de['case_id']: de['stage'] for de in diary_entries_for_stage}
+    ).values('case_id', 'stage', 'entry_type', 'court', 'court_hall')
+    stage_by_case = {}
+    mediation_court_by_case = {}
+    for de in diary_entries_for_stage:
+        stage_by_case[de['case_id']] = de['stage']
+        if de['entry_type'] == 'mediation':
+            mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
         e.stage = stage_by_case.get(e.case.id, '')
+        if e.case.id in mediation_court_by_case:
+            e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
+
+    entries = sorted(entries, key=lambda e: (
+        BUILDING_ORDER.index(COURT_TO_BUILDING.get(
+            getattr(e, 'mediation_court', None) or e.case.court, 'other'))
+            if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
+        court_order.index(e.case.court) if e.case.court in court_order else 999,
+        (e.list_i or 0) + (e.list_ii or 0),
+    ))
 
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'date_str': date_str, 'date_obj': date_obj,
