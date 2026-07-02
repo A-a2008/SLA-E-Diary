@@ -840,8 +840,7 @@ def cause_list(request):
                 stage_by_case[de['case_id']] = de['stage']
                 if de['entry_type'] == 'mediation':
                     mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
-            for sl, e in enumerate(entries, 1):
-                e.sl_no = sl
+            for e in entries:
                 e.stage = stage_by_case.get(e.case.id, '')
                 if e.case.id in mediation_court_by_case:
                     e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
@@ -853,6 +852,8 @@ def cause_list(request):
                 court_order.index(e.case.court) if e.case.court in court_order else 999,
                 (e.list_i or 0) + (e.list_ii or 0),
             ))
+            for sl, e in enumerate(entries, 1):
+                e.sl_no = sl
 
         except ValueError:
             pass
@@ -937,8 +938,7 @@ def cause_list_docx(request):
         stage_by_case[de['case_id']] = de['stage']
         if de['entry_type'] == 'mediation':
             mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
-    for sl, e in enumerate(entries, 1):
-        e.sl_no = sl
+    for e in entries:
         e.stage = stage_by_case.get(e.case.id, '')
         if e.case.id in mediation_court_by_case:
             e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
@@ -950,6 +950,8 @@ def cause_list_docx(request):
         court_order.index(e.case.court) if e.case.court in court_order else 999,
         (e.list_i or 0) + (e.list_ii or 0),
     ))
+    for sl, e in enumerate(entries, 1):
+        e.sl_no = sl
 
     doc = Document()
 
@@ -1054,8 +1056,7 @@ def cause_list_pdf(request):
         stage_by_case[de['case_id']] = de['stage']
         if de['entry_type'] == 'mediation':
             mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
-    for sl, e in enumerate(entries, 1):
-        e.sl_no = sl
+    for e in entries:
         e.stage = stage_by_case.get(e.case.id, '')
         if e.case.id in mediation_court_by_case:
             e.mediation_court, e.mediation_court_hall = mediation_court_by_case[e.case.id]
@@ -1067,6 +1068,8 @@ def cause_list_pdf(request):
         court_order.index(e.case.court) if e.case.court in court_order else 999,
         (e.list_i or 0) + (e.list_ii or 0),
     ))
+    for sl, e in enumerate(entries, 1):
+        e.sl_no = sl
 
     from itertools import groupby
     def effective_building_code(e):
