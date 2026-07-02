@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.utils.crypto import get_random_string
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -290,8 +291,14 @@ def diary_entry(request):
         else:
             case.next_date = None
             case.prev_date = None
+
+    paginator = Paginator(case_list, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'main/diary_entry.html', {
-        'today': today, 'cases': case_list, 'query': query, 'court_labels': COURT_LABELS,
+        'today': today, 'page_obj': page_obj, 'cases': page_obj.object_list,
+        'query': query, 'court_labels': COURT_LABELS,
         'court_level_choices': CourtLevel.choices,
         'selected_court_level': court_level, 'selected_disposed': disposed_filter,
     })

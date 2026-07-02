@@ -97,6 +97,31 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                {% if page_obj.has_previous %}
+                <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_court_level %}court_level={{ selected_court_level }}&{% endif %}{% if selected_disposed %}disposed={{ selected_disposed }}&{% endif %}page=1" class="button small">&laquo; First</a>
+                <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_court_level %}court_level={{ selected_court_level }}&{% endif %}{% if selected_disposed %}disposed={{ selected_disposed }}&{% endif %}page={{ page_obj.previous_page_number }}" class="button small">&lsaquo; Prev</a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <span style="padding: 0.5rem 1rem; background: #f2849e; color: #fff; border-radius: 4px; font-weight: 700;">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_court_level %}court_level={{ selected_court_level }}&{% endif %}{% if selected_disposed %}disposed={{ selected_disposed }}&{% endif %}page={{ num }}" class="button small">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_court_level %}court_level={{ selected_court_level }}&{% endif %}{% if selected_disposed %}disposed={{ selected_disposed }}&{% endif %}page={{ page_obj.next_page_number }}" class="button small">Next &rsaquo;</a>
+                <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_court_level %}court_level={{ selected_court_level }}&{% endif %}{% if selected_disposed %}disposed={{ selected_disposed }}&{% endif %}page={{ page_obj.paginator.num_pages }}" class="button small">Last &raquo;</a>
+                {% endif %}
+            </div>
+            <div style="text-align: center; margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} case{{ page_obj.paginator.count|pluralize }})
+            </div>
+            {% endif %}
         </section>
     </div>
 </div>
