@@ -234,3 +234,8 @@ class OutgoingMessage(models.Model):
 
     def __str__(self):
         return f"Msg to {self.chat_id}: {self.text[:60]} ({'sent' if self.sent else 'pending'})"
+
+
+class TelegramUpdate(models.Model):
+    update_id = models.BigIntegerField(primary_key=True)
+    processed_at = models.DateTimeField(auto_now_add=True)
