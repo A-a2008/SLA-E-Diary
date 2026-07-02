@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.utils.crypto import get_random_string
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
+from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -1122,6 +1123,12 @@ def batch_new_case(request):
 def telegram_webhook(request):
     try:
         update = json.loads(request.body)
+        update_id = update.get('update_id')
+        if update_id:
+            cache_key = f'tg_upd_{update_id}'
+            if cache.get(cache_key):
+                return HttpResponse('ok')
+            cache.set(cache_key, True, 120)
         from main.telegram_handler import process_update
         process_update(update)
     except Exception as e:
