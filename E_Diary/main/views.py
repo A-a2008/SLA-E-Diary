@@ -996,7 +996,10 @@ def cause_list_docx(request):
                 cell = row[i]
                 p = cell.paragraphs[0]
                 p.clear()
-                run = p.add_run(f"{getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall}\n{case_num}\n")
+                effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
+                effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
+                effective_court_label = COURT_LABELS.get(effective_court, effective_court)
+                run = p.add_run(f"{effective_court_label}, {effective_hall}\n{case_num}\n")
                 run.font.size = Pt(9)
                 run1 = p.add_run(entry.case.party_1)
                 run1.bold = entry.case.represents_party_1

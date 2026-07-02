@@ -83,7 +83,11 @@
                             <td>{{ entry.sl_no }}</td>
                             <td>{{ entry.case.floor }}</td>
                             <td>
-                                {{ entry.mediation_court_hall|default:entry.case.court_hall }}<br>
+                                {% with effective_court=entry.mediation_court|default:entry.case.court %}
+                                {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
+                                {{ court_labels|dict_key:effective_court }}, {{ effective_hall }}<br>
+                                {% endwith %}
+                                {% endwith %}
                                 <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                                 {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                             </td>
