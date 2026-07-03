@@ -68,12 +68,14 @@ def classify_message(text: str) -> ClassificationResult:
 def extract_diary_entry(text: str) -> DiaryEntryExtraction:
     llm = _get_llm().with_structured_output(DiaryEntryExtraction)
     prompt = ChatPromptTemplate.from_messages([
-        ('system', '''You extract structured diary entry data from lawyer messages about Indian court cases.
+        ('system', '''You extract structured diary entry data from lawyer messages about Indian court cases. Today's date is ''' + datetime.date.today().strftime('%d-%m-%Y') + '''.
 
 Rules:
 - previous_date: If the user says "today" or doesn't mention a specific appearance date, leave it blank (null).
   If they mention a specific date they appeared, extract it in DD-MM-YYYY format.
-- next_date: The next hearing date MUST be extracted. It's usually mentioned as "next date" or "next hearing".
+- next_date: The next hearing date MUST be extracted in DD-MM-YYYY format. It's usually mentioned as "next date" or "next hearing".
+  CRITICAL — If the user gives a date without a year (e.g. "31/7", "next date 15-07"), use the current year (2026).
+  Only use a different year if the user explicitly mentions it (e.g. "15-07-2025").
 - business: Reformatted version of what happened in court. Keep ALL details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only. Preserve case numbers, dates, party names, order details, and any other specifics exactly as mentioned.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
@@ -230,11 +232,21 @@ def parse_date(date_str):
         except (IndexError, KeyError):
             pass
 
+    today = datetime.date.today()
     for fmt in ('%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'):
         try:
             return datetime.datetime.strptime(date_str, fmt).date()
         except ValueError:
             continue
+
+    # Try formats without year — infer from context (current year)
+    for fmt in ('%d-%m', '%d/%m', '%d %m'):
+        try:
+            parsed = datetime.datetime.strptime(date_str.strip(), fmt).date()
+            return parsed.replace(year=today.year)
+        except ValueError:
+            continue
+
     return None
 
 
@@ -252,6 +264,11 @@ def create_entry_from_extraction(extraction, case, advocate=None):
     if not next_date:
         logger.error(f'No valid next_date in extraction: {extraction.next_date}')
         return None
+
+    # Sanity check: if next_date is more than 6 months in the past, assume AI got year wrong
+    if next_date < today - datetime.timedelta(days=180):
+        next_date = next_date.replace(year=today.year)
+        logger.warning(f'Corrected next_date year to {next_date}')
 
     is_mediation = extraction.is_mediation and not extraction.mediation_clarification_needed
     clarification_needed = extraction.mediation_clarification_needed
@@ -302,6 +319,7 @@ def create_entry_from_extraction(extraction, case, advocate=None):
 def update_last_entry_from_advance(extraction, case, advocate=None):
     from main.models import DiaryEntry
 
+    today = datetime.date.today()
     last_entry = case.diary_entries.order_by('-next_date').first()
     if not last_entry:
         return None
@@ -309,6 +327,9 @@ def update_last_entry_from_advance(extraction, case, advocate=None):
     next_date = parse_date(extraction.next_date)
     if not next_date:
         return None
+
+    if next_date < today - datetime.timedelta(days=180):
+        next_date = next_date.replace(year=today.year)
 
     last_entry.next_date = next_date
     if extraction.business and extraction.business.strip():
