@@ -74,7 +74,7 @@ Rules:
 - previous_date: If the user says "today" or doesn't mention a specific appearance date, leave it blank (null).
   If they mention a specific date they appeared, extract it in DD-MM-YYYY format.
 - next_date: The next hearing date MUST be extracted. It's usually mentioned as "next date" or "next hearing".
-- business: A concise description of what happened in court.
+- business: Reformatted version of what happened in court. Keep ALL details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only. Preserve case numbers, dates, party names, order details, and any other specifics exactly as mentioned.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
  - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments', 'Mediation'. NEVER leave this blank — infer from context.
