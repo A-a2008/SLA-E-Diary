@@ -33,12 +33,12 @@ logger = logging.getLogger(__name__)
 def admin_create_user(request):
     admin_roles = [r for r in UserRole.choices if r[0] != UserRole.ADMIN]
     if request.method == 'POST':
-        username = request.POST.get('username')
+        username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password')
-        first_name = request.POST.get('first_name', '')
-        last_name = request.POST.get('last_name', '')
+        first_name = (request.POST.get('first_name', '') or '').strip()
+        last_name = (request.POST.get('last_name', '') or '').strip()
         role = request.POST.get('role', UserRole.INTERN)
-        phone = request.POST.get('phone', '')
+        phone = (request.POST.get('phone', '') or '').strip()
         if User.objects.filter(username=username).exists():
             return render(request, 'registration/admin_create_user.html', {
                 'error': 'Username already exists.',
@@ -149,11 +149,11 @@ def super_dashboard(request):
 @user_passes_test(lambda u: u.is_superuser)
 def super_create_admin(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
+        username = (request.POST.get('username') or '').strip()
         password = request.POST.get('password')
-        first_name = request.POST.get('first_name', '')
-        last_name = request.POST.get('last_name', '')
-        phone = request.POST.get('phone', '')
+        first_name = (request.POST.get('first_name', '') or '').strip()
+        last_name = (request.POST.get('last_name', '') or '').strip()
+        phone = (request.POST.get('phone', '') or '').strip()
         if User.objects.filter(username=username).exists():
             return render(request, 'registration/super_create_admin.html', {
                 'error': 'Username already exists.',
@@ -206,17 +206,17 @@ def change_password(request):
 @login_required
 def new_case(request):
     if request.method == 'POST':
-        court_level = request.POST.get('court_level')
-        jurisdiction = request.POST.get('jurisdiction')
-        court = request.POST.get('court')
-        court_hall = request.POST.get('court_hall')
-        case_type = request.POST.get('case_type')
-        case_number = request.POST.get('case_number')
-        party_1 = request.POST.get('party_1')
-        party_1_type = request.POST.get('party_1_type')
-        party_2 = request.POST.get('party_2')
-        party_2_type = request.POST.get('party_2_type')
-        representing = request.POST.get('representing')
+        court_level = (request.POST.get('court_level') or '').strip()
+        jurisdiction = (request.POST.get('jurisdiction') or '').strip()
+        court = (request.POST.get('court') or '').strip()
+        court_hall = (request.POST.get('court_hall') or '').strip()
+        case_type = (request.POST.get('case_type') or '').strip()
+        case_number = (request.POST.get('case_number') or '').strip()
+        party_1 = (request.POST.get('party_1') or '').strip()
+        party_1_type = (request.POST.get('party_1_type') or '').strip()
+        party_2 = (request.POST.get('party_2') or '').strip()
+        party_2_type = (request.POST.get('party_2_type') or '').strip()
+        representing = (request.POST.get('representing') or '').strip()
 
         floor = int(request.POST.get('floor') or 0)
         case_year = int(request.POST.get('case_year') or 2024)
@@ -448,11 +448,11 @@ def create_execution_case(request, case_id):
     default_swap = original_case.representing_parties == '2'
 
     if request.method == 'POST':
-        case_number = request.POST.get('case_number')
-        case_year = request.POST.get('case_year')
-        party_1 = request.POST.get('party_1') or original_case.party_1
-        party_2 = request.POST.get('party_2') or original_case.party_2
-        representing = request.POST.get('representing') or original_case.representing
+        case_number = (request.POST.get('case_number') or '').strip()
+        case_year = (request.POST.get('case_year') or '').strip()
+        party_1 = (request.POST.get('party_1') or original_case.party_1).strip()
+        party_2 = (request.POST.get('party_2') or original_case.party_2).strip()
+        representing = (request.POST.get('representing') or original_case.representing).strip()
 
         try:
             case = Case.objects.create(
@@ -502,7 +502,7 @@ def add_business(request, case_id):
     latest_data = get_latest_entry_data(case)
 
     if request.method == 'POST':
-        previous_date = request.POST.get('previous_date')
+        previous_date = (request.POST.get('previous_date') or '').strip()
 
         # Validate that previous_date matches the last business entry's next_date
         last_entry = DiaryEntry.objects.filter(case=case, entry_type='business').order_by('-next_date').first()
@@ -527,10 +527,10 @@ def add_business(request, case_id):
         court_hall = case.court_hall
         floor = case.floor
         case_number_display = f"{case.case_type}/{case.case_number}/{case.case_year}"
-        representing = request.POST.get('representing', case.representing)
-        stage = request.POST.get('stage')
-        business = request.POST.get('business')
-        next_date = request.POST.get('next_date')
+        representing = (request.POST.get('representing') or case.representing).strip()
+        stage = (request.POST.get('stage') or '').strip()
+        business = (request.POST.get('business') or '').strip()
+        next_date = (request.POST.get('next_date') or '').strip()
 
         safe_rep = re.sub(r'\W+', '_', representing.lower()).strip('_')
         representing_party_field = f'representing_{safe_rep}_indices'
@@ -582,15 +582,15 @@ def edit_business(request, entry_id):
     entry = get_object_or_404(DiaryEntry, id=entry_id)
 
     if request.method == 'POST':
-        entry.previous_date = request.POST.get('previous_date')
+        entry.previous_date = (request.POST.get('previous_date') or '').strip()
         entry.court = COURT_LABELS.get(entry.case.court, entry.case.court)
         entry.court_hall = entry.case.court_hall
         entry.floor = entry.case.floor
         entry.case_number_display = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
-        entry.representing = request.POST.get('representing', entry.case.representing)
-        entry.stage = request.POST.get('stage')
-        entry.business = request.POST.get('business')
-        entry.next_date = request.POST.get('next_date')
+        entry.representing = (request.POST.get('representing') or entry.case.representing).strip()
+        entry.stage = (request.POST.get('stage') or '').strip()
+        entry.business = (request.POST.get('business') or '').strip()
+        entry.next_date = (request.POST.get('next_date') or '').strip()
 
         safe_rep = re.sub(r'\W+', '_', entry.representing.lower()).strip('_')
         representing_party_field = f'representing_{safe_rep}_indices'
@@ -1280,11 +1280,11 @@ def add_mediation_business(request, case_id):
     latest_data = get_latest_entry_data(case)
 
     if request.method == 'POST':
-        previous_date = request.POST.get('previous_date')
-        stage = request.POST.get('stage', 'Mediation')
-        business = request.POST.get('business')
-        next_date = request.POST.get('next_date')
-        mediation_time = request.POST.get('mediation_time')
+        previous_date = (request.POST.get('previous_date') or '').strip()
+        stage = (request.POST.get('stage') or 'Mediation').strip()
+        business = (request.POST.get('business') or '').strip()
+        next_date = (request.POST.get('next_date') or '').strip()
+        mediation_time = (request.POST.get('mediation_time') or '').strip()
 
         try:
             if mediation_time:
