@@ -29,13 +29,14 @@ class DiaryEntryExtraction(BaseModel):
     party_1: Optional[str] = Field(description="First party name")
     party_2: Optional[str] = Field(description="Second party name")
     previous_date: Optional[str] = Field(description="Date of court appearance (DD-MM-YYYY). If the user says 'today' or doesn't mention a previous date, leave this blank.")
-    next_date: Optional[str] = Field(description="Next hearing date (DD-MM-YYYY). This MUST be present.")
+    next_date: Optional[str] = Field(description="Next hearing date (DD-MM-YYYY). This MUST be present. For advance messages, this is the NEW date the case is being advanced to.")
     business: str = Field(description="What happened in court today — the proceedings/status/order description. Keep it concise but informative.")
-    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Mediation')")
+    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Meditation')")
     mentions_reminder: Optional[bool] = Field(description="Whether the user mentioned anything about reminders at all (true/false/null if unclear)")
     wants_reminder: Optional[bool] = Field(description="If a reminder is mentioned, does the user want one? true/false. If not mentioned, leave null.")
     is_mediation: bool = Field(description="True ONLY if this entry is about an actual mediation/settlement conference session AT A MEDIATION CENTRE. False for a regular court hearing where mediation was merely mentioned or discussed (e.g. 'mediation report not received, next date given').")
     mediation_clarification_needed: Optional[bool] = Field(description="Set to True if the user mentions 'mediation' but you CANNOT tell whether they attended a regular court hearing (where mediation was discussed) OR had an actual mediation session at a mediation centre. The system will then ask the user to clarify. If you are confident, leave this null.")
+    is_advance: bool = Field(description="True if the user is advancing/changing/preponing/postponing the next hearing date of an EXISTING case (e.g. 'advanced to 06/07', 'preponed to', 'next date changed to', 'advance application filed, next date 06/07'). The next_date field should contain the NEW date. When is_advance is True, no new diary entry is created — instead the last entry's next_date (and business/stage if mentioned) is updated. False for a normal new diary entry.")
 
 
 class ReminderDetails(BaseModel):
@@ -80,6 +81,15 @@ Rules:
  - mentions_reminder: Did the user say anything about reminders?
  - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
 
+ADVANCE DETECTION (IMPORTANT):
+- is_advance = True when the user is advancing/changing/preponing/postponing an existing case's next hearing date.
+  Examples: "CC 6759/23 advanced to 06/07", "Advance application filed, next date 06/07/2026",
+  "OS 1719/26 preponed to 01/07", "Next date changed to 15-07-2026 for CMC 123/25".
+- When is_advance = True, the next_date field should contain the NEW date the case is being advanced to.
+- When is_advance = True, the previous_date should contain the OLD next date if mentioned, otherwise leave blank.
+- When is_advance = True, business should describe the reason/purpose of the advance (e.g. 'Advance application allowed', 'Advance filed by counsel', 'Matter preponed').
+- is_advance = False for normal diary entries where the user actually appeared in court on a specific date.
+
 CRITICAL — Mediation distinction:
 - is_mediation = True ONLY if the user attended an ACTUAL MEDIATION SESSION at a mediation centre (e.g. "went to mediation centre", "had session with mediator", "mediation held", "parties negotiated at mediation").
 - is_mediation = False if this is a REGULAR COURT HEARING where mediation was merely mentioned (e.g. "mediation report not received", "awaiting mediation report", "court said mediation pending", "next date for mediation report"). These are normal court appearances even though mediation is discussed.
@@ -87,9 +97,11 @@ CRITICAL — Mediation distinction:
 - mediation_clarification_needed should be null if you are confident in your classification.
 
 Examples:
-- "Went to CCH-4, mediation report not received, next date 15-07-2026" → is_mediation=False, mediation_clarification_needed=null
-- "Attended mediation centre, session with mediator Mr. Kumar, settlement talks ongoing, next mediation 22-07" → is_mediation=True, mediation_clarification_needed=null
-- "The case went for mediation, next date is 15-07" → mediation_clarification_needed=True, is_mediation=False (unclear if court or mediation centre)'''),
+- "Went to CCH-4, mediation report not received, next date 15-07-2026" → is_mediation=False, is_advance=False, mediation_clarification_needed=null
+- "Attended mediation centre, session with mediator Mr. Kumar, settlement talks ongoing, next mediation 22-07" → is_mediation=True, is_advance=False, mediation_clarification_needed=null
+- "The case went for mediation, next date is 15-07" → mediation_clarification_needed=True, is_mediation=False, is_advance=False (unclear if court or mediation centre)
+- "CC 6759/23 advanced to 06-07-2026" → is_advance=True, next_date='06-07-2026', business='Advance application filed', is_mediation=False
+- "Advance application filed for OS 1719/26, next date 01-07-2026, evidence of PW2" → is_advance=True, next_date='01-07-2026', stage='Evidence of PW2', business='Advance application allowed' '''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
@@ -285,3 +297,31 @@ def create_entry_from_extraction(extraction, case, advocate=None):
         party_2_total=case.party_2_total,
     )
     return entry
+
+
+def update_last_entry_from_advance(extraction, case, advocate=None):
+    from main.models import DiaryEntry
+
+    last_entry = case.diary_entries.order_by('-next_date').first()
+    if not last_entry:
+        return None
+
+    next_date = parse_date(extraction.next_date)
+    if not next_date:
+        return None
+
+    last_entry.next_date = next_date
+    if extraction.business and extraction.business.strip():
+        last_entry.business = extraction.business.strip()
+    if extraction.stage and extraction.stage.strip():
+        last_entry.stage = extraction.stage.strip()
+    if advocate:
+        last_entry.advocate = advocate
+    last_entry.save()
+
+    from main.models import MediationStatus
+    if case.mediation_status in (MediationStatus.REFERRED, MediationStatus.ONGOING):
+        case.mediation_next_date = next_date
+        case.save()
+
+    return last_entry

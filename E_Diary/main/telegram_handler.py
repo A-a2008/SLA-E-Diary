@@ -13,7 +13,8 @@ from main.models import UserProfile, DiaryEntry, Reminder, ReminderFrequency
 from main.telegram_utils import send_message, send_group_message
 from main.telegram_bot_ai import (
     classify_message, extract_diary_entry, extract_reminder_details,
-    match_case, create_entry_from_extraction, parse_date, DiaryEntryExtraction,
+    match_case, create_entry_from_extraction, update_last_entry_from_advance,
+    parse_date, DiaryEntryExtraction,
 )
 from main.telegram_conversation import (
     get_state, set_state, clear_state, parse_yes_no,
@@ -126,6 +127,34 @@ def handle_ai_diary_entry(chat_id, text, profile):
                      f'Could not find a matching case with:\n'
                      f'{extraction.case_type or "?"}/{extraction.case_number or "?"}/{extraction.case_year or "?"} — {extraction.party_1 or "?"} vs {extraction.party_2 or "?"}\n\n'
                      f'Please check the case details and try again.')
+        return
+
+    if extraction.is_advance:
+        entry = update_last_entry_from_advance(extraction, case, advocate=profile.user)
+        if not entry:
+            send_message(chat_id, f'Could not find a previous entry for <b>{case.case_type} {case.case_number}/{case.case_year}</b> to advance.')
+            return
+
+        nxt = entry.next_date.strftime('%d-%m-%Y')
+        user_name = profile.user.get_full_name() or profile.user.username
+
+        parts = [f'✅ Advanced by <b>{user_name}</b>']
+        parts.append(f'<b>Case:</b> {case.case_type} {case.case_number}/{case.case_year}')
+        parts.append(f'<b>Parties:</b> {case.party_1} vs {case.party_2}')
+        parts.append(f'<b>Advanced To:</b> {nxt}')
+        if extraction.business and extraction.business.strip():
+            parts.append(f'<b>Business:</b> {extraction.business.strip()}')
+        if extraction.stage and extraction.stage.strip():
+            parts.append(f'<b>Stage:</b> {extraction.stage.strip()}')
+        group_msg = '\n'.join(parts)
+        send_group_message(group_msg)
+
+        reply = f'✅ Case <b>{case.case_type} {case.case_number}/{case.case_year}</b> advanced to <b>{nxt}</b>!'
+        if extraction.business and extraction.business.strip():
+            reply += f'\n\n<b>Business updated.</b>'
+        if extraction.stage and extraction.stage.strip():
+            reply += f'\n\n<b>Stage updated.</b>'
+        send_message(chat_id, reply)
         return
 
     _finalize_entry(chat_id, extraction, case, profile)
