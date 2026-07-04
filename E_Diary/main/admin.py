@@ -27,7 +27,11 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_filter = ('role',)
     search_fields = ('user__username', 'user__first_name', 'user__last_name')
 
-@admin.register(OutgoingMessage)
+@admin.register(CourtHallIncharge)
+class CourtHallInchargeAdmin(admin.ModelAdmin):
+    list_display = ('date', 'court', 'court_hall', 'is_incharge')
+    list_filter = ('date', 'court')
+    search_fields = ('court_hall',)
 class OutgoingMessageAdmin(admin.ModelAdmin):
     list_display = ('chat_id', 'text', 'created_at', 'sent', 'sent_at')
     list_filter = ('sent',)

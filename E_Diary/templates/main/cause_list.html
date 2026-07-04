@@ -85,7 +85,13 @@
                             <td>
                                 {% with effective_court=entry.mediation_court|default:entry.case.court %}
                                 {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
-                                {{ court_labels|dict_key:effective_court }}, {{ effective_hall }}<br>
+                                {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
+                                {{ court_labels|dict_key:effective_court }}, {{ effective_hall }}
+                                {% if hall_key in court_hall_incharges %}
+                                <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
+                                {% endif %}
+                                <br>
+                                {% endwith %}
                                 {% endwith %}
                                 {% endwith %}
                                 <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
@@ -111,6 +117,18 @@
             {% endfor %}
 
             <div id="save-section" style="margin-top: 1.5rem; display:none;">
+                <div id="incharge-section" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px;">
+                    <h4 style="margin: 0 0 0.5rem 0;">Mark Incharge Court Halls</h4>
+                    {% for court_code, hall_name in court_halls_on_date %}
+                    {% with ch_key=court_code|stringformat:"s"|add:"__"|add:hall_name %}
+                    <label style="display: inline-block; margin-right: 1.5rem; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="incharge_{{ ch_key }}" value="1"
+                               {% if ch_key in court_hall_incharges %}checked{% endif %}>
+                        {{ court_labels|dict_key:court_code }}, {{ hall_name }}
+                    </label>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
                 <input type="submit" value="Save Cause List Numbers" class="primary">
             </div>
         </form>

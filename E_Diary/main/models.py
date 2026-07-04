@@ -239,3 +239,20 @@ class OutgoingMessage(models.Model):
 class TelegramUpdate(models.Model):
     update_id = models.BigIntegerField(primary_key=True)
     processed_at = models.DateTimeField(auto_now_add=True)
+
+
+class CourtHallIncharge(models.Model):
+    date = models.DateField()
+    court = models.CharField(max_length=100)
+    court_hall = models.CharField(max_length=100)
+    is_incharge = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['date', 'court', 'court_hall']
+        verbose_name = 'Court Hall Incharge'
+        verbose_name_plural = 'Court Hall Inchargs'
+
+    def __str__(self):
+        return f"{self.court_hall} on {self.date} ({'incharge' if self.is_incharge else 'not'})"

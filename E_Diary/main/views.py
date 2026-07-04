@@ -17,7 +17,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder
+from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder, CourtHallIncharge
 from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
@@ -816,6 +816,29 @@ def cause_list(request):
 
         if not errors and updated:
             messages.success(request, f'{updated} cause list number(s) updated.')
+
+        # Save incharge checkboxes
+        try:
+            date_obj_incharge = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            date_obj_incharge = None
+        if date_obj_incharge:
+            incharge_keys = set()
+            for key in request.POST:
+                if key.startswith('incharge_'):
+                    court_hall_key = key[len('incharge_'):]
+                    incharge_keys.add(court_hall_key)
+            CourtHallIncharge.objects.filter(date=date_obj_incharge).delete()
+            for ch_key in incharge_keys:
+                parts = ch_key.split('__', 1)
+                if len(parts) == 2:
+                    CourtHallIncharge.objects.create(
+                        date=date_obj_incharge,
+                        court=parts[0],
+                        court_hall=parts[1],
+                        is_incharge=True,
+                    )
+
         return redirect(f'{request.path}?date={date_str}')
 
     if date_str:
@@ -890,6 +913,11 @@ def cause_list(request):
         key = f"{n.court}__{n.court_hall}"
         court_hall_notes[key] = n.note
 
+    court_hall_incharges = set()
+    if date_str and date_obj:
+        for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
+            court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
+
     unique_hall_keys = []
     seen = set()
     for e in entries:
@@ -916,6 +944,8 @@ def cause_list(request):
         'court_labels': COURT_LABELS, 'errors': errors,
         'court_hall_notes': court_hall_notes,
         'unique_hall_keys': unique_hall_keys,
+        'court_hall_incharges': court_hall_incharges,
+        'court_halls_on_date': court_halls_on_date,
     })
 
 
