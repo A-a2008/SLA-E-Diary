@@ -117,20 +117,48 @@
             {% endfor %}
 
             <div id="save-section" style="margin-top: 1.5rem; display:none;">
-                <div id="incharge-section" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px;">
-                    <h4 style="margin: 0 0 0.5rem 0;">Mark Incharge Court Halls</h4>
+                <div id="incharge-section" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9;">
+                    <h4 style="margin: 0 0 0.75rem 0; color: #333;">Mark Incharge Court Halls</h4>
+                    <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: #777;">Click a court hall to toggle it as incharge for this date.</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                     {% for court_code, hall_name in court_halls_on_date %}
                     {% with ch_key=court_code|stringformat:"s"|add:"__"|add:hall_name %}
-                    <label style="display: inline-block; margin-right: 1.5rem; margin-bottom: 0.5rem; cursor: pointer;">
+                    <label class="incharge-btn" data-key="{{ ch_key }}"
+                           style="display: inline-flex; align-items: center; gap: 0.4rem;
+                                  padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer;
+                                  font-size: 0.85rem; font-weight: 600; user-select: none;
+                                  transition: all 0.15s ease;
+                                  border: 2px solid #ccc; background: #fff; color: #555;
+                                  {% if ch_key in court_hall_incharges %}
+                                  border-color: #f2849e; background: #f2849e; color: #fff;
+                                  {% endif %}">
                         <input type="checkbox" name="incharge_{{ ch_key }}" value="1"
-                               {% if ch_key in court_hall_incharges %}checked{% endif %}>
+                               {% if ch_key in court_hall_incharges %}checked{% endif %}
+                               style="display: none;">
+                        <span class="incharge-indicator" style="font-size: 1.1rem;">
+                            {% if ch_key in court_hall_incharges %}★{% else %}☆{% endif %}
+                        </span>
                         {{ court_labels|dict_key:court_code }}, {{ hall_name }}
                     </label>
                     {% endwith %}
                     {% endfor %}
+                    </div>
                 </div>
                 <input type="submit" value="Save Cause List Numbers" class="primary">
             </div>
+
+            <script>
+                document.querySelectorAll('.incharge-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        var cb = this.querySelector('input[type=checkbox]');
+                        cb.checked = !cb.checked;
+                        this.style.borderColor = cb.checked ? '#f2849e' : '#ccc';
+                        this.style.background = cb.checked ? '#f2849e' : '#fff';
+                        this.style.color = cb.checked ? '#fff' : '#555';
+                        this.querySelector('.incharge-indicator').textContent = cb.checked ? '★' : '☆';
+                    });
+                });
+            </script>
         </form>
 
         <script>
