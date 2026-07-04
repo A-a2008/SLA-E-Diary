@@ -903,11 +903,16 @@ def cause_list(request):
         except ValueError:
             pass
 
-    court_halls_on_date = set()
+    court_halls_on_date = []
+    seen_halls = set()
     if date_str:
         for e in entries:
-            court_halls_on_date.add((getattr(e, 'mediation_court', None) or e.case.court,
-                                     getattr(e, 'mediation_court_hall', None) or e.case.court_hall))
+            court = getattr(e, 'mediation_court', None) or e.case.court
+            hall = getattr(e, 'mediation_court_hall', None) or e.case.court_hall
+            key = (court, hall)
+            if key not in seen_halls:
+                seen_halls.add(key)
+                court_halls_on_date.append(key)
     court_hall_notes = dict()
     for n in CourtHallNote.objects.all():
         key = f"{n.court}__{n.court_hall}"
