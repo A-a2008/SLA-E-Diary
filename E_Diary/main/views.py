@@ -993,7 +993,12 @@ def cause_list_docx(request):
     for de in diary_entries_for_stage:
         stage_by_case[de['case_id']] = de['stage']
         if de['entry_type'] == 'mediation':
-            mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
+            mc = de['court']
+            mh = de['court_hall']
+            if mc not in COURT_TO_BUILDING:
+                mc = 'Karnataka Mediation Centre'
+                mh = 'Mediation'
+            mediation_court_by_case[de['case_id']] = (mc, mh)
     for e in entries:
         e.stage = stage_by_case.get(e.case.id, '')
         if e.case.id in mediation_court_by_case:
@@ -1008,6 +1013,10 @@ def cause_list_docx(request):
     ))
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
+
+    court_hall_incharges = set()
+    for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
+        court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
 
     doc = Document()
 
@@ -1056,7 +1065,9 @@ def cause_list_docx(request):
                 effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
                 effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
                 effective_court_label = COURT_LABELS.get(effective_court, effective_court)
-                run = p.add_run(f"{effective_court_label}, {effective_hall}\n{case_num}\n")
+                ch_key = f"{effective_court}__{effective_hall}"
+                incharge_tag = ' ★ Incharge' if ch_key in court_hall_incharges else ''
+                run = p.add_run(f"{effective_court_label}, {effective_hall}{incharge_tag}\n{case_num}\n")
                 run.font.size = Pt(9)
                 run1 = p.add_run(entry.case.party_1)
                 run1.bold = entry.case.represents_party_1
@@ -1114,7 +1125,12 @@ def cause_list_pdf(request):
     for de in diary_entries_for_stage:
         stage_by_case[de['case_id']] = de['stage']
         if de['entry_type'] == 'mediation':
-            mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
+            mc = de['court']
+            mh = de['court_hall']
+            if mc not in COURT_TO_BUILDING:
+                mc = 'Karnataka Mediation Centre'
+                mh = 'Mediation'
+            mediation_court_by_case[de['case_id']] = (mc, mh)
     for e in entries:
         e.stage = stage_by_case.get(e.case.id, '')
         if e.case.id in mediation_court_by_case:
@@ -1139,10 +1155,26 @@ def cause_list_pdf(request):
         actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
         building_groups.append((actual_code, list(group)))
 
+    court_hall_incharges = set()
+    for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
+        court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
+
+    court_halls_on_date = []
+    seen_halls = set()
+    for e in entries:
+        court = getattr(e, 'mediation_court', None) or e.case.court
+        hall = getattr(e, 'mediation_court_hall', None) or e.case.court_hall
+        key = (court, hall)
+        if key not in seen_halls:
+            seen_halls.add(key)
+            court_halls_on_date.append(key)
+
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'building_groups': building_groups,
         'date_str': date_str, 'date_obj': date_obj,
         'court_labels': COURT_LABELS, 'court_to_building': COURT_TO_BUILDING,
+        'court_hall_incharges': court_hall_incharges,
+        'court_halls_on_date': court_halls_on_date,
     }).content.decode()
 
     pdf_file = BytesIO()
