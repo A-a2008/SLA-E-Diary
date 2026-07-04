@@ -170,6 +170,9 @@ def _finalize_entry(chat_id, extraction, case, profile):
     nxt = entry.next_date.strftime('%d-%m-%Y')
     user_name = profile.user.get_full_name() or profile.user.username
 
+    dual_mediation = getattr(entry, '_mediation_entry_created', False)
+    mediation_nxt = getattr(entry, '_mediation_next_date', None)
+
     entry_message = (
         f'✅ New diary entry by <b>{user_name}</b>\n\n'
         f'<b>Case:</b> {case.case_type} {case.case_number}/{case.case_year}\n'
@@ -179,14 +182,21 @@ def _finalize_entry(chat_id, extraction, case, profile):
         f'<b>Business:</b> {entry.business}\n'
         f'<b>Stage:</b> {entry.stage or "—"}'
     )
+    if dual_mediation and mediation_nxt:
+        entry_message += f'\n\n📅 <b>Mediation also scheduled on:</b> {mediation_nxt.strftime("%d-%m-%Y")}'
     send_group_message(entry_message)
-    send_message(chat_id,
-                 f'✅ Diary entry created for <b>{case.case_type} {case.case_number}/{case.case_year}</b>!\n\n'
-                 f'<b>Appearance:</b> {prev}\n'
-                 f'<b>Next Date:</b> {nxt}\n'
-                 f'<b>Business:</b> {entry.business}\n'
-                 f'<b>Stage:</b> {entry.stage or "—"}\n\n'
-                 f'You can view/edit it on the website.')
+
+    reply = (
+        f'✅ Diary entry created for <b>{case.case_type} {case.case_number}/{case.case_year}</b>!\n\n'
+        f'<b>Appearance:</b> {prev}\n'
+        f'<b>Next Date:</b> {nxt}\n'
+        f'<b>Business:</b> {entry.business}\n'
+        f'<b>Stage:</b> {entry.stage or "—"}'
+    )
+    if dual_mediation and mediation_nxt:
+        reply += f'\n\n📅 <b>Mediation also scheduled on:</b> {mediation_nxt.strftime("%d-%m-%Y")}'
+    reply += '\n\nYou can view/edit it on the website.'
+    send_message(chat_id, reply)
 
     needs_reminder_check = extraction.is_mediation and not extraction.mediation_clarification_needed
     if needs_reminder_check:
@@ -228,6 +238,9 @@ def _handle_mediation_clarification(chat_id, text, state, profile):
     elif text_lower in ('mediation', '2', '2️⃣'):
         extraction_data['is_mediation'] = True
         extraction_data['mediation_clarification_needed'] = None
+        if extraction_data.get('mediation_next_date'):
+            extraction_data['next_date'] = extraction_data['mediation_next_date']
+            extraction_data['mediation_next_date'] = None
     else:
         send_message(chat_id, 'Please reply with "court" or "mediation".')
         return

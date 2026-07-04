@@ -30,6 +30,7 @@ class DiaryEntryExtraction(BaseModel):
     party_2: Optional[str] = Field(description="Second party name")
     previous_date: Optional[str] = Field(description="Date of court appearance (DD-MM-YYYY). If the user says 'today' or doesn't mention a previous date, leave this blank.")
     next_date: Optional[str] = Field(description="Next hearing date (DD-MM-YYYY). This MUST be present. For advance messages, this is the NEW date the case is being advanced to.")
+    mediation_next_date: Optional[str] = Field(description="If the message mentions a SEPARATE mediation date that is different from the court next_date, extract it here in DD-MM-YYYY format. For example: 'mediation date 6/7, before court 7/9' → next_date='09-07-2026', mediation_next_date='06-07-2026'. Only set this if a distinct mediation date is explicitly mentioned alongside a court next_date.")
     business: str = Field(description="What happened in court today — the proceedings/status/order description. Keep it concise but informative.")
     stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Meditation')")
     mentions_reminder: Optional[bool] = Field(description="Whether the user mentioned anything about reminders at all (true/false/null if unclear)")
@@ -82,6 +83,7 @@ Rules:
  - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments', 'Mediation'. NEVER leave this blank — infer from context.
  - mentions_reminder: Did the user say anything about reminders?
  - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
+ - mediation_next_date: ONLY set this when the message explicitly mentions a SEPARATE mediation date that is DIFFERENT from the court next_date. When the user says something like "mediation date 6/7, before court 7/9" or "mediation date 6/7. next date before court 7/9", set next_date='09-07-2026' (the court date) and mediation_next_date='06-07-2026' (the mediation date). If only a mediation date is mentioned with no separate court date, do NOT set this — just set next_date to the mediation date and is_mediation=True.
 
 ADVANCE DETECTION (IMPORTANT):
 - is_advance = True when the user is advancing/changing/preponing/postponing an existing case's next hearing date.
@@ -103,7 +105,9 @@ Examples:
 - "Attended mediation centre, session with mediator Mr. Kumar, settlement talks ongoing, next mediation 22-07" → is_mediation=True, is_advance=False, mediation_clarification_needed=null
 - "The case went for mediation, next date is 15-07" → mediation_clarification_needed=True, is_mediation=False, is_advance=False (unclear if court or mediation centre)
 - "CC 6759/23 advanced to 06-07-2026" → is_advance=True, next_date='06-07-2026', business='Advance application filed', is_mediation=False
-- "Advance application filed for OS 1719/26, next date 01-07-2026, evidence of PW2" → is_advance=True, next_date='01-07-2026', stage='Evidence of PW2', business='Advance application allowed' '''),
+- "Advance application filed for OS 1719/26, next date 01-07-2026, evidence of PW2" → is_advance=True, next_date='01-07-2026', stage='Evidence of PW2', business='Advance application allowed'
+- "MC/2423/26, Vaishali vs. Venkatesh, filed vakalat on behalf of respondent. matter referred to mediation. mediation date 6/7. before court 7/9" → is_mediation=False, is_advance=False, next_date='09-07-2026', mediation_next_date='06-07-2026', business='Filed vakalat on behalf of respondent. Matter referred to mediation.', stage='Referred to Mediation'
+- "OS 1234/25, parties attended mediation centre, mediation failed, next date 15-08-2026 for further proceedings" → is_mediation=True, is_advance=False, next_date='15-08-2026', mediation_next_date=null, business='Parties attended mediation centre. Mediation failed.', stage='Mediation Failed' '''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
@@ -272,7 +276,62 @@ def create_entry_from_extraction(extraction, case, advocate=None):
 
     is_mediation = extraction.is_mediation and not extraction.mediation_clarification_needed
     clarification_needed = extraction.mediation_clarification_needed
+    mediation_next_date = parse_date(extraction.mediation_next_date)
 
+    # Check if mediation_next_date also needs year correction
+    if mediation_next_date and mediation_next_date < today - datetime.timedelta(days=180):
+        mediation_next_date = mediation_next_date.replace(year=today.year)
+
+    # --- DUAL ENTRY: both a court next_date and a separate mediation date ---
+    if mediation_next_date and not is_mediation:
+        case.mediation_status = MediationStatus.REFERRED
+        case.mediation_next_date = mediation_next_date
+        case.save()
+
+        # Create mediation diary entry
+        create_diary_entry(
+            case=case,
+            entry_type='mediation',
+            previous_date=previous_date,
+            court='Karnataka Mediation Centre',
+            court_hall='Mediation',
+            floor=0,
+            case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+            representing=case.representing,
+            stage='Mediation',
+            business=extraction.business.strip(),
+            next_date=mediation_next_date,
+            advocate=advocate,
+            representing_parties=case.representing_parties,
+            party_1_total=case.party_1_total,
+            party_2_total=case.party_2_total,
+        )
+
+        # Create regular court diary entry
+        court = COURT_LABELS.get(case.court, case.court)
+        entry = create_diary_entry(
+            case=case,
+            entry_type='business',
+            previous_date=previous_date,
+            court=court,
+            court_hall=case.court_hall,
+            floor=case.floor,
+            case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
+            representing=case.representing,
+            stage=(extraction.stage or '').strip(),
+            business=extraction.business.strip(),
+            next_date=next_date,
+            advocate=advocate,
+            representing_parties=case.representing_parties,
+            party_1_total=case.party_1_total,
+            party_2_total=case.party_2_total,
+        )
+        # Attach mediation info for the caller
+        entry._mediation_entry_created = True
+        entry._mediation_next_date = mediation_next_date
+        return entry
+
+    # --- SINGLE MEDIATION ENTRY ---
     if is_mediation:
         case.mediation_status = MediationStatus.REFERRED
         case.mediation_next_date = next_date
@@ -317,7 +376,7 @@ def create_entry_from_extraction(extraction, case, advocate=None):
 
 
 def update_last_entry_from_advance(extraction, case, advocate=None):
-    from main.models import DiaryEntry
+    from main.models import DiaryEntry, MediationStatus
 
     today = datetime.date.today()
     last_entry = case.diary_entries.order_by('-next_date').first()
@@ -340,9 +399,22 @@ def update_last_entry_from_advance(extraction, case, advocate=None):
         last_entry.advocate = advocate
     last_entry.save()
 
-    from main.models import MediationStatus
     if case.mediation_status in (MediationStatus.REFERRED, MediationStatus.ONGOING):
         case.mediation_next_date = next_date
+        case.save()
+
+    mediation_next_date = parse_date(extraction.mediation_next_date)
+    if mediation_next_date and mediation_next_date < today - datetime.timedelta(days=180):
+        mediation_next_date = mediation_next_date.replace(year=today.year)
+
+    if mediation_next_date:
+        # Also update the last mediation diary entry if one exists
+        last_mediation = case.diary_entries.filter(entry_type='mediation').order_by('-next_date').first()
+        if last_mediation:
+            last_mediation.next_date = mediation_next_date
+            last_mediation.save()
+        case.mediation_status = MediationStatus.REFERRED
+        case.mediation_next_date = mediation_next_date
         case.save()
 
     return last_entry

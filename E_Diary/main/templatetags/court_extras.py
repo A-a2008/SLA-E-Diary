@@ -21,7 +21,7 @@ def building_label(building_code):
 
 @register.filter
 def dict_key(d, key):
-    return d.get(key, '')
+    return d.get(key, key)
 
 
 @register.filter

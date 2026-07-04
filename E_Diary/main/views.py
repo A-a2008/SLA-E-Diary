@@ -271,14 +271,20 @@ def diary_entry(request):
     today = datetime.date.today()
     case_list = list(cases)
 
+    def _closest_to_today(*dates):
+        valid = [d for d in dates if d is not None]
+        if not valid:
+            return None
+        future = [d for d in valid if d >= today]
+        if future:
+            return min(future)
+        return max(valid)
+
     def sort_key(case):
-        nd = None
-        if case.mediation_status in ('referred', 'ongoing') and case.mediation_next_date:
-            nd = case.mediation_next_date
-        else:
-            last_entry = case.diary_entries.order_by('-next_date').first()
-            if last_entry:
-                nd = last_entry.next_date
+        mediation_date = case.mediation_next_date if case.mediation_status in ('referred', 'ongoing') else None
+        last_entry = case.diary_entries.order_by('-next_date').first()
+        court_date = last_entry.next_date if last_entry else None
+        nd = _closest_to_today(mediation_date, court_date)
         if nd is None:
             return (0, datetime.date.min, -case.id)
         if nd >= today:
@@ -289,19 +295,17 @@ def diary_entry(request):
 
     for case in case_list:
         case.court_display_name = COURT_LABELS.get(case.court, case.court)
-        if case.mediation_status in ('referred', 'ongoing') and case.mediation_next_date:
-            case.next_date = case.mediation_next_date
+        mediation_date = case.mediation_next_date if case.mediation_status in ('referred', 'ongoing') else None
+        last_entry = case.diary_entries.order_by('-next_date').first()
+        court_date = last_entry.next_date if last_entry else None
+        case.next_date = _closest_to_today(mediation_date, court_date)
+        case.is_mediation = (case.next_date == mediation_date and mediation_date is not None)
+        if case.is_mediation:
             case.prev_date = None
-            case.is_mediation = True
+        elif last_entry:
+            case.prev_date = last_entry.previous_date
         else:
-            case.is_mediation = False
-            last_entry = case.diary_entries.order_by('-next_date').first()
-            if last_entry:
-                case.next_date = last_entry.next_date
-                case.prev_date = last_entry.previous_date
-            else:
-                case.next_date = None
-                case.prev_date = None
+            case.prev_date = None
 
     paginator = Paginator(case_list, 20)
     page_number = request.GET.get('page', 1)
@@ -583,9 +587,10 @@ def edit_business(request, entry_id):
 
     if request.method == 'POST':
         entry.previous_date = (request.POST.get('previous_date') or '').strip()
-        entry.court = COURT_LABELS.get(entry.case.court, entry.case.court)
-        entry.court_hall = entry.case.court_hall
-        entry.floor = entry.case.floor
+        if entry.entry_type != 'mediation':
+            entry.court = COURT_LABELS.get(entry.case.court, entry.case.court)
+            entry.court_hall = entry.case.court_hall
+            entry.floor = entry.case.floor
         entry.case_number_display = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
         entry.representing = (request.POST.get('representing') or entry.case.representing).strip()
         entry.stage = (request.POST.get('stage') or '').strip()
@@ -663,14 +668,26 @@ def case_search(request):
 
     case_list.sort(key=sort_key, reverse=True)
 
+    today = datetime.date.today()
+
+    def _closest_to_today(*dates):
+        valid = [d for d in dates if d is not None]
+        if not valid:
+            return None
+        future = [d for d in valid if d >= today]
+        if future:
+            return min(future)
+        return max(valid)
+
     for case in case_list:
         case.court_display_name = COURT_LABELS.get(case.court, case.court)
+        mediation_date = case.mediation_next_date if case.mediation_status in ('referred', 'ongoing') else None
         last_entry = case.diary_entries.order_by('-next_date').first()
+        court_date = last_entry.next_date if last_entry else None
+        case.next_date = _closest_to_today(mediation_date, court_date)
         if last_entry:
-            case.next_date = last_entry.next_date
             case.prev_date = last_entry.previous_date
         else:
-            case.next_date = None
             case.prev_date = None
     return render(request, 'main/search_cases.html', {
         'today': datetime.date.today(), 'cases': case_list, 'query': query, 'court_labels': COURT_LABELS,
@@ -839,7 +856,12 @@ def cause_list(request):
             for de in diary_entries_for_stage:
                 stage_by_case[de['case_id']] = de['stage']
                 if de['entry_type'] == 'mediation':
-                    mediation_court_by_case[de['case_id']] = (de['court'], de['court_hall'])
+                    mc = de['court']
+                    mh = de['court_hall']
+                    if mc not in COURT_TO_BUILDING:
+                        mc = 'Karnataka Mediation Centre'
+                        mh = 'Mediation'
+                    mediation_court_by_case[de['case_id']] = (mc, mh)
             for e in entries:
                 e.stage = stage_by_case.get(e.case.id, '')
                 if e.case.id in mediation_court_by_case:
