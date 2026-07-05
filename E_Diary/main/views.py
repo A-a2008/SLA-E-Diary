@@ -217,6 +217,7 @@ def new_case(request):
         party_2 = (request.POST.get('party_2') or '').strip()
         party_2_type = (request.POST.get('party_2_type') or '').strip()
         representing = (request.POST.get('representing') or '').strip()
+        cnr = (request.POST.get('cnr') or '').strip()
 
         floor = int(request.POST.get('floor') or 0)
         case_year = int(request.POST.get('case_year') or 2024)
@@ -246,6 +247,7 @@ def new_case(request):
             representing_parties=representing_parties,
             party_1_total=party_1_total,
             party_2_total=party_2_total,
+            cnr=cnr,
         )
 
         CourtHallNote.objects.get_or_create(court=court, court_hall=court_hall, defaults={'note': ''})

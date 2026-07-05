@@ -31,8 +31,11 @@ def create_case(
     representing_parties: str = '1',
     party_1_total: int = 1,
     party_2_total: int = 1,
+    cnr: str = '',
 ) -> Case:
     return Case.objects.create(
+        cnr=cnr,
+        ecourts_status='pending' if cnr else '',
         jurisdiction=jurisdiction,
         court_level=court_level,
         court=court,

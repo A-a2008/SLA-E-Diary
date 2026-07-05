@@ -156,6 +156,13 @@
             </div>
             <br>
 
+            <!-- ── CNR (optional) ── -->
+            <div class="field" id="cnr-field" style="display:none;">
+                <label for="cnr">CNR Number <span style="color: #999; font-weight: normal;">(optional)</span></label>
+                <input type="text" name="cnr" id="cnr" placeholder="e.g. KABC010299112025">
+            </div>
+            <br>
+
             <!-- ── SUBMIT ── -->
             <ul class="actions" id="submit-actions" style="display:none;">
                 <li><input type="submit" value="Register Case" class="primary"></li>
@@ -493,13 +500,13 @@
         'jurisdiction-field','court-complex-field','court-hall-field','floor-field',
         'case-type-field','case-number-field','case-year-field',
         'party1-field','party1-type-field','party2-field','party2-type-field',
-        'representing-field','submit-actions'
+        'representing-field','cnr-field','submit-actions'
     ];
     var ALL_BELOW_JURISDICTION = [
         'court-complex-field','court-hall-field','floor-field',
         'case-type-field','case-number-field','case-year-field',
         'party1-field','party1-type-field','party2-field','party2-type-field',
-        'representing-field','submit-actions'
+        'representing-field','cnr-field','submit-actions'
     ];
 
     window.onCourtLevelChange = function() {
