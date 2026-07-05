@@ -1535,8 +1535,14 @@ def ecourts_update_single(request, case_id):
         if 'save_cnr' in request.POST:
             cnr = (request.POST.get('cnr', '') or '').strip()
             case.cnr = cnr
+            if cnr:
+                case.ecourts_status = 'pending'
+                msg = f'CNR saved for {case.case_type}/{case.case_number}/{case.case_year}. Case queued for eCourts sync.'
+            else:
+                case.ecourts_status = ''
+                msg = f'CNR cleared for {case.case_type}/{case.case_number}/{case.case_year}.'
             case.save()
-            messages.success(request, f'CNR saved for {case.case_type}/{case.case_number}/{case.case_year}.')
+            messages.success(request, msg)
 
         if 'fetch_ecourts' in request.POST:
             if not case.cnr:
