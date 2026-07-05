@@ -25,12 +25,8 @@ _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from ecourt_scraper.session import (
-    EcourtSession,
-    set_call_limit,
-    reset_call_counter,
-    can_call,
-)
+# ecourt_scraper.session imported lazily inside functions that need it
+# (Playwright not available on PythonAnywhere)
 
 # ---- config ----
 ECOURTS_CALL_LIMIT = 200  # enough for the full history of any case
@@ -225,6 +221,8 @@ def fetch_and_update_case(case: Case) -> dict:
     Returns:
         dict with keys: success, entries_updated, entries_created, errors, limit_reached, ecourts_available
     """
+    from ecourt_scraper.session import EcourtSession, set_call_limit, reset_call_counter
+
     reset_call_counter()
     set_call_limit(ECOURTS_CALL_LIMIT)
 
@@ -330,9 +328,6 @@ def fetch_and_update_case(case: Case) -> dict:
 
 def batch_update_all_cases() -> dict:
     """Update all cases with CNR from eCourts. Respects the 5-call limit."""
-    reset_call_counter()
-    set_call_limit(ECOURTS_CALL_LIMIT)
-
     cases = Case.objects.exclude(cnr='').exclude(cnr__isnull=True)
 
     summary = {
