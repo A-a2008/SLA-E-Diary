@@ -313,8 +313,6 @@ def fetch_and_update_case(case: Case) -> dict:
         next_hearing = item["next_hearing"]
         stage = item["stage"]
 
-        biz_text, stage = cleanup_ecourts_text(biz_text, stage)
-
         existing = DiaryEntry.objects.filter(
             case=case,
             previous_date=biz_date,

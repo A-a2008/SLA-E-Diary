@@ -89,7 +89,7 @@ def _parse_date_dmy(date_str: str):
 def scrape_case(cnr: str, skip_dates: set = None) -> dict:
     """Run the Playwright scraper locally. Returns dict with items, ecourts_available, error."""
     from ecourt_scraper.session import (
-        EcourtSession, set_call_limit, reset_call_counter, can_call,
+        EcourtSession, set_call_limit, reset_call_counter,
     )
 
     reset_call_counter()
@@ -154,6 +154,75 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
         session.close()
 
     return result
+
+
+# ============================================================
+# Groq text cleanup (runs on laptop to save PA compute)
+# ============================================================
+
+GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_FALLBACK_MODEL = "openai/gpt-oss-20b"
+GROQ_FINAL_FALLBACK = "qwen/qwen3-32b"
+
+
+def _get_groq():
+    from langchain_groq import ChatGroq
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return None
+
+    for model in [GROQ_MODEL, GROQ_FALLBACK_MODEL, GROQ_FINAL_FALLBACK]:
+        try:
+            llm = ChatGroq(api_key=api_key, model=model, temperature=0, max_retries=1, timeout=30)
+            from langchain_core.prompts import ChatPromptTemplate
+            chain = ChatPromptTemplate.from_messages([
+                ("system", "Respond concisely."),
+                ("human", "ok"),
+            ]) | llm
+            chain.invoke({})
+            return llm
+        except Exception:
+            continue
+    return None
+
+
+def cleanup_texts(items: list) -> list:
+    """Pass scraped items through Groq to fix caps, punctuation, typos."""
+    llm = _get_groq()
+    if not llm:
+        return items
+
+    from langchain_core.prompts import ChatPromptTemplate
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.
+RULES:
+1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.
+2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).
+3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.
+4. If text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.
+5. Return a JSON object with keys "business" and "stage"."""),
+        ("human", '{{"business": "{business}", "stage": "{stage}"}}'),
+    ])
+
+    from langchain_core.output_parsers import JsonOutputParser
+    parser = JsonOutputParser()
+    chain = prompt | llm | parser
+
+    cleaned = []
+    for item in items:
+        try:
+            result = chain.invoke({
+                "business": item.get("business", ""),
+                "stage": item.get("stage", ""),
+            })
+            item["business"] = (result.get("business") or item["business"]).strip()
+            item["stage"] = (result.get("stage") or item["stage"]).strip()
+        except Exception:
+            pass
+        cleaned.append(item)
+    return cleaned
 
 
 # ============================================================
@@ -227,6 +296,9 @@ def main():
                     })
                     total_processed += 1
                     continue
+
+                logger.info(f"  [{case_id}] Cleaning {len(items)} entries with Groq...")
+                items = cleanup_texts(items)
 
                 logger.info(f"  [{case_id}] Pushing {len(items)} entries...")
                 result = api_post('/api/ecourts/upsert/', {
