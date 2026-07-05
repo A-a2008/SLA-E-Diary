@@ -127,7 +127,7 @@ def ecourts_upsert(request):
     except Case.DoesNotExist:
         return JsonResponse({'error': 'Case not found'}, status=404)
 
-    from .ecourts_integration import summarize_business
+    from .ecourts_integration import summarize_business, cleanup_ecourts_text
 
     def _parse_d(v):
         if not v:
@@ -151,6 +151,8 @@ def ecourts_upsert(request):
             continue
         next_hearing = _parse_d(item.get('next_hearing'))
         stage = (item.get('stage') or '').strip()
+
+        biz_text, stage = cleanup_ecourts_text(biz_text, stage)
 
         existing = DiaryEntry.objects.filter(
             case=case, previous_date=biz_date, entry_type='business'

@@ -127,6 +127,47 @@ PAST CASE HISTORY is provided for context only — it shows how this case has pr
 
 # ---- date helpers ----
 
+def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
+    """Use Groq to fix capitalization, punctuation, and obvious typos in eCourts text.
+
+    Returns (cleaned_business, cleaned_stage) — if Groq fails, returns originals.
+    Only fixes formatting; preserves all facts, names, abbreviations, and legal terms.
+    """
+    business_text = (business_text or "").strip()
+    stage_text = (stage_text or "").strip()
+
+    if not business_text and not stage_text:
+        return (business_text, stage_text)
+
+    llm = _get_groq()
+    if not llm:
+        return (business_text, stage_text)
+
+    from langchain_core.prompts import ChatPromptTemplate
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.
+RULES:
+1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.
+2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).
+3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.
+4. If the text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.
+5. Return a JSON object with keys "business" and "stage"."""),
+        ("human", '{{"business": "{business}", "stage": "{stage}"}}'),
+    ])
+
+    try:
+        from langchain_core.output_parsers import JsonOutputParser
+        parser = JsonOutputParser()
+        chain = prompt | llm | parser
+        result = chain.invoke({"business": business_text, "stage": stage_text})
+        cleaned_biz = (result.get("business") or business_text).strip()
+        cleaned_stage = (result.get("stage") or stage_text).strip()
+        return (cleaned_biz, cleaned_stage)
+    except Exception:
+        return (business_text, stage_text)
+
+
 def _parse_date_dmy(date_str: str):
     """Parse DD-MM-YYYY string to date object."""
     if not date_str:
@@ -271,6 +312,8 @@ def fetch_and_update_case(case: Case) -> dict:
         biz_text = item["business"]
         next_hearing = item["next_hearing"]
         stage = item["stage"]
+
+        biz_text, stage = cleanup_ecourts_text(biz_text, stage)
 
         existing = DiaryEntry.objects.filter(
             case=case,
