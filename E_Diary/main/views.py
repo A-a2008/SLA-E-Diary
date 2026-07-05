@@ -1495,6 +1495,7 @@ def ecourts_update_list(request):
     ).annotate(
         has_ecourts=Exists(has_ecourts_sub),
         sort_order=DBCase(
+            When(ecourts_status='pending', then=Value(2)),
             When(has_ecourts=True, then=Value(1)),
             default=Value(0),
             output_field=IntegerField(),
