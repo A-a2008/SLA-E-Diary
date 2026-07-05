@@ -157,6 +157,29 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 
 
 # ============================================================
+# Rate limiter (26 req/min program-wide)
+# ============================================================
+
+import threading
+
+_rate_lock = threading.Lock()
+_last_call_time: float = 0
+_MIN_INTERVAL = 60.0 / 26  # ~2.3077 seconds between Groq calls
+
+
+def _wait_for_rate_limit():
+    """Block until the minimum interval since the last Groq API call has elapsed."""
+    global _last_call_time
+    with _rate_lock:
+        now = time.monotonic()
+        elapsed = now - _last_call_time
+        if elapsed < _MIN_INTERVAL:
+            sleep_for = _MIN_INTERVAL - elapsed
+            time.sleep(sleep_for)
+        _last_call_time = time.monotonic()
+
+
+# ============================================================
 # Groq text cleanup (runs on laptop to save PA compute)
 # ============================================================
 
@@ -180,6 +203,7 @@ def _get_groq():
                 ("system", "Respond concisely."),
                 ("human", "ok"),
             ]) | llm
+            _wait_for_rate_limit()
             chain.invoke({})
             return llm
         except Exception:
@@ -213,6 +237,7 @@ RULES:
     cleaned = []
     for item in items:
         try:
+            _wait_for_rate_limit()
             result = chain.invoke({
                 "business": item.get("business", ""),
                 "stage": item.get("stage", ""),
