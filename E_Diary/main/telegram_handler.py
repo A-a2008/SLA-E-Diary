@@ -14,7 +14,7 @@ from main.telegram_utils import send_message, send_group_message
 from main.telegram_bot_ai import (
     classify_message, extract_diary_entry, extract_reminder_details,
     match_case, create_entry_from_extraction, update_last_entry_from_advance,
-    parse_date, DiaryEntryExtraction,
+    handle_cnr_message, parse_date, DiaryEntryExtraction,
 )
 from main.telegram_conversation import (
     get_state, set_state, clear_state, parse_yes_no,
@@ -327,8 +327,33 @@ def process_update(update):
         send_message(chat_id, 'Sorry, I had trouble processing that message. Please try again.')
         return
 
-    if not classification.is_diary_entry:
-        send_message(chat_id, 'I can only process diary entry updates. Please send a message with case details (case type, number, year, and what happened in court).')
+    msg_type = classification.message_type
+
+    if msg_type == 'cnr':
+        cnr = (classification.cnr or '').strip()
+        if not cnr:
+            # Try to extract CNR directly from text (16-char alphanumeric)
+            import re
+            m = re.search(r'\b([A-Z0-9]{16})\b', text.upper())
+            if m:
+                cnr = m.group(1)
+        if cnr:
+            result = handle_cnr_message(cnr, text)
+            reply = result['message']
+            if result['case']:
+                reply += f'\n\nYou can now fetch eCourts data from the website.'
+            send_message(chat_id, reply)
+        else:
+            send_message(chat_id, 'I detected a CNR reference but couldn\'t extract the 16-character code. Please send the CNR number clearly.')
         return
 
+    if msg_type == 'case_update':
+        send_message(chat_id, 'This looks like an eCourts case update notice. I can\'t process these automatically yet. Please forward the CNR number separately for integration.')
+        return
+
+    if msg_type == 'unrelated':
+        send_message(chat_id, 'I can only process diary entry updates. Please send a message with case details (case type, number, year, and what happened in court), or a CNR number for eCourts integration.')
+        return
+
+    # diary_entry — existing flow
     handle_ai_diary_entry(chat_id, text, profile)

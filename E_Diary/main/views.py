@@ -1475,6 +1475,77 @@ def send_reminders_now(request):
     return redirect(request.META.get('HTTP_REFERER', 'home'))
 
 
+# ── ECOURTS UPDATE ──
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser or (hasattr(u, 'userprofile') and u.userprofile.role == UserRole.ADMIN))
+def ecourts_update_list(request):
+    """List cases and allow CNR entry + eCourts fetch trigger."""
+    from django.db.models import Exists, OuterRef, Value, IntegerField
+    from django.db.models import Case as DBCase, When
+
+    q = request.GET.get('q', '').strip()
+
+    has_ecourts_sub = DiaryEntry.objects.filter(
+        case=OuterRef('pk'), entry_type='business'
+    ).exclude(ecourts_business='').exclude(ecourts_business__isnull=True)
+
+    cases = Case.objects.exclude(
+        ecourts_status__in=['done', 'unsupported', 'no_data']
+    ).annotate(
+        has_ecourts=Exists(has_ecourts_sub),
+        sort_order=DBCase(
+            When(has_ecourts=True, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+    ).order_by('sort_order', '-id')
+
+    if q:
+        cases = cases.filter(
+            Q(case_number__icontains=q) |
+            Q(case_type__icontains=q) |
+            Q(case_year__icontains=q) |
+            Q(cnr__icontains=q) |
+            Q(party_1__icontains=q) |
+            Q(party_2__icontains=q)
+        )
+
+    paginator = Paginator(cases, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'main/ecourts_update.html', {
+        'page_obj': page_obj,
+        'cases': page_obj.object_list,
+        'q': q,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser or (hasattr(u, 'userprofile') and u.userprofile.role == UserRole.ADMIN))
+def ecourts_update_single(request, case_id):
+    """Handle POST: update CNR and/or trigger eCourts fetch for a case."""
+    case = get_object_or_404(Case, id=case_id)
+
+    if request.method == 'POST':
+        if 'save_cnr' in request.POST:
+            cnr = (request.POST.get('cnr', '') or '').strip()
+            case.cnr = cnr
+            case.save()
+            messages.success(request, f'CNR saved for {case.case_type}/{case.case_number}/{case.case_year}.')
+
+        if 'fetch_ecourts' in request.POST:
+            if not case.cnr:
+                messages.error(request, 'No CNR set. Save a CNR first.')
+            else:
+                case.ecourts_status = 'pending'
+                case.save()
+                messages.success(request, f'Case queued for eCourts sync (status: pending). Run sync_ecourts.py on your laptop to fetch the data.')
+
+    return redirect('ecourts_update_list')
+
+
 # ── HOME ──
 
 @login_required

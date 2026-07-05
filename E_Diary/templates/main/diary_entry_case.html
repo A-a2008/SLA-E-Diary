@@ -50,6 +50,9 @@
                 <span><strong>Hall:</strong> {{ case.court_hall }} | <strong>Floor:</strong> {{ case.floor }}</span>
                 <span><strong>Jurisdiction:</strong> {{ case.get_jurisdiction_display }}</span>
                 <span><strong>Level:</strong> {{ case.get_court_level_display }}</span>
+                {% if case.cnr %}
+                <span><strong>CNR:</strong> <code style="font-size: 0.8rem;">{{ case.cnr }}</code></span>
+                {% endif %}
                 {% if case.mediation_status != mediation_statuses.NONE and case.mediation_next_date %}
                 <span><strong>Mediation Date:</strong> {{ case.mediation_next_date|date:"d M Y" }}</span>
                 {% endif %}
@@ -132,13 +135,36 @@
                         <a href="{% url 'edit_business' entry.id %}" class="button small" style="font-size: 0.8rem;">Edit</a>
                     </div>
                 </div>
+                {% if entry.business_summary %}
+                <div style="margin: 0.75rem 0 0.5rem 0; white-space: pre-wrap;">{{ entry.business_summary }}</div>
+                {% if entry.business or entry.ecourts_business %}
+                <details style="margin-top: 0.4rem; font-size: 0.85rem; color: #777;">
+                    <summary style="cursor: pointer; color: #999;">View source data</summary>
+                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fafafa; border-radius: 4px;">
+                        {% if entry.business %}
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Advocate Notes:</strong>
+                            <div style="white-space: pre-wrap; margin-top: 0.25rem;">{{ entry.business }}</div>
+                        </div>
+                        {% endif %}
+                        {% if entry.ecourts_business %}
+                        <div>
+                            <strong>eCourts Record:</strong>
+                            <div style="white-space: pre-wrap; margin-top: 0.25rem;">{{ entry.ecourts_business }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </details>
+                {% endif %}
+                {% else %}
                 <p style="margin: 0.75rem 0 0.5rem 0; white-space: pre-wrap;">{{ entry.business }}</p>
+                {% endif %}
                 <div style="font-size: 0.95em; color: #585858; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
                     <span><strong>Court:</strong> {{ entry.court }}</span>
                     <span><strong>Hall:</strong> {{ entry.court_hall }}, Floor {{ entry.floor }}</span>
                     <span><strong>Case:</strong> {{ entry.case_number_display }}</span>
                     <span><strong>Representing:</strong> {{ entry.representing }}{% if entry.representing_parties != '1' %} ({{ entry.representing_parties }}){% endif %}</span>
-                    <span><strong>Advocate:</strong> {{ entry.advocate.get_full_name|default:entry.advocate.username|default:"—" }}</span>
+                    <span><strong>Advocate:</strong> {% if entry.advocate %}{{ entry.advocate.get_full_name|default:entry.advocate.username }}{% else %}—{% endif %}</span>
                     {% if entry.mediation_time %}<span><strong>Time:</strong> {{ entry.mediation_time|time:"h:i A" }}</span>{% endif %}
                     <span><strong>Entered:</strong> {{ entry.created_at|date:"d M Y h:i A" }}</span>
                 </div>

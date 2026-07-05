@@ -110,6 +110,9 @@ class Case(models.Model):
     party_1_total = models.IntegerField(default=1)
     party_2_total = models.IntegerField(default=1)
     disposed = models.BooleanField(default=False)
+    cnr = models.CharField(max_length=50, blank=True, default='')
+    ecourts_status = models.CharField(max_length=20, blank=True, default='')
+    ecourts_last_checked = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.case_type} {self.case_number}/{self.case_year} — {self.party_1} vs {self.party_2}"
@@ -146,6 +149,8 @@ class DiaryEntry(models.Model):
     party_2_total = models.IntegerField(default=1)
     stage = models.CharField(max_length=100)
     business = models.TextField()
+    ecourts_business = models.TextField(blank=True, default='')
+    business_summary = models.TextField(blank=True, default='')
     next_date = models.DateField()
     mediation_time = models.TimeField(null=True, blank=True)
     advocate = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -159,6 +164,21 @@ class DiaryEntry(models.Model):
     @property
     def represents_party_2(self):
         return self.representing == self.case.party_2_type
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        if not is_new:
+            old = DiaryEntry.objects.filter(pk=self.pk).values('business', 'ecourts_business').first()
+            if old:
+                biz_changed = old['business'] != self.business
+                ec_changed = old['ecourts_business'] != self.ecourts_business
+                if biz_changed or ec_changed:
+                    if self.business or self.ecourts_business:
+                        from .ecourts_integration import summarize_business
+                        self.business_summary = summarize_business(
+                            self.business, self.ecourts_business, case=self.case
+                        )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Diary Entry for {self.case} on {self.previous_date}"

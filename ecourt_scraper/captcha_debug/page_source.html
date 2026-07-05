@@ -1,0 +1,613 @@
+<!DOCTYPE html><html lang="en"><head>
+	<title>Home - eCourt India Services</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+	<meta name="description" content="eCourts Services Portal - Get real-time case status, court orders, cause lists, caveats, and court locations across India.">
+	<meta name="author" content="eCommittee, Supreme Court of India">
+	<meta name="keywords" content="eCourts, Indian Judiciary, Case Status, Court Orders, Cause List, High Court, District Court, eCommittee">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="robots" content="index, follow">
+	<meta http-equiv="content-language" content="en">
+	<!-- Open Graph -->
+	<meta property="og:title" content="eCourts Services Portal">
+	<meta property="og:description" content="Access case status, court orders, cause lists, and court information online across India.">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://services.ecourts.gov.in/">
+	<meta property="og:image" content="https://services.ecourts.gov.in/ecourtindia_v6/images/ecourts-logo.png">
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="eCourts Services Portal">
+	<meta name="twitter:description" content="Check case status, court orders, cause lists, and more from Indian courts.">
+	<meta name="twitter:image" content="https://services.ecourts.gov.in/ecourtindia_v6/images/ecourts-logo.png">
+	<script src="/ecourtindia_v6/vendor/jquery/jquery.min.js"></script>
+	<script src="/ecourtindia_v6/dist1/js/jquery.validate.min.js" type="text/javascript"></script>
+	
+	<!--<script src="/ecourtindia_v6/dist1/js/chosen.jquery.min.js"></script>	
+	<link href="/ecourtindia_v6/dist1/css/chosen.min.css" rel="stylesheet">	-->
+	<script src="/ecourtindia_v6/jquery-date/js/jquery-ui.js"></script>
+	<link rel="stylesheet" href="/ecourtindia_v6/jquery-date/jquery-ui.css">
+	<script src="/ecourtindia_v6/js/components.js"></script>
+	<!--<script src="/ecourtindia_v6/csrf-magic.js"></script>
+	
+	<link href="/ecourtindia_v6/dist1/vendor/bootstrap5/css/bootstrap.css" rel="stylesheet">-->   
+	<script src="/ecourtindia_v6/dist1/vendor/UX4G/js/ux4g.min.js"></script>	
+	<link href="/ecourtindia_v6/dist1/vendor/UX4G/css/ux4g-min.css" rel="stylesheet">
+   <link href="/ecourtindia_v6/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <!-- Custom styles for this template -->
+  
+  <link href="css/mystyle.css" rel="stylesheet">
+  
+<link href="css/jquery-scrollify-style.css" rel="stylesheet">
+  <script src="/ecourtindia_v6/js/myscript.js"></script>
+  <script src="/ecourtindia_v6/js/jQuery.highlight.js"></script>
+  <script src="/ecourtindia_v6/js/jquery.scrollify.js"></script>
+  <script type="text/javascript" src="pramukhime/js/pramukhime.js"></script>
+  <script type="text/javascript" src="pramukhime/js/pramukhindic.js"></script>
+
+    <style>
+    .alert {
+	    padding: 0px;
+	    margin-bottom: 2px;
+	    border: 1px solid transparent;
+	    border-radius: 4px;
+	}
+ 	label.error {
+	    color: red;
+	    font-size: 12px;
+		font-weight: normal !important;
+    }
+</style>
+<script>
+var labels_array;
+var buttons_array;
+var alerts_array;
+$(document).ready(function(){
+
+	////For Right click and f12 disable///////
+	/*document.addEventListener('contextmenu',event => event.preventDefault());
+	document.onkeydown = function (event) {  
+	event = (event || window.event);  
+		if (event.keyCode == 123) {  
+			return false;  
+		}  
+	}  */
+	//////End /////////////
+   $('.sidebar-nav').height($(window).height())-50;
+});
+</script>
+</head>
+<body class="">
+	<input type="hidden" name="base_url" id="base_url" value="/ecourtindia_v6">
+	<input type="hidden" id="hidSelLang" name="hidSelLang" value="english">
+	<input type="hidden" id="lang_choice" name="lang_choice" value="english">
+	
+  <!-- Topbar 
+        <nav class="navbar navbar-expand navbar-light bg-info text-white topbar static-top border-bottom" id='topbar'>
+		<a class="align-items-center justify-content-center mr-2 text-decoration-none" href="/ecourtindia_v6/?p=home">
+        <img src="images/ecourts-logo.png" id='appl_logo'  alt="eCourts LOGO" style="width: 40px" />
+      
+		<span class="subHeading mr-2 d-inline-block text-white">eCourts App Store</span></a>
+		<span style="text-align: right;color: #0171bd;font-size: 0.9rem;" class="d-none d-sm-inline-block">
+			
+				</span>
+          <button id="sidebarToggleTop" class="btn btn-link d-none rounded-circle mr-3 float-right">
+            <i class="fa fa-bars"></i>
+          </button>
+
+          
+
+        </nav>-->
+
+<nav class="navbar navbar-expand-lg bg-light p-0 secondary-navbar" aria-label="top navigation">
+
+<div class="container d-flex flex-wrap">
+      <ul class="nav me-auto">
+		<li class="nav-item"><a lang="en" class="nav-link link-dark noToken" href="https://ecommitteesci.gov.in" onclick="return confirm('You are being redirected to an external website.')" target="_blank" rel="noopener noreferrer" title="External website that opens a new window">e-Committee, Supreme Court of India <sup><i class=" fa fa-external-link-alt"></i></sup></a></li>
+        <li class="nav-item">
+		<!--<button class='btn btn-secondary btn-sm toolbarbtn' aria-label="Back"><i class="fas fa-arrow-left me-1" aria-hidden='true'></i></button>-->
+		<a class="btn btn-secondary btn-sm toolbarbtn" aria-label="Reload" id="reload" href="/ecourtindia_v6/?p=home/index"><i class="fas fa-redo-alt" aria-hidden="true"></i></a>
+		</li>
+		<li class="nav-item"><a href="#navbarsToggle01" class="nav-link link-dark noToken">Skip to Navigation</a></li>
+        <li class="nav-item"><a href="#sidebarMenu" class="nav-link link-dark noToken">Skip to Main Content</a></li>
+        <li class="nav-item"><a class="nav-link link-dark" href="/ecourtindia_v6/?p=site_map/index" rel="noopener noreferrer">Site map </a></li>
+      </ul>
+      <ul class="nav">
+        <li class="nav-item border-start"><button id="decresefont" title="Decrease Font Size" aria-label="Decrease Font Size" class="nav-link link-dark btn btn-link p-0" type="button">A-</button></li>
+		<li class="nav-item"><button id="normalfont" title="Normal Font Size" aria-label="Normal Font Size" class="nav-link link-dark btn btn-link p-0" type="button">A</button></li>
+		<li class="nav-item"><button id="incresefont" title="Increase Font Size" aria-label="Increase Font Size" class="nav-link link-dark btn btn-link p-0" type="button">A+</button></li>
+		<li class="nav-item border-start ps-2"><a href="#" id="Defaultcontrast" onclick="setBackgroud('Defaultcontrast');" title="Default contrast" aria-label="A normal contrast theme" class="nav-link link-dark">A</a></li>
+		<li class="nav-item pe-2"><a href="#" id="Highcontrast" title="High contrast" onclick="setBackgroud('Highcontrast');" aria-label="A high contrast theme" class="nav-link link-dark text-white">A</a></li>
+		<li class="nav-item dropdown border-start border-end">
+          <a class="nav-link dropdown-toggle" href="" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Language
+			<input type="hidden" id="hidSelLang1" name="hidSelLang" value="">
+			<input type="hidden" id="lang_choice1" name="lang_choice" value="">
+          </a>
+          <ul class="dropdown-menu langdropdown" aria-labelledby="navbarDropdown">
+		  <span id="selLang"></span>
+            <li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=English&amp;code=english">English</a></li>
+            <li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=हिन्दी&amp;code=hindi">हिन्दी</a></li>
+			<li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=मराठी&amp;code=marathi">मराठी</a></li>
+			<li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=ગુજરાતી&amp;code=gujarati">ગુજરાતી</a></li>
+            <li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=ಕನ್ನಡ&amp;code=kannada">ಕನ್ನಡ</a></li>
+			<li><a class="dropdown-item" href="/ecourtindia_v6/?p=home/fillLangState&amp;lang=தமிழ்&amp;code=tamil">தமிழ்</a></li>
+			<!--<li><a class="dropdown-item" href="#" onclick="funselectLang('English','english')">English</a></li>-->
+          </ul>
+        </li>
+      </ul>
+    </div>
+</nav>
+	<nav class="navbar navbar-expand-lg navbar-dark bg-primary primary-navbar">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/ecourtindia_v6/?p=home">
+		<img class="logo1" src="images/logo.png" alt="eCourt India Services" title="eCourt India Services">
+		<img src="images/ecourts-logo.png" id="appl_logo" alt="eCourts LOGO" class="img-fluid">
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsToggle01" aria-controls="navbarsToggle01" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarsToggle01">
+        <ul class="navbar-nav ms-auto mb-2 mb-md-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/ecourtindia_v6/?p=home/index" "="">Home</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link noToken" href="http://ecommitteesci.gov.in/" target="_blank" rel="noopener noreferrer" title="External website that opens a new window">e-Committee</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link noToken" href="http://supremecourtofindia.nic.in/" target="_blank" rel="noopener noreferrer" title="External website that opens a new window">Supreme Court</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link " href="/ecourtindia_v6/?p=high_court/index">High Courts</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link noToken" href="https://ecourts.gov.in/ecourts2.0/" target="_blank" rel="noopener noreferrer" title="District Courts">District Courts</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="http://njdg.ecourts.gov.in/njdg_public/" target="_blank" rel="noopener noreferrer" title="External website that opens a new window">NJDG</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="/ecourtindia_v6/?p=contact_us/index">Contact Us</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+<script src="/ecourtindia_v6/js/home.js" type="text/javascript"></script>
+<script src="/ecourtindia_v6/js/myscript.js" type="text/javascript"></script>
+<script src="/ecourtindia_v6/js/common_header.js" type="text/javascript"></script>
+ <div class="container-fluid">
+   <div class="row" id="divLangState">
+      <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar  overflow-auto" aria-label="Search menu">
+      <div class="position-sticky pt-3" role="region" aria-label="side navigation">
+		<h2 class="nav-link text-center fw-bold">Search Menu</h2>
+
+		
+
+        <ul class="nav flex-column sidebarMainMenu">
+
+          <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mb-1 mx-2 active" id="leftPaneMenuCnr" href="/ecourtindia_v6/?p=home/index" aria-current="page">
+              <img class="cnr-dp1" src="images/CNR_Number-bg1.png" alt="" width="334" height="155">
+             CNR Number            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link  text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuCS" href="/ecourtindia_v6/?p=casestatus/index" data-title="Court Status">
+              <img class="case-status-dp1" src="images/CaseStatus-bg1.png" alt="" width="334" height="155">
+              Case Status            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuCO" href="/ecourtindia_v6/?p=courtorder/index" data-title="Court Order">
+              <img class="court-orders-dp1" src="images/CourtOrder-bg1.png" alt="" width="334" height="155">
+             Court Orders            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuCL" href="/ecourtindia_v6/?p=cause_list/index" data-title="Cause list ">
+              <img class="causelist-dp1" src="images/CauseList-bg1.png" alt="" width="334" height="155">
+            Cause List            </a>
+          </li>
+		 
+		  <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuCavet" href="/ecourtindia_v6/?p=caveat_search/index" data-title="Caveat Search ">
+              <img class="cav-search-dp1" src="images/cav-search.jpg" alt="" width="334" height="155">
+             Caveat Search            </a>
+          </li>
+
+	<!--	    <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1"  id="leftPaneMenuvillageSearch"  href="/ecourtindia_v6/?p=villageSearch/index" data-title="Village Search " aria-current="page">
+              <img class="cav-search-dp1" src="images/village-search.png" alt="" width="334" height="155">
+                         </a>
+          </li>-->
+
+		   <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuprocessDetails" href="/ecourtindia_v6/?p=processDetails/processData" data-title="Process Details ">
+              <img class="cav-search-dp1" src="images/process-details.png" alt="" width="334" height="155">
+             Process Details            </a>
+          </li>
+ 
+		 
+		  
+          <li class="nav-item">
+            <a class="nav-link text-md-center text-start shadow border rounded mx-2 mb-1" id="leftPaneMenuLocation" href="/ecourtindia_v6/?p=location/index" data-title="location ">
+              <img class="court-complex-locator-dp1" src="images/court-complex-locator.jpg" alt="Get Location" width="334" height="155">
+              Location            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+<!--<script src="/ecourtindia_v6/js/common_header.js"></script>-->
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 maincontentDiv">
+         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-0 mb-2">
+            <div class="col p-2 alert alert-primary alert-dismissible fade show d-block">
+               Download eCourts Services App :&nbsp;&nbsp;<a href="#" onclick="externalLink('https://play.google.com/store/apps/details?id=in.gov.ecourts.eCourtsServices')" rel="noopener noreferrer" class="text-decoration-none">
+			   <img class="AppLogo gp-b" src="images/GooglePlay_Logo.png" height="25" alt="Download eCourts Services app from Google Play"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" onclick="externalLink('https://apps.apple.com/in/app/ecourts-services/id1260905816')" rel="noopener noreferrer" class="text-decoration-none">
+			   <img class="AppLogo app-store-b" src="images/Appstore_Logo.png" height="25" alt="Download eCourts Services app from Apple App Store"></a>
+			   <p class="d-inline text-danger ms-2">Do not use browser toolbar reload or back button</p>
+               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close download app notification"></button>
+            </div>
+         </div>
+         <div class="row  cnr-bg1 CNRBox justify-content-between align-items-center m-0" id="cnr_div">
+            <div class="col-md-6 border rounded shadow text-center py-4 my-3 bg-light m-0 mx-auto">
+			
+               <form name="" autocomplete="off">
+                  <h1 class="h1class">Search by CNR number</h1>
+                  <p>Enter CNR Number, for example MHAU019999992015</p>
+                  <input class="form-control form-control-lg mb-2 cinumber" type="text" placeholder="Enter 16 digit CNR number" aria-label="Enter 16 digit CNR number" name="cino" id="cino" maxlength="16" required="" onkeypress="return /[0-9a-zA-Z]/i.test(event.key)">
+
+				                   <div class="row px-3">
+				  <span style="color: #b30000;" class="mb-2 small text-start">Fields marked with * are required</span>
+                     <label for="" class="capLabel col-md-auto col-form-label font-weight-bold text-lg-end">Captcha</label>
+                     <div id="div_captcha_cnr" class="col-md-auto row"><div class="form-inline text-left">
+		<div style="">
+		
+					<img style="padding-right: 0px;border:1px solid #ccc;" id="captcha_image" src="/ecourtindia_v6/vendor/securimage/securimage_show.php?730d5560eb2150fbabcca35d2a0dfca8" alt="Enter the characters shown in the image, or select the audio Captcha and type the characters you hear." tabindex="0" width="120"><div id="captcha_image_audio_div" style="display:inline">
+<audio id="captcha_image_audio" preload="none" style="display: none">
+<source id="captcha_image_source_wav" src="/ecourtindia_v6/vendor/securimage/securimage_play.php?id=6a496ce4e1345" type="audio/wav">
+</audio>
+</div>
+<div id="captcha_image_audio_controls" style="display:inline-block;">
+<a tabindex="0" class="captcha_play_button" href="/ecourtindia_v6/vendor/securimage/securimage_play.php?id=6a496ce4e134c" onclick="return false" role="button">
+<img class="captcha_play_image speaker-btn" height="34" width="39" src="images/speaker-btn.jpg" alt="Play CAPTCHA Audio" style="border: 0px">
+<img class="captcha_loading_image rotating loading" height="34" width="39" src="/ecourtindia_v6_source/vendor/securimage/images/loading.png" alt="Loading audio" style="display: none">
+</a>
+<noscript>Enable Javascript for audio controls</noscript>
+</div>
+<script type="text/javascript" src="/ecourtindia_v6/vendor/securimage/securimage.js"></script>
+<script type="text/javascript">captcha_image_audioObj = new SecurimageAudio({ audioElement: 'captcha_image_audio', controlsElement: 'captcha_image_audio_controls' });</script>
+&nbsp;<a tabindex="0" style="border: 0" href="#" title="Refresh Image" onclick="refreshCaptcha()" role="button"><img class="refresh-btn" height="34" width="38" src="images/refresh-btn.jpg" alt="Refresh Image" style="border: 0px; vertical-align: bottom;margin-bottom: 6px;"></a></div></div></div>
+                     <label for="fcaptcha_code" class="col-md-auto col-form-label text-lg-right font-weight-bold"><span class="redStar">*</span>Enter Captcha</label>
+                     <input type="text" class="col-md-auto form-control w-125" id="fcaptcha_code" name="fcaptcha_code" maxlength="6" placeholder="Enter Captcha" autocomplete="off">
+                  </div>
+				                  <br>
+                  <button class="btn btn-primary" type="button" id="searchbtn" onclick="funViewCinoHistory();" aria-label="Search case by CNR number">Search</button>
+                  <button class="btn btn-secondary" type="button" onclick="resetCNR()" aria-label="Reset CNR search form">Reset</button>
+               </form>
+            </div>
+            <p class="text-white p-2 m-0 CNRNote" aria-hidden="true">Note : If you dont have CNR Number then use other options from Search Menu section.</p>
+         </div>
+		<p class="text-center m-0"><button class="btn btn-primary px-2 my-2 mx-auto" aria-label="Back to CNR search results" onclick="main_back('cnr')" id="main_back_cnr" type="button" style="display: none;">Back</button></p>
+         <div id="history_cnr"></div>
+		 <div id="caseBusinessDiv_cnr" style="display:none"></div>
+         <div class="row mt-2" id="help_cnr">
+            <div class="col">
+               <h2 class="bg-primary fw-bold text-white howtotext rounded p-1"><i class="fa fa-question-circle" aria-hidden="true"></i>&nbsp;How to </h2>
+               <ul class="list-group list-group-numbered">
+                  <li class="list-group-item"><a rel="noopener noreferrer" href="/ecourtindia_v6/?p=view_help_videos/show_help_videos&amp;caseSearchType=CNRHelp">Click here to view help video</a></li>
+                  <li class="list-group-item">Enter the 16 digit alphanumeric CNR Number without any hyphen or space</li>
+                  <li class="list-group-item">Click Search button to view current status and history of the case</li>
+                  <li class="list-group-item">If you don't know the CNR number of the case, click on the Case Status icon on the left menu to search the case with other options like case registration number, party name, advocate name etc.</li>
+               </ul>
+            </div>
+         </div>
+      </main>
+   </div>
+</div>
+<script src="/ecourtindia_v6/js/searchByCNR.js"></script>
+<br><br><br><br>
+ 
+    <div class="alert alert-danger alert-dismissiblefade" style="align:center;text-align:center;display: none;"><a href="#" class="btn-close" data-bs-dismiss="alert" aria-label="close" style="padding: 0px;">×</a><div id="msg-danger"></div></div>
+    <div class="alert alert-success alert-dismissible fade" style="align:center;text-align:center;display: none;"><a href="#" class="btn-close" data-bs-dismiss="alert" aria-label="close" style="padding: 0px;">×</a><div id="msg-success"></div></div>
+	<div class="alert alert-warning alert-dismissible fade" style="align:center;text-align:center;display: none;"><a href="#" class="btn-close" data-bs-dismiss="alert" aria-label="close" style="padding: 0px;">×</a><div id="msg-warning"></div></div>
+	<div class="alert alert-info alert-dismissible fade" style="align:center;text-align:center;display: none;"><a href="#" class="btn-close" data-bs-dismiss="alert" aria-label="close" style="padding: 0px;">×</a><div id="msg-info"></div></div>
+   
+	
+    <input type="hidden" name="base_url" id="base_url1" value="/ecourtindia_v6">
+   
+  
+    <input type="hidden" name="app_token" id="app_token" value="">
+	<input type="hidden" name="sessionlangid" id="sessionlangid" value="1">
+	 <input type="hidden" name="p_order" id="p_order" value="">
+	  <input type="hidden" name="hdn_process_id" id="hdn_process_id" value="">
+
+
+	
+   
+	<div class="modal hide" id="loadMe" tabindex="-1" role="dialog" aria-label="loading panel">
+	  <div class="modal-dialog modal-sm" role="document">
+		<div class="modal-content">
+		  <div class="modal-body text-center">
+		  <div class="fa-2x">
+			  <i class="fas fa-spinner fa-spin"></i>
+			</div>
+			<div class="loader"></div>
+			<div class="loader-txt">
+			  <p>Loading...</p>
+			</div>
+		  </div>
+		</div>
+	  </div>
+	</div>
+
+
+	<div class="modal fade" id="validateError" tabindex="-1" role="dialog" aria-label="validation error panel" style="display:none;">
+  <div class="modal-dialog" role="document">
+	<div class="modal-content">
+	<div class="modal-header text-center align-items-start">
+        <i class="fas fa-3x fa-exclamation-triangle mb-3 text-secondary mx-auto w-100 d-none" id="errorIcon"></i>
+		<i class="fas fa-3x fa-check-circle mb-3 text-success mx-auto w-100 " id="successIcon" aria-hidden="true"></i>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModel({modal_id:'validateError'})">&nbsp;</button>
+      </div>
+
+	  <div class="modal-body p-1 text-center">
+		
+		<div clas="loader-txt">
+		  <div class="alert alert-danger-cust" style="align:center;text-align:center;word-wrap: break-word;">
+              </div>
+		<div class="alert alert-success-cust" style="align:center;text-align:center;display: none;word-wrap: break-word;"></div>
+		</div>
+	  </div>
+	</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="externalSiteModal" tabindex="-1" aria-labelledby="externalSite" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="externalSite">External site alert</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+		 <p>This link shall take you to a external webpage. For any query regarding the contents of the linked page, please contact the webmaster of the concerned website.</p>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-success" id="externalSiteLink" target="_blank">Go</a>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="modalOders" tabindex="-1" aria-label="Orders panel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5"> PDF Viewer</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closefile()"></button>
+      </div>
+      <div class="modal-body" id="modal_order_body">
+		
+      </div>
+     
+    </div>
+  </div>
+</div>
+
+<div class="modal fade mt-2" id="modal-ack" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-label="View QR Code or Cause Title">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5">Acknowlegement</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modal_ack_body">
+		
+      </div>
+     
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal_trans_est" tabindex="-1" aria-label="external Site" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color:#9edbf9;">
+        <h2 class="modal-title h5">History</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modal_est_trans_body">
+		
+      </div>
+     
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal_trans_est1" tabindex="-1" aria-label="external Site" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color:#9edbf9;">
+        <h2 class="modal-title h5">History</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modal_est_trans1_body">
+		
+      </div>
+     
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal_ia_business" tabindex="-1" aria-label="external Site" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color:#9edbf9;">
+        <h2 class="modal-title h5">IA Business</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modal_ia_business_body">
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+$('button').attr('type','button');
+</script>
+
+ 
+        
+    
+    
+  
+  
+<!-- Footer -->
+ <div id="footer-container" class="container-fluid clearfix" role="contentinfo">
+  <div class="row topfooter">
+  <div class="col-md-3 borderright">
+<nav aria-label="footer navigation">
+	<div class="row">
+      <ol class="col footerlinks ">
+      <li><a href="/ecourtindia_v6/?p=about_us/index" rel="noopener noreferrer">About Us</a></li>
+      <li><a href="/ecourtindia_v6/?p=news_letter/index" rel="noopener noreferrer">Newsletter</a></li>
+      <li><a href="/ecourtindia_v6/?p=forms_for_advocates/index" rel="noopener noreferrer">Forms for Advocates</a></li>
+      <li><a href="/ecourtindia_v6/?p=help_videos/index" rel="noopener noreferrer">Help Videos</a></li>
+      <li><a href="/ecourtindia_v6/?p=site_map/index" rel="noopener noreferrer">Site map </a></li>
+	  <li><a href="/ecourtindia_v6/?p=contact_us/index" rel="noopener noreferrer">Contact Us</a></li>
+	  <li><a href="/ecourtindia_v6/?p=web_info_manager/index" rel="noopener noreferrer">Web Information Manager</a></li>
+      <!--<li><a href="/ecourtindia_v6/?p=terms_and_conditions/index" rel="noopener noreferrer">Terms and Conditions</a></a></li>-->
+      <li><a href="/ecourtindia_v6/?p=copy_right_policy/index" rel="noopener noreferrer">Copyright Policy</a></li>
+      <li><a href="/ecourtindia_v6/?p=hyper_linking_policy/index" rel="noopener noreferrer">Hyperlinking Policy</a></li>
+      <!--<li><a href="/ecourtindia_v6/?p=privacy_policy/index" rel="noopener noreferrer">Privacy Policy</a></li>-->
+	  <li><a href="/ecourtindia_v6/?p=accessibility_statement/index" rel="noopener noreferrer">Accessibility Statement</a></li>
+      <li><a href="/ecourtindia_v6/?p=screen_reader_access/index" rel="noopener noreferrer">Screen Reader Access</a></li>
+	  <li><a href="/ecourtindia_v6/?p=disclaimer/index" rel="noopener noreferrer">Disclaimer</a></li>
+	   <!--<li><a href="/ecourtindia_v6/?p=help/index" rel="noopener noreferrer">Help</a></li>-->
+      </ol>
+	  </div>
+	</nav>
+  </div>
+  <!--end od border right class-->
+  <div class="col-md-6">
+   <div class="align-middle" id="complementary">
+     <a onclick="externalLink('http://www.digitalindia.gov.in/')" href="#" rel="noopener noreferrer" title="Digital India External website that opens a new window">
+	 <img class="digital-india1 fooimg" src="images/DigitalIndia_Logo.png" alt="Digital India External website that opens a new window" width="95" height="51"></a>
+	 <a onclick="externalLink('http://www.india.gov.in/')" href="#" rel="noopener noreferrer" title="National Portal of India External website that opens a new window">
+	 <img class="india-gov-logo1 fooimg" src="images/govin_Logo.png" alt="National Portal of India External website that opens a new window" width="80" height="46"></a>
+	 <a onclick="externalLink('https://doj.gov.in/')" href="#" rel="noopener noreferrer" title="Department of Justice External website that opens a new window">
+	 <img class="doj-logo1 fooimg" src="images/Justice_Logo.png" alt="Department of Justice External website that opens a new window" width="120" height="45"></a>
+	 <a onclick="externalLink('https://ecommitteesci.gov.in/')" href="#" title="e-Committee Supreme Court of India External website that opens a new window">
+	 <img class="ecommittee-logo1 fooimg" src="images/ecommittee-logo.png" alt="e-Committee Supreme Court of India" width="115" height="43"></a>
+	 <a onclick="externalLink('http://indiacode.nic.in/')" href="#" rel="noopener noreferrer" title="India Code External website that opens a new window">
+	<img class="IC-logo1 fooimg" src="images/IC-logo.png" alt="India Code Centre External website that opens a new window" width="89" height="45"></a>
+	<a onclick="externalLink('https://www.nic.in/')" href="#" title="National Informatics Centre External website that opens a new window">
+	 <img class="nic-logo1 fooimg" src="images/nic-logo.png" alt="National Informatics Centre External website that opens a new window" width="115" height="26"></a>
+   </div>
+   <!--end of row-->
+    <div class="row">
+	<p>This site is designed, hosted and maintained by <a class="nicLink" onclick="externalLink('http://www.nic.in/')" href="#" rel="noopener noreferrer" title="National Informatics Centre">National Informatics Centre (NIC) <span class="visually-hidden">External website that opens a new window</span><sup><i class=" fa fa-external-link-alt"></i></sup></a> Ministry of Electronics &amp; Information Technology,
+	Government of India.</p>
+   </div><!--end of row-->
+  </div><!--end of complementary-->
+  <div class="col-md-3">
+    <ol style="display:none;">
+      <li class="ol-foo-title">Visitor count</li>
+      <li><input type="text" name="visitor_count" value="1324657" class="visitor_ct" readonly="readonly"></li>
+      </ol>
+<!--	<p>Last reviewed and updated on&nbsp;:&nbsp; 21 October 2022</p>      -->
+<p>Content Reviewed and Updated on: 2 January 2026</p>
+
+<p><strong>Download eCourts Services App :</strong></p>
+	<p><a onclick="externalLink('https://play.google.com/store/apps/details?id=in.gov.ecourts.eCourtsServices')" href="#" rel="noopener noreferrer" title="Google play External website that opens a new window"><img class="gp-b1" src="images/GooglePlay_Logo.png" alt="Google Play" width="119" height="34"><span class="visually-hidden">download app on Google Play</span></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a onclick="externalLink('https://apps.apple.com/in/app/ecourts-services/id1260905816')" href="#" rel="noopener noreferrer" title="App Store External website that opens a new window"><img class="app-store-b1" src="images/Appstore_Logo.png" alt="App Store" width="102" height="34"><span class="visually-hidden">download app on App Store</span></a></p>
+  </div>
+
+  </div><!--end of top footer row-->
+<div class="row bottomfooter bg-dark">
+<div class="col p-3">
+<p class="m-0">S3 © 2022 eCommittee Supreme Court of India. All Rights Reserved</p>
+</div>
+<div class="col p-3 text-end">
+<a href="/ecourtindia_v6/?p=terms_and_conditions/index" rel="noopener noreferrer" class="text-white">Terms and Conditions</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="/ecourtindia_v6/?p=privacy_policy/index" rel="noopener noreferrer" class="text-white">Privacy Policy</a>
+</div>
+</div>
+</div>
+  
+   
+      <!-- End of Main Content -->
+
+    
+    <!-- End of Content Wrapper -->
+
+    
+  <!-- End of Page Wrapper -->
+
+  <!-- Scroll to Top Button-->
+  <a class="scroll-to-top rounded d-none" href="#page-top" aria-label="scroll to top">
+    <i class="fas fa-angle-up"></i>
+  </a>
+<a id="topbutton"><span class="visually-hidden">go to Top</span><i class="fa fa-arrow-up"></i></a>
+  
+
+<script>
+	
+	var labels_array=null
+	var buttons_array=null
+	var alerts_array={"1":"Act","2":"Act Type","3":"Advocate","837":"judgments search","5":"Bar Code","6":"Bookmark Us","7":"Both","8":"Case Code","9":"Case Number","10":"Case Number","11":"Case Status","12":"Case Type","13":"Cause Lists","14":"Cause list displayed may differ from the actual cause list. For further queries, contact court administrator.","15":"Contact Us","16":"Court Establishment","17":"Court Name","18":"Court Number","19":"Court Number","20":"Court Orders","21":"Disposed","22":"FIR Number","23":"FIR Number","24":"From Date","25":"From Date should be not be later than To Date","26":"Go","27":"High Courts","28":"News and Events","29":"Order Date","30":"Party Name","31":"Pending","32":"Petitioner\/Respondent","33":"Enter atleast 3 characters","34":"Enter atleast 3 characters","35":"Enter case number","36":"Enter numeric value","37":"Enter numeric value","38":"Only alphabets, single quotes, dot and space are allowed in village name","39":"Only alphabets, single quotes, dot and space are allowed in Petitioner\/Respondent","40":"Enter Petitioner\/Respondent name","135":"Act Details","41":"Enter numeric value in year","42":"Enter year in yyyy format","43":"Enter year from 1901 to","44":"Select case type","45":"Select court establishment","46":"Select court","47":"Select court number","48":"Select district from the left panel","49":"Select district","50":"Select From Date","51":"Select police station","52":"Select state","53":"Select state from the left panel","54":"Select To Date","55":"Please wait","56":"Police Station","57":"Reset","58":"Screen Reader Access","59":"Search","60":"Search Act","61":"Search by","62":"Search by Act Type","63":"Search by Advocate","64":"Search by Case Code\/CNR Number","65":"Search by Case Type","66":"Search by FIR number","67":"Search by Petitioner\/Respondent","68":"Select","69":"Select act type","70":"Select case type","71":"Select court establishment","72":"Select court number","73":"Select police station","74":"Select State\/District","75":"Site map","76":"Skip to navigation","77":"Supreme Court","78":"To Date","79":"Todays Case List","80":"Under Section","81":"Year","82":"Year should not be later than current year","83":"Total number of cases","84":"Sr No","85":"View","86":"versus","87":"Record not found","88":"Petitioner","89":"Respondent","90":"Case Year","91":"Next Hearing Date","92":"Case Stage","93":"Enter advocate name","94":"Enter name in regional language","95":"Enter Advocate bar code","96":"Only alphabets, numbers and hyphen are allowed","97":"Search by Order Date","98":"Search by Party Name","99":"Search by Court Number","100":"Search by Registration Number","101":"Opens in new window","102":"Search by Case Number","103":"NJDG","104":"New","105":"Old","106":"Select state","107":"Select district","136":"Case Details","108":"Home","111":"Version 2.0","112":"Designed &amp; Developed by NIC","113":"Last Updated On","114":"English","115":"Enter year","116":"Enter Under Section","117":"Enter case code","118":"Enter 15 digit case code","119":"Back","120":"Filing Number","121":"Objection","122":"Petitioner","123":"Respondent","124":"Filing Date","125":"Redressal Date","126":"Under Act(s)","127":"Under Section(s)","128":"Case History","129":"Judge","130":"Business on Date","131":"Purpose of Hearing","132":"Select act type","133":"Enter only valid characters in Under Section","134":"Copy Status","204":"Date of Institution","499":"Help Videos","137":"Case History","138":"Address","139":"Extra Parties","140":"Enter Petitioner\/Respondent","141":"Case disposed","142":"Registration Number","143":"Registration Date","145":"First Hearing Date","146":"Decision Date","147":"Nature of Disposal","148":"Search by Advocate Bar Code","149":"Orders","150":"Judge","151":"Order Number","152":"Designation","153":"Total Civil Disposed Cases","154":"Orders not uploaded","155":"Subject","156":"Subordinate Court Information","157":"Case Decision Date","158":"FIR Details","159":"Next date is not given","160":"Hearing Date","161":"Order Details","162":"Appellate Information","163":"Registration Number","164":"Appellate Case Number","284":"Exhibits","205":"Sh.\/Smt.","165":"Appellate Authority","166":"Receipt Date","167":"Deposit\/Payment","168":"CNR Number","169":"District Court","170":"Case Transfer Details within Establishment","171":"Transfer Date","172":"From Court Number","173":"To Court Number","174":"Case is not allocated to court","175":"and","176":"Name","177":"Acts","178":"January","179":"February","180":"March","181":"April","182":"May","183":"June","184":"July","185":"August","186":"September","187":"October","188":"November","189":"December","190":"Cause List","191":"Daily Board","192":"&#039;Today&#039;&#039;s&#039;","193":"Tomorrow","194":"Civil","195":"Criminal","196":"In the court of","197":"Dated","198":"Title","199":"Party wise","200":"Date","201":"Advocate wise","202":"Vs","203":"Sub Stage","206":"Enter From Date in dd-mm-yyyy format","207":"Enter To Date in dd-mm-yyyy format","208":"Select court","209":"Cause list will open in new window","210":"Appellate Information for Case Number","211":"Appellate Case Number","212":"Appellate Authority","213":"Brief Order","214":"Compliance Date","215":"Business","216":"Short Order","217":"Site map","218":"The eCourts","219":"Increase\/Decrease Controls","220":"Advocate","221":"Print","222":"The Supreme Court of India","223":"High Courts of India","224":"National Judicial Data Grid","225":"Additional Links","285":"Reason for Adjournment","664":"Granted","840":"More","226":"Press Ctrl+D to add manually","227":"Cases","228":"Total Cases","229":"Case Number (Date of Institution)","230":"Urgent Cases","231":"Main Matter","233":"Sub Matter","234":"Sub Matter (Disposed)","235":"Total Civil Cases Listed Today","236":"Total Civil Cases Listed Tomorrow","237":"Total Criminal Cases Listed Today","238":"Total Criminal Cases Listed Tomorrow","239":"Total Criminal Disposed Cases","240":"Total Civil Pending Cases","241":"Total Criminal Pending Cases","242":"Particulars of Offence","243":"Age","244":"Pending in Mediation Cases","245":"Reference Date","246":"Result","247":"Successful","248":"Not fit for Mediation","249":"Fall","250":"Mdeiation cases referred in this month","251":"Mediation cases completed in this month","252":"Disposal Date","253":"Enter 7 digit filing number","254":"Enter filing number","255":"Son of","256":"Enter numeric value in FIR number","257":"Daughter of","258":"Wife of","259":"Relative of","260":"Legal Heir","261":"Enter 16 digit CNR number","262":"Enter 16 digit CNR number","263":"Only alphabets and numbers are allowed for CNR Number","264":"Select cause list date","265":"To Date should be later than From Date","286":"Case adjourned for","406":"Petitioner","266":"To Date should not be later than current date","267":"To Date should not be later than current date","268":"Select court complex","269":"Court Complex","270":"Presentee","271":"Next Purpose","272":"Next Listing Date","273":"Go to Proceeding","274":"Civil Cases Listed on","275":"Criminal Cases Listed on","276":"Cause List Date","277":"Select court complex","278":"Date Case List","279":"Case List Date","280":"Only alphabets are allowed","281":"Only numbers are allowed","282":"Only alphabets and &nbsp;numbers are allowed","283":"Enter date in dd-mm-yyyy format","287":"Only last 7 days date selection allowed","288":"Mandatory field","289":"Enter 7 digit case number","290":"Enter Advocate state code","291":"Enter Advocate bar code year","292":"Enter FIR number","293":"Identified Cases","294":"EAs Listed","295":"IAs Listed","296":"CRLMP Listed","297":"Enter act","298":"Enter only valid characters in search act","299":"Contested","300":"Uncontested","301":"Dormant Case","302":"Sinedie Case","303":"Restored","304":"From Date should not be later than To Date","376":"Attached","305":"To Date should be between From Date and current date","306":"Search by Filing Number","307":"Generate Cause List for a particular Court","308":"Official website of the Supreme Court of India","309":"External Link","310":"External website that opens in a new window","311":"Daily Status","312":"Name cannot start with quotes","313":"Judgement","314":"is not uploaded for case number","315":"Search by Village","316":"Taluka","317":"Select taluka","318":"Village","319":"Select village","320":"Village name cannot be blank","321":"Only alphabets, single quotes, dot and space are allowed","462":"Search Act","322":"Enter atleast 3 characters","323":"Case Transferred to Establishment","324":"Case Transferred from Establishment","325":"Member","326":"Case Transferred to Establishment","327":"Rejection","328":"Date of Rejection","329":"Reason for Rejection","330":"Represented by Power of Attorney","331":"Represented by Guardian","332":"Copy Status of CCA Number","333":"Caveat Number","334":"Applicant","335":"Date of Appearance","336":"Estimated Amount","337":"Actual Pages","338":"Paid","339":"Deficit Amount","340":"Nature of Defect","341":"Notify Date","342":"Last Date for Rectification","343":"Rectifying Date","344":"Receipt Details","345":"Deficit Amount","346":"Refund Details","347":"Returnable Amount","348":"Returned Date","349":"Document Requested","350":"Number of Sheets","351":"Status Remark","352":"Ready Date","353":"Delivery on Date","354":"Receiver","355":"Actual Cost of Copy","356":"Partial Struck off Details","357":"Restore Date","358":"Amount","359":"Register","360":"CCA Number","361":"Application Number","362":"Application Number","363":"Deposited by","364":"Remarks","365":"Orders for Deposit","366":"Orders for Payments","367":"Receipt Number","368":"RO Number","369":"Mode of Payment","370":"Bank","371":"Branch","372":"Cheque\/D.D. Number","373":"Cheque\/D.D. Date","374":"Entry in C","375":"Depositor Name","377":"Receiver Name","378":"Credit","379":"Penalty Register","380":"Entry in D","381":"Entry in G","382":"R. Number","383":"Not Ready","384":"Disposed Cases List","385":"Pending Cases List","386":"eCourtIS - The Application for Indian Judiciary","387":"Judicial Officer","388":"Retired Judicial Officer","389":"Other","390":"Total Number of Establishments in Court Complex","391":"Subordinate Court","392":"District","393":"Scrutiny Date","394":"Sub Category","395":"On same stage since","397":"CC Ready Date","398":"CC Applied Date","399":"CNR Number","400":"Registration","401":"State","402":"Case Number","403":"Sr No","404":"Case Type","405":"Case Year","407":"Respondent","408":"View","409":"Total Number of Cases","410":"Record not found","411":"Back","412":"Only numbers are allowed","413":"Add","414":"Show All","415":"Duplicate record","416":"Remand Details","417":"Remand Order","418":"Type","419":"Days","420":"From Date","421":"To Date","422":"Date of Order","423":"Order","424":"FIR Type","425":"Bail Details","426":"Bail Order","427":"Application Details","428":"Application Order","429":"Status","430":"Next","431":"Name","432":"Accused","433":"Application","434":"Date","435":"Disposed","436":"Court Judge","437":"Hearing Status","438":"Bail","439":"Top Pending Cases","440":"Appellate Information","441":"Appellate Case Parties","796":"October","442":"Appellate Filed by","443":"Appellate Date of Dispatch","444":"Writ Type","445":"Appellate Outward No.","446":"Compliance","447":"Dispatch Number","448":"Enter captcha","449":"Captcha","450":"Caveat Search","451":"Search by CNR number","452":"Enter CNR Number, for example MHAU019999992015","453":"Enter 16 digit CNR number","454":"Note : If you don\\&#039;t have CNR Number then use other options from Search Menu section\\&#039;","455":"Search by Case Number","456":"Court Establishment","457":"Search by FIR Number","458":"Petitioner\/Respondent","459":"Search By Filing Number","460":"Petitioner Name versus Respondent Name","461":"Search by Act Type","463":"Case Type\/Case Number\/Case Year","464":"Act Type","465":"Select Act Type","466":"Invalid Captcha","467":"Date of Decision","468":"Filing Number","469":"Caveatee","470":"Respondent","471":"Caveator","472":"Caveat Number","473":"Subordinate Court","474":"Soundex","475":"Enter captcha","476":"Starting with","477":"Anywhere","478":"Enter year from 1901 to","479":"Enter valid captcha","480":"Enter caveat year","481":"Name cannot start with dot","482":"Enter caveat number","483":"The selected date is","484":"Enter case year","596":"Caveatee Details","485":"Select state, district and court complex to proceed further","486":"Enter caveator name","487":"Enter caveatee name","488":"How to","489":"Click here to view help video","490":"Enter the 16 digit alphanumeric CNR Number without any hyphen or space","491":"Click Search button to view current status and history of the case","492":"If you don&#039;t know the CNR number of the case, click on the Case Status icon on the left menu to search the case with other options like case registration number, party name, advocate name etc.","665":"Application Type","493":"Select case type","494":"Enter the case registration number","495":"District Courts","496":"About Us","497":"Newsletter","498":"Forms for Advocates","500":"Web Information Manager","501":"Terms and Conditions","502":"Privacy Policy","503":"Accessibility Statement","504":"This site is designed, hosted and maintained by National Informatics Centre (NIC).Ministry of Electronics &amp; Information Technology, Government of India","505":"Last reviewed and updated on","506":"Download eCourts Services App","507":"In the Year box, enter the Case Registration Year.","508":"Enter the Captcha (the 5 alphanumeric characters shown on the screen) in the text box provided.","509":"Click on Go button to view the case details for the given Case Number","510":"Click on the View button to see the Case History of the respective Case","511":"Select the Police Station from the select box.","512":"In the FIR Number box, enter the FIR Number of the case.","513":"In the Year box, enter the FIR Year.","514":"Select Pending or Disposed option button according to the status of the case. Click on Both option if case status is not known","797":"November","515":"Click on Go button to view the case details for the given FIR Number","516":"Click on the View button to see the Case History of the respective Case","517":"Enter the Party Name, in part (minimum 3 characters) or full","518":"Party Name maybe the name of the Petitioner, Plaintiff, Complainant, Respondent, Defendant, Appellant, Accused or Extra Party.","519":"Click on the Go button, to get the list of cases matching the given party name","597":"Caveatee Address","598":"Extra Party Caveatee","520":"The Cases can be searched by either clicking on the Advocate Name, Bar Registration Number or Advocate&#039;s Cause List (to view the date wise cause list of Advocate) option buttons.","521":"On clicking the Advocate Name option button, enter the Name of the Advocate in the box, in part (minimum 3 characters) or full - e.g. for searching the name of the advocate as &sbquo;Suresh Mahohar Singh&sbquo; either Suresh, Manohar, Singh, Sur, Sin etc.","522":"On clicking the Bar Registration Number option button, enter the Bar Registration Number of the advocate in the box, for e.g. MAH\/XXXX\/1982 (where MAH is the state code, XXXX is the bar registration number and 1982 is the year).","523":"Click on either the Pending or Disposed option button, according to the status of the Case (only in case the Advocate Name or Bar Registration Number options have been chosen","599":"Interim Orders","600":"Final Orders","524":"On clicking the Advocate&#039;s Cause List option button, enter the Bar Registration Number in the box, for e.g. MAH\/XXXX\/1982 (where MAH is the State Code, XXXX is the Bar Registration Number and 1982 is the Year) and select the Cause List Date from the calendar control.","525":"For Advocate and Bar Registration Number options, click on the Go button to display cases matching the Advocate&acirc;&sbquo;&not;&acirc;&bdquo;&cent;s Name or Bar Registration Number. Click on the View button from the list, to see the Case History of the respective Case.","526":"For Advocate&acirc;&sbquo;&not;&acirc;&bdquo;&cent;s Cause List option, click on Go button to get the Advocate&acirc;&sbquo;&not;&acirc;&bdquo;&cent;s Cause List on the selected date","527":"In the Filing Number box, enter the Filing Number of the Case.","528":"In the Year box, enter the Case Filing Year.","601":"Party","602":"Caveat","603":"Pre Trial Application","604":"Search Type","529":"Click on Go button to view the case matching the given filing number","530":"To search Act from Act list, please enter minimum 3 characters of the Act description and click on search button","531":"All the Acts matching the search criteria are displayed in the Act Type select box. Select the required Act Type from the select box.","532":"If no search criteria are specified then, all the Acts are displayed, select the required Act Type from the select box.","539":"Click on the Go button, to get the Case satisfying the Case Number search criteria","533":"In the Under Section box, enter the Section which you want to search under the selected Act. If the section is not entered in the Under Section box, then the Cases belonging to all the sections under the selected Act will be listed.","534":"Click on either the Pending or Disposed option button, according to the status of the Case.","535":"Click on the Go button, to get the Cases satisfying the given Act and Under Section condition.","536":"Click on the adjacent View button from the list, to see the Case History of the respective Case.","537":"Click on the Go button, to get list of all the Cases satisfying the given Case Type condition","538":"Click on the adjacent View button from the list, to see the Case History.","540":"Click on the Order on Exhibit or Copy of Judgement to view the Orders\/Judgement in PDF format.","541":"Select the entry from the Court Number select box, which shows the court number, the judge name, the designation of the judge and the judge period for searching the Order\/Judgement of the case","542":"Click on the Go button, to get the Cases satisfying the above Court Number search criteria.","543":"Click on the Go button, to get list of all the Cases satisfying the given Caveat Search condition.","544":"Enter the Captcha in the text box provided","605":"Filing Case History","798":"December","545":"Click on the Order Number to view the Orders\/Judgment in PDF format.","546":"For Caveat Number, the system will display the Caveat when you enter a part of the Caveat Number and Year; if any of the active Caveats match the search criteria then the relevant details are displayed on the screen.","547":"Subordinate Court","548":"Enter at least 3 characters","558":"Select state, district and court complex to display the cause list","549":"Soundex","550":"Starting with","551":"Click on the Go button, to get the Oders\/Judgements of the cases satisfying the search criteria.","552":"Anywhere","559":"Select the Cause list Date from the calendar control.","606":"Remand","553":"Select state, district and court complex for the caveat search","554":"Click on the Order on Exhibit or Copy of Judgement to view the Orders\/Judgements in PDF format.","555":"Select the period (From Date and To Date), for searching the Order\/Judgement of the Cases which are delivered in the given period.","556":"Click on the Go button, to get the cases satisfying the above Order Date search criteria.","557":"Click on the Civil or Criminal button, to accordingly display the Civil or Criminal Cause list of the selected Court and Date.","607":"Language","608":"Bench","560":"Select the entry from the Court Name select box which shows the court number, the judge name and the designation of the judge for displaying the Cause list","561":"Court","562":"Back","563":"Date of Filing","564":"Next Date","565":"Purpose","566":"IA Status","567":"IA Status","568":"IA Number","569":"versus","570":"Linked Cases","571":"Split Case Details","572":"Date of Registration","573":"Location","574":"Case Registration Number","575":"Select Subordinate Court Code","578":"Search Menu","579":"Newsletter","580":"Cases can be searched on","581":"First, select","582":"to which the case being searched belongs","595":"Extra Party Caveat","583":"Select the criteria on which you want to search the case, from the tabs provided on the screen","584":"Or","585":"Location: Refer popup new window to view location","586":"Copyright Policy","587":"Hyperlinking Policy","588":"This site is designed, hosted and maintained by","589":"On finding the Case with the required Party Name, click on the adjacent View button from the list, to see the Case History of the respective Case.","590":"Matched Case Number","591":"Caveator\/Caveatee Details","592":"Time of Filing","593":"Caveator Details","594":"Caveator Address","663":"Bail Orders","609":"Last Hearing Date","610":"State","611":"District Name","612":"Trial Court Details","613":"Get Map","614":"Undated Cases","615":"Trial Court Name","616":"Processes","617":"My Cases related to District Court","618":"Process ID","619":"Process Date","620":"Process Title","621":"with","622":"Extra Party Caveator","623":"To","624":"(Deceased)","625":"Date wise","626":"District wise","627":"Month","628":"Configure","629":"Language","630":"Remove case","631":"Case added successfully","632":"Case removed successfully","633":"Date not provided","634":"Undated cases","635":"My Cases","636":"No cases listed","637":"case(s) found","638":"No Date","639":"Case Type\/Case Number\/Case Year","640":"Trial Court decision date","641":"QJ Number","642":"QJ Number1","643":"Date of Order1","644":"QJ Details","645":"High Court Details","646":"High Court","647":"Caveator\/Caveatee Name","648":"Caveator\/Caveatee Name","649":"Caveatee","650":"Lower Court Decision Date","651":"View Business","652":"Help","653":"Import","654":"Export","655":"Appellate Court","656":"Search by Pre Trial Application","657":"Remand Orders","658":"Accused","659":"Lower Court Decision Date","660":"Process tables all IDs","661":"Application Date","662":"Next\/Disposed Date","666":"Application Orders","667":"Pending","668":"Caveat Details","669":"Cases imported successfully","671":"File with same name already exists in drive","672":"File","673":"Not found at internal storage","674":"Please&nbsp;export&nbsp;your&nbsp;cases","675":"Unable to fetch labels","676":"Updated in drive successfully","677":"Saved in drive successfully","678":"Saved successfully to internal storage","679":"Case deleted","680":"Unable to check","681":"Case not found","682":"Enter Case Number","683":"Enter year","684":"Enter party name","685":"Enter caveator name","761":"Server may be busy","686":"Enter caveatee name","687":"Enter Caveator\/Caveatee Name","688":"Select subordinate court name","689":"Enter caveat number","690":"Enter caveat year","691":"Select FIR Type","692":"State Code","693":"Enter text to search","694":"Enter Filing Number","695":"Extra Party Caveator","696":"Maximum 99 letters are allowed in caveator name","697":"Maximum 99 letters are allowed in caveatee name","698":"Only alphabets are allowed","699":"Maximum 99 letters are allowed in caveator\/caveatee name","700":"Only 7 digits are allowed in case number","701":"Enter text to search","702":"Enter state code","703":"Enter valid state code","704":"Enter barcode","705":"Error","706":"Select subordinate court name","707":"Enter valid party name","708":"Enter non zero year","709":"Enter non zero filing number","710":"Enter valid FIR number","711":"Enter non zero FIR number","712":"Enter valid year","713":"Enter valid Advocate name","714":"Enter non zero barcode","715":"Enter atleast 3 characters","729":"Enter year from 1901 to","762":"Only alphabets and numbers are allowed","716":"Enter atleast 3 characters","717":"Please check your internet connection and try again","718":"Error opening case history","719":"Cases not found","720":"Case transferred to establishment","721":"Case transferred from establishment","722":"Error opening case history for the case number","723":"Please&nbsp;select&nbsp;Cause&nbsp;List&nbsp;date","724":"Date selection for only last 7 days is allowed","725":"Enter text to search","726":"Only alphabets and numbers are allowed","727":"Please&nbsp;Select&nbsp;Cause&nbsp;List&nbsp;Date","728":"Select&nbsp;Case&nbsp;Type","750":"Processes (data)","751":"Caveator","730":"FIR number should be only 6 digits","731":"Enter year in yyyy format","732":"Maximum 99 letters are allowed in party name","733":"Party name should start with letter","734":"CNR Number","735":"Search by CNR number","736":"OR","737":"Scan QR Code","738":"Services for High Courts and District Courts","739":"Court Complex Locator","741":"c. On Clicking the search button, the current status and entire history of the case will be shown.","786":"District Court","787":"January","788":"February","789":"March","743":"e. Click on Case Number to view current status, entire history and orders\/judgments delivered in the case","781":"Cancel","746":"Only 6 digits are allowed in barcode","747":"Only numbers are allowed","748":"Enter year in yyyy format","749":"View Business","745":"g. For Future reference, your saved cases can be seen in My Cases","744":"f. When you view the history of the case you have option to Save the Case and can create your own portfolio of cases","753":"ePay","754":"eFiling","755":"Invalid CNR Number","756":"Enter non zero case number","757":"Party name should start with letter","758":"Select cause list date","759":"Select court complex","760":"Select cause list date","763":"Enter atleast 3 characters","790":"April","791":"May","792":"June","793":"July","794":"August","795":"September","764":"Enter atleast 3 characters","765":"Enter Caveator\/Caveatee name","766":"Enter atleast 3 characters","767":"Enter year in yyyy format","768":"Add Case","769":"Objection","770":"Rejection","771":"Case Decision Date","772":"Processes","773":"Saved Case","774":"Ok","775":"Close","776":"Import from drive","777":"Import from this device","778":"Email","779":"Save to drive","780":"This device","782":"Share with","783":"District and Taluka Courts of India","784":"QR Code","785":"High Court","799":"Order not uploaded by concerned court","800":"New Version","801":"Available","802":"App Version","803":"Incompatible app version. Please update!","804":"Settings","805":"Personalize","806":"Only 6 digits are allowed in barcode","807":"Only 7 digits are allowed in case number","808":"Enter year in yyyy format","809":"Only 7 digits are allowed in filing number","810":"Subordinate Court Name","811":"Select subordinate court name","812":"Import from","813":"for","814":"India Code","815":"Virtual Courts","816":"Select language","817":"Enter text here","818":"Note","819":"State","820":"Undelete successful","821":"Calculate1","822":"District1","823":"Set Max No.","824":"Bench","825":"Submit","826":"Bench","827":"Mandatory field","828":"Bench","829":"Add Note","830":"Case already added","831":"Please enter valid note","832":"Court Complex Location","833":"Not a QR code","834":"This case code does not exist.","835":"CNR special character not allowed","836":"No content to backup.","670":"does not exist in Drive","4":"Advocate Name","843":"E-Filing Date","844":"Last Business Date","846":"Last Order","847":"Old Case Name","740":"b. If you know the CNR Number of the Case, enter the 16 alphanumeric CNR Number without any (hyphen) or space.","742":"d. If you don&#039;t know the CNR number of the Case then it can be searched by other options like Case Registration Number, Party Name, Advocate Name etc. For this, click on the Case Status image","752":"a. Use settings option in side menu to manage your cases from majority of the High Courts or District courts or Both","903":"Status","943":"Search your case","900":"District Court Services","901":"Hearing History","902":"Search by Court Order Party Name","838":"e-Committee","144":"CNR Number","904":"Search by Court Order Case Number","905":"Search by Court Order Number","906":"Skip to Main Content","907":"Theme","908":"Color Theme Adjustment","909":"Default Theme","910":"Dark Theme","911":"HC Pending Cases","912":"HC Disposed Cases","913":"HC Cases Listed Today","914":"District &amp; Taluka Court Complexes","915":"DC Pending Cases","916":"DC Disposed Cases in Last Month","917":"DC Cases Listed Today","918":"Login with Parichay","919":"Quick Links","920":"High Court Services","921":"Services and updates for the High Court.","922":"District Court Services","923":"Information on District Court services.","924":"e-Filing","925":"Services and updates for the High Court.","926":"Virtual Court","927":"Judicial data for High Court NJDG.","928":"ePay","929":"Judgment Search","930":"Judicial data for District Court NJDG.","931":"References","932":"Registration Year","933":"Helpdesk","934":"Manuals","935":"Statistics","936":"e-Committee","937":"Policies","938":"Contact","939":"Services","940":"DC Disposed Cases","941":"Court Number","942":"High Court Complexes","944":"Search court orders","839":"Quick Links","841":"Calendar","842":"E-Filing No","845":"Case Conversion","848":"New Case Name","849":"Case Transfer Details","950":"eFiling Services","951":"High Courts of India","952":"District Courts of India","953":"Justice Clock","954":"Knowledge Management","955":"Know current status of your case by Return SMS","956":"Login with JanParichay","957":"Policy Action Plan Document of Phase II","958":"Innovations in Phase II","959":"Objectives Accomplishments Report-2019","960":"Annexure to the Report-2019","961":"SMS ECOURTS &lt;space&gt; &lt;your CNR Number&gt; To 9766899899","964":"Download","965":"This site is designed, hosted and maintained by %s Ministry of Electronics &amp; Information Technology, Government of India.","966":"National Informatics Centre (NIC)","967":"Last Reviewed and Updated on: 15 May 2025","970":"Increase Text","971":"Decrease Text","972":"Reset Text","973":"Line Height","974":"Text Spacing","975":"Big Cursor","976":"e-Committee, Supreme Court of India","977":"Access to eCourts Services: Cause Lists, Case Status, Orders\/Judgments of High Courts","978":"Access to eCourts Services: Cause Lists, Case Status, Orders\/Judgements","979":"Eliminating presence of litigant or lawyer in the court and adjudication of the case online","945":"Invalid Year","963":"Download Mobile App for Android &amp; iOS","109":"eCourts Services","962":"eCourts Services App","980":"Single point access for all types of court payments","981":"NJDG works as a monitoring tool to identify, manage and reduce pendency of cases.","982":"Online filing of cases empowered by digital tools","983":"Making Judgements easily accessible","984":"Dissemination of information related to High Courts to stakeholders of eCourts","985":"Real-time Pendency Status Monitoring","986":"Help Videos, User Manuals &amp; Brochures","948":"High Court NJDG","949":"District Court NJDG","110":"Disclaimer","988":"eCourts Single Sign-On","989":"Process Details","990":"Select Establishment","946":"Entered CNR does not exist.","947":"There is something wrong.","987":"Select Police Station","968":"2026 eCommittee Supreme Court of India. All Rights Reserved.","991":"Search By Process ID"}
+	
+	
+	</script><script>
+/*$(function() {
+		var lang_choice=$('#lang_choice').val();   
+		if(lang_choice=='' || lang_choice==null)
+		{
+			var default_lang=$("#language_select li").attr("value","english"); 
+			$(default_lang).addClass('selected');
+		}
+
+});
+
+function funselectLang(lang,val)
+{	
+	var labelLang="English";
+	//alert(labelLang);
+	$("#selLang").html(labelLang);
+	
+	fillLangState(lang,val);
+}
+
+//Fill State Box According To Selected Language ---------------------------------------------------------------------------------
+function fillLangState(langName,langVal){
+	
+	var lang_code =langVal;
+	//var selected_state=
+	var url ="home/fillLangState";
+
+	var postdata ="lang_code="+lang_code+"&lang_name="+langName;
+	//alert(postdata);
+
+	ajaxCall({url:url,postdata:postdata,callback:callbackLang,connection:'N'});
+		function callbackLang(obj){  
+			if(obj.status == 1)
+			{ 				
+				alert(obj.selState);
+				$('#langState').html(obj.selState);
+				location.reload();
+			}			
+		}
+
+
+	
+}
+
+*/
+</script>
+</body></html>

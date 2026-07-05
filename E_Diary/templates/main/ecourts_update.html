@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load court_extras %}
+
+{% block content %}
+<div id="main">
+    <div class="inner">
+        <h1>eCourts Integration</h1>
+        <p style="color: #585858;">Manage CNR numbers and fetch case data from the eCourts portal.</p>
+
+        <form method="get" style="margin-bottom: 2rem; display: flex; gap: 0.5rem;">
+            <input type="text" name="q" placeholder="Search by case number, type, year, CNR, or party name..." value="{{ q }}" style="flex: 1;">
+            <button type="submit" class="button primary small">Search</button>
+            {% if q %}
+            <a href="{% url 'ecourts_update_list' %}" class="button small">Clear</a>
+            {% endif %}
+        </form>
+
+        <div class="table-wrapper">
+            <table class="alt">
+                <thead>
+                    <tr>
+                        <th>Case</th>
+                        <th>Parties</th>
+                        <th>CNR</th>
+                        <th style="text-align: center;">eCourts</th>
+                        <th style="text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in cases %}
+                    <tr{% if case.has_ecourts %} style="opacity: 0.5;"{% endif %}>
+                        <td>
+                            <a href="{% url 'diary_entry_case' case.id %}"><strong>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</strong></a>
+                            {% if case.disposed %}<span style="color: #c62828;">[DISPOSED]</span>{% endif %}
+                            <br>
+                            <span style="font-size: 0.9rem;">{{ case.court|court_label }}</span>
+                            <br>
+                            <span style="font-size: 0.9rem; color: #777;">{{ case.court_hall }}</span>
+                        </td>
+                        <td>
+                            {% if case.represents_party_1 %}<strong>{{ case.party_1|truncatechars:30 }}</strong>{% else %}{{ case.party_1|truncatechars:30 }}{% endif %}
+                            <br>
+                            <span style="color: #f2849e; font-weight: 900;">vs</span>
+                            {% if case.represents_party_2 %}<strong>{{ case.party_2|truncatechars:30 }}</strong>{% else %}{{ case.party_2|truncatechars:30 }}{% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'ecourts_update_single' case.id %}" style="display: flex; gap: 0.25rem;">
+                                {% csrf_token %}
+                                <input type="text" name="cnr" value="{{ case.cnr }}" placeholder="Enter CNR" style="width: 140px;">
+                                <button type="submit" name="save_cnr" value="1" class="button primary small">Save</button>
+                            </form>
+                        </td>
+                        <td style="text-align: center;">
+                            {% if case.cnr %}
+                            <form method="post" action="{% url 'ecourts_update_single' case.id %}">
+                                {% csrf_token %}
+                                <button type="submit" name="fetch_ecourts" value="1" class="button primary small">Fetch</button>
+                            </form>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'diary_entry_case' case.id %}" class="button small">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 3rem; color: #999;">
+                            No cases found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="text-align: center; margin-top: 2rem;">
+            <span style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                {% if page_obj.has_previous %}
+                <a href="?page=1{% if q %}&q={{ q }}{% endif %}" class="button small">&laquo; First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="button small">&lsaquo; Prev</a>
+                {% endif %}
+
+                <span style="padding: 0 0.75rem;">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="button small">Next &rsaquo;</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}" class="button small">Last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

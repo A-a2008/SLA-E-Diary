@@ -22,6 +22,13 @@ class ClassificationResult(BaseModel):
     reason: str = Field(description="Brief reason for the classification")
 
 
+class MessageClassification(BaseModel):
+    message_type: str = Field(description="Type of message: 'diary_entry' (court appearance update), 'cnr' (CNR number / eCourts reference for integration), 'case_update' (eCourts case status update/notice), or 'unrelated' (greeting, question, other)")
+    reason: str = Field(description="Brief reason for the classification")
+    cnr: Optional[str] = Field(description="If message_type is 'cnr', extract the 16-character CNR number here. Otherwise leave empty.")
+    case_number: Optional[str] = Field(description="Case number if mentioned alongside CNR, to help match to our records")
+
+
 class DiaryEntryExtraction(BaseModel):
     case_type: Optional[str] = Field(description="Case type abbreviation (e.g. CMC, OS, CrlP)")
     case_number: Optional[str] = Field(description="Case number")
@@ -57,9 +64,9 @@ def _get_llm():
 
 
 def classify_message(text: str) -> ClassificationResult:
-    llm = _get_llm().with_structured_output(ClassificationResult)
+    llm = _get_llm().with_structured_output(MessageClassification)
     prompt = ChatPromptTemplate.from_messages([
-        ('system', 'You are a legal assistant for an Indian law firm. Classify whether the user\'s message is a diary entry update about a court case.\n\nA diary entry update includes: case type/number/year, what happened in court, and a next hearing date.\n\nNon-diary messages: casual chat, greetings, questions not about a specific case.'),
+        ('system', 'You are a legal assistant for an Indian law firm. Classify the user\'s message into one of these types:\n\n1. "diary_entry" — A court appearance update with case details (type/number/year), what happened in court, and next date.\n2. "cnr" — A CNR (Case Number Reference) — a 16-character alphanumeric code used for eCourts integration. This may be forwarded from the group or typed manually, possibly alongside a case number.\n3. "case_update" — An automatic eCourts case status update / notice (forwarded from the group).\n4. "unrelated" — Casual chat, greetings, questions not about a specific case.\n\nIf the message contains a 16-character CNR code, classify as "cnr" and extract the CNR.'),
         ('human', '{text}'),
     ])
     chain = prompt | llm
@@ -127,6 +134,54 @@ start_on: Default to today ({today}) if not specified. Format DD-MM-YYYY.'''),
     ])
     chain = prompt | llm
     return chain.invoke({'text': text})
+
+
+def handle_cnr_message(cnr: str, text: str) -> dict:
+    """
+    Handle a CNR message from Telegram.
+    Tries to match the CNR to an existing case, or extracts the case number from the message.
+    
+    Returns: dict with keys 'cnr', 'case' (or None), 'case_number' (or None), 'message'
+    """
+    from main.models import Case
+
+    cnr = (cnr or '').strip().upper()
+    result = {'cnr': cnr, 'case': None, 'case_number': None, 'message': ''}
+
+    if not cnr or len(cnr) != 16:
+        result['message'] = 'Invalid CNR number (must be 16 characters).'
+        return result
+
+    # Try to match CNR to existing case
+    case = Case.objects.filter(cnr=cnr).first()
+    if case:
+        result['case'] = case
+        result['case_number'] = f"{case.case_type}/{case.case_number}/{case.case_year}"
+        result['message'] = f'Found existing case: {result["case_number"]}'
+        return result
+
+    # Try to extract case number from the message text
+    import re
+    case_pattern = re.search(r'(\w{1,5})\s*[/]\s*(\d{1,6})\s*[/]\s*(\d{2,4})', text)
+    if case_pattern:
+        ct, cn, cy = case_pattern.group(1), case_pattern.group(2), case_pattern.group(3)
+        if len(cy) == 2:
+            cy = '20' + cy
+        case = Case.objects.filter(
+            case_type__iexact=ct,
+            case_number=cn,
+            case_year=cy,
+        ).first()
+        if case:
+            case.cnr = cnr
+            case.save()
+            result['case'] = case
+            result['case_number'] = f"{ct}/{cn}/{cy}"
+            result['message'] = f'CNR saved to case {ct}/{cn}/{cy}.'
+            return result
+
+    result['message'] = f'CNR {cnr} received, but could not auto-match to a case. An admin can associate it via the website.'
+    return result
 
 
 def _clean_case_number(raw):

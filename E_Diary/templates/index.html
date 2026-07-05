@@ -42,8 +42,10 @@
 					<li><a href="{% url 'change_password' %}">Change Password</a></li>
 					{% if user.is_superuser %}
 					<li><a href="{% url 'super_dashboard' %}">Super Admin</a></li>
-					{% elif user.is_authenticated and user.userprofile.role == 'admin' %}
+					{% endif %}
+					{% if user.is_superuser or user.userprofile.role == 'admin' %}
 					<li><a href="{% url 'manage_users' %}">Manage Users</a></li>
+					<li><a href="{% url 'ecourts_update_list' %}">eCourts Update</a></li>
 					{% endif %}
 					<li><a href="{% url 'logout' %}">Logout ({{ user.get_full_name }})</a></li>
 					{% else %}
