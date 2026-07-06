@@ -60,8 +60,8 @@ def ecourts_pending(request):
 
     Two groups:
       - pending:  ecourts_status='pending' (queued by user)
-      - refresh:  any case with CNR where the latest next_date ≤ today
-                  (hearing already passed, may have new business entries)
+      - refresh:  ecourts_status='done' with latest next_date ≤ today
+                  (hearing already passed, may have new business)
                   Uses Asia/Kolkata date.
     """
     resp = _check_token(request)
@@ -83,11 +83,11 @@ def ecourts_pending(request):
     ).values('max_date')
 
     refresh = Case.objects.filter(
-        cnr__isnull=False
+        ecourts_status='done', cnr__isnull=False
     ).exclude(cnr='').annotate(
         latest_next_date=Subquery(latest_next)
     ).filter(
-        latest_next_date__isnull=False, latest_next_date__lte=today
+        latest_next_date__lte=today
     )[:15]
 
     def _serialize(case_qs):
