@@ -103,7 +103,23 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
         details = session.search_case(cnr)
 
         if not session.ecourts_available:
+            # Non-clickable case — fall back to purpose-of-hearing from case_history
             result["ecourts_available"] = False
+            purpose_items = session.get_purpose_hearings()
+            for item in purpose_items:
+                biz_date = _parse_date_dmy(item.get("business_date"))
+                if not biz_date:
+                    continue
+                date_str = biz_date.strftime('%d-%m-%Y')
+                if date_str in skip_dates:
+                    continue
+                result["items"].append({
+                    "previous_date": biz_date.strftime('%Y-%m-%d'),
+                    "business": item.get("purpose", ""),
+                    "next_hearing": item.get("hearing_date") or None,
+                    "stage": item.get("purpose", ""),
+                })
+            result["total_available"] = len(purpose_items)
             return result
 
         links = session.get_business_links()
@@ -264,17 +280,11 @@ def main():
     logger.info(f"Starting eCourts sync against {PA_URL}")
     total_processed = 0
 
-    while True:
-        # Fetch pending + recheck cases
-        data = api_get('/api/ecourts/pending/')
-        cases = data.get('cases', [])
-        pending_total = data.get('pending_total', 0)
-
+    def _process_phase(label_phase: str, cases: list):
+        nonlocal total_processed
         if not cases:
-            logger.info(f"No pending or recheck cases ({pending_total} pending remain if any). Done.")
-            break
-
-        logger.info(f"Processing {len(cases)} cases ({pending_total} pending total in queue)")
+            logger.info(f"  [{label_phase}] No cases to process")
+            return
 
         for case_data in cases:
             case_id = case_data['id']
@@ -282,67 +292,70 @@ def main():
             label = f"{case_data['case_type']} {case_data['case_number']}/{case_data['case_year']}"
             skip_dates = set(case_data.get('already_fetched_dates', []))
 
-            logger.info(f"  [{case_id}] {label} (CNR: {cnr}) — scraping...")
+            logger.info(f"  [{label_phase}][{case_id}] {label} (CNR: {cnr}) — scraping...")
 
             try:
                 scraped = scrape_case(cnr, skip_dates=skip_dates)
 
                 if scraped.get('error'):
-                    logger.error(f"  [{case_id}] Scraper error: {scraped['error']}")
-                    # Still push with error status so PA marks it
+                    logger.error(f"  [{label_phase}][{case_id}] Scraper error: {scraped['error']}")
                     payload = {
                         'case_id': case_id,
-                        'status': 'pending',
+                        'status': 'pending' if label_phase == 'PENDING' else 'done',
                         'entries': [],
                         'ecourts_available': scraped.get('ecourts_available', True),
                     }
                     api_post('/api/ecourts/upsert/', payload)
                     continue
 
-                if not scraped['ecourts_available']:
-                    logger.info(f"  [{case_id}] Unsupported case type (no clickable links)")
-                    api_post('/api/ecourts/upsert/', {
-                        'case_id': case_id,
-                        'status': 'unsupported',
-                        'entries': [],
-                        'ecourts_available': False,
-                    })
-                    total_processed += 1
-                    continue
-
+                ecourts_available = scraped.get('ecourts_available', True)
                 items = scraped.get('items', [])
-                if not items:
-                    logger.info(f"  [{case_id}] No new entries found")
-                    api_post('/api/ecourts/upsert/', {
-                        'case_id': case_id,
-                        'status': 'done',
-                        'entries': [],
-                        'ecourts_available': True,
-                    })
-                    total_processed += 1
-                    continue
 
-                logger.info(f"  [{case_id}] Cleaning {len(items)} entries with Groq...")
-                items = cleanup_texts(items)
+                if items:
+                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries with Groq...")
+                    items = cleanup_texts(items)
 
-                logger.info(f"  [{case_id}] Pushing {len(items)} entries...")
+                status = 'done' if items or not ecourts_available else 'no_data'
+
+                # For unsupported cases with purpose-hearings, push them as regular entries
+                if not ecourts_available and items:
+                    status = 'done'
+
+                logger.info(f"  [{label_phase}][{case_id}] Pushing {len(items)} entries (status={status})...")
                 result = api_post('/api/ecourts/upsert/', {
                     'case_id': case_id,
-                    'status': 'done',
+                    'status': status,
                     'entries': items,
-                    'ecourts_available': True,
+                    'ecourts_available': ecourts_available,
                 })
-                logger.info(f"  [{case_id}] Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
+                logger.info(f"  [{label_phase}][{case_id}] Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
                 total_processed += 1
 
-                # Small delay between cases
                 time.sleep(2)
 
             except Exception as e:
-                logger.exception(f"  [{case_id}] Failed: {e}")
+                logger.exception(f"  [{label_phase}][{case_id}] Failed: {e}")
                 continue
 
-        # Brief pause before next batch
+    while True:
+        data = api_get('/api/ecourts/pending/')
+        pending = data.get('pending', [])
+        refresh = data.get('refresh', [])
+        pending_total = data.get('pending_total', 0)
+        refresh_total = data.get('refresh_total', 0)
+
+        if not pending and not refresh:
+            logger.info(f"Nothing to process (pending={pending_total}, refresh={refresh_total}). Done.")
+            break
+
+        logger.info(f"Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
+
+        # Phase 1 — process pending cases (full history scrape)
+        _process_phase('PENDING', pending)
+
+        # Phase 2 — process refresh cases (hearing dates already passed)
+        _process_phase('REFRESH', refresh)
+
         time.sleep(1)
 
     logger.info(f"Sync complete. Processed {total_processed} cases.")

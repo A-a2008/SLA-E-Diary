@@ -193,7 +193,23 @@ def _scrape_case(cnr: str, skip_dates: set = None) -> dict:
         details = session.search_case(cnr)
 
         if not session.ecourts_available:
+            # Non-clickable case — fall back to purpose-of-hearing from case_history
             result["ecourts_available"] = False
+            purpose_items = session.get_purpose_hearings()
+            for item in purpose_items:
+                biz_date = _parse_date_dmy(item.get("business_date"))
+                if not biz_date:
+                    continue
+                date_str = biz_date.strftime('%d-%m-%Y')
+                if date_str in skip_dates:
+                    continue
+                result["items"].append({
+                    "business_date": biz_date,
+                    "business": item.get("purpose", ""),
+                    "next_hearing": _parse_date_dmy(item.get("hearing_date")),
+                    "stage": item.get("purpose", ""),
+                })
+            result["total_available"] = len(purpose_items)
             return result
 
         links = session.get_business_links()
@@ -294,16 +310,7 @@ def fetch_and_update_case(case: Case) -> dict:
             result["limit_reached"] = True
         return result
 
-    if not scraped_data["ecourts_available"]:
-        result["ecourts_available"] = False
-        result["success"] = True
-        result["errors"].append("Case does not support eCourts business lookup (family matter or no clickable links)")
-        from django.utils import timezone
-        case.ecourts_status = 'unsupported'
-        case.ecourts_last_checked = timezone.now()
-        case.save()
-        return result
-
+    result["ecourts_available"] = scraped_data.get("ecourts_available", True)
     result["total_available"] = scraped_data.get("total_available", 0)
 
     # Step 2: process scraped data with Django ORM (outside async context)
@@ -352,10 +359,8 @@ def fetch_and_update_case(case: Case) -> dict:
         result["limit_reached"] = True
 
     # Set ecourts_status on the case
-    if not scraped_data.get("ecourts_available", True):
-        case.ecourts_status = 'unsupported'
-    elif not result["entries_created"] and not result["entries_updated"]:
-        case.ecourts_status = 'no_data'
+    if not result["entries_created"] and not result["entries_updated"]:
+        case.ecourts_status = 'no_data' if result["ecourts_available"] else 'unsupported'
     else:
         case.ecourts_status = 'done'
     from django.utils import timezone

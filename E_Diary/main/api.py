@@ -56,49 +56,72 @@ def mark_sent(request, msg_id):
 @csrf_exempt
 @require_GET
 def ecourts_pending(request):
-    """Return cases that need eCourts fetching — pending + done cases for recheck."""
+    """Return cases that need eCourts fetching.
+
+    Two groups:
+      - pending:  ecourts_status='pending' (queued by user)
+      - refresh:  ecourts_status='done' but last next_date ≤ today
+                  (hearing already passed, may have new business)
+    """
     resp = _check_token(request)
     if resp:
         return resp
 
     now = timezone.now()
-    cutoff = now - datetime.timedelta(hours=24)
+    today = now.date()
 
     pending = Case.objects.filter(
         ecourts_status='pending', cnr__isnull=False
     ).exclude(cnr='')
 
-    recheck = Case.objects.filter(
-        ecourts_status='done', ecourts_last_checked__lt=cutoff, cnr__isnull=False
-    ).exclude(cnr='')
+    from django.db.models import Max, OuterRef, Subquery
 
-    cases = list(pending[:20]) + list(recheck[:10])
+    latest_next = DiaryEntry.objects.filter(
+        case=OuterRef('pk'), entry_type='business'
+    ).values('case').annotate(
+        max_date=Max('next_date')
+    ).values('max_date')
 
-    data = []
-    for c in cases:
-        already_fetched = list(
-            DiaryEntry.objects.filter(
-                case=c, entry_type='business'
-            ).exclude(ecourts_business='').exclude(ecourts_business__isnull=True)
-            .values_list('previous_date', flat=True)
-        )
-        data.append({
-            'id': c.id,
-            'cnr': c.cnr,
-            'case_type': c.case_type,
-            'case_number': c.case_number,
-            'case_year': c.case_year,
-            'court': c.court,
-            'court_hall': c.court_hall,
-            'floor': c.floor,
-            'representing': c.representing,
-            'representing_parties': c.representing_parties,
-            'party_1_total': c.party_1_total,
-            'party_2_total': c.party_2_total,
-            'already_fetched_dates': [d.strftime('%d-%m-%Y') for d in already_fetched if d],
-        })
+    refresh = Case.objects.filter(
+        ecourts_status='done', cnr__isnull=False
+    ).exclude(cnr='').annotate(
+        latest_next_date=Subquery(latest_next)
+    ).filter(
+        latest_next_date__lte=today
+    )[:15]
 
-    return JsonResponse({'cases': data, 'pending_total': pending.count()})
+    def _serialize(case_qs):
+        items = []
+        for c in case_qs:
+            already_fetched = list(
+                DiaryEntry.objects.filter(
+                    case=c, entry_type='business'
+                ).exclude(ecourts_business='').exclude(ecourts_business__isnull=True)
+                .values_list('previous_date', flat=True)
+            )
+            items.append({
+                'id': c.id,
+                'cnr': c.cnr,
+                'case_type': c.case_type,
+                'case_number': c.case_number,
+                'case_year': c.case_year,
+                'court': c.court,
+                'court_hall': c.court_hall,
+                'floor': c.floor,
+                'representing': c.representing,
+                'representing_parties': c.representing_parties,
+                'party_1_total': c.party_1_total,
+                'party_2_total': c.party_2_total,
+                'already_fetched_dates': [d.strftime('%d-%m-%Y') for d in already_fetched if d],
+            })
+        return items
+
+    return JsonResponse({
+        'pending': _serialize(pending),
+        'pending_total': pending.count(),
+        'refresh': _serialize(refresh),
+        'refresh_total': refresh.count(),
+    })
 
 
 @csrf_exempt

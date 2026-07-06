@@ -246,6 +246,7 @@ class EcourtSession:
         self.page.set_viewport_size({"width": 1280, "height": 900})
         self._casetype_list = None
         self._ecourts_available = True
+        self._case_history = []
 
     @property
     def ecourts_available(self) -> bool:
@@ -290,10 +291,12 @@ class EcourtSession:
 
             if data.get("status") == 1:
                 self._casetype_list = data["casetype_list"]
+                details = parse_case_details(data["casetype_list"])
+                self._case_history = details.get("case_history", [])
                 # Check if links are clickable (family matters show plain text)
                 if not re.search(r'onclick=viewBusiness\(', data["casetype_list"]):
                     self._ecourts_available = False
-                return parse_case_details(data["casetype_list"])
+                return details
 
             print(f"  Captcha wrong, retrying...", file=sys.stderr)
             time.sleep(1)
@@ -305,6 +308,25 @@ class EcourtSession:
         if not self._casetype_list:
             raise RuntimeError("No search result loaded. Call search_case() first.")
         return extract_business_links(self._casetype_list)
+
+    def get_purpose_hearings(self) -> list[dict]:
+        """Return case history rows as business-like items (for non-clickable cases).
+
+        Each item: {business_date: date, purpose: str, hearing_date: date}
+        The purpose text is used as both business and stage content.
+        """
+        items = []
+        for row in self._case_history:
+            biz_date = row.get("business_date", "").strip()
+            purpose = row.get("purpose", "").strip()
+            hearing_date = row.get("hearing_date", "").strip()
+            if purpose and biz_date:
+                items.append({
+                    "business_date": biz_date,
+                    "purpose": purpose,
+                    "hearing_date": hearing_date,
+                })
+        return items
 
     def view_business(self, link: dict) -> dict:
         """Click a business date link and return the parsed business details."""
