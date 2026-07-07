@@ -260,68 +260,27 @@ def _scrape_case(cnr: str, skip_dates: set = None) -> dict:
 
     session = EcourtSession()
     try:
-        details = session.search_case(cnr)
+        session.search_case(cnr)
 
-        if not session.ecourts_available:
-            # Non-clickable case — fall back to purpose-of-hearing from case_history
-            purpose_items = session.get_purpose_hearings()
-            for item in purpose_items:
-                biz_date = _parse_date_dmy(item.get("business_date"))
-                if not biz_date:
-                    continue
-                date_str = biz_date.strftime('%d-%m-%Y')
-                if date_str in skip_dates:
-                    continue
-                result["items"].append({
-                    "business_date": biz_date,
-                    "business": item.get("purpose", ""),
-                    "next_hearing": _parse_date_dmy(item.get("hearing_date")),
-                    "stage": item.get("purpose", ""),
-                })
-            result["total_available"] = len(purpose_items)
-            result["ecourts_available"] = bool(purpose_items)
-            return result
-
-        links = session.get_business_links()
-        result["total_available"] = len(links)
-        skipped = 0
-
-        for i, link in enumerate(links):
-            link_date = (link.get("business_date") or "").strip()
-
-            if link_date in skip_dates:
-                skipped += 1
-                continue
-
-            try:
-                biz = session.view_business(link)
-            except RuntimeError as e:
-                if "limit" in str(e).lower():
-                    result["limit_reached"] = True
-                else:
-                    result["error"] = str(e)
-                break
-
-            biz_date = _parse_date_dmy(link.get("business_date"))
+        purpose_items = session.get_purpose_hearings()
+        for item in purpose_items:
+            biz_date = _parse_date_dmy(item.get("business_date"))
             if not biz_date:
-                biz_date = _parse_date_dmy(biz.get("date"))
-
-            ecourts_biz = biz.get("business", "").strip()
-            if not ecourts_biz:
                 continue
-
-            next_hearing = _parse_date_dmy(biz.get("next_hearing_date"))
-            stage = biz.get("next_purpose", "").strip()
-
+            date_str = biz_date.strftime('%d-%m-%Y')
+            if date_str in skip_dates:
+                continue
+            purpose = (item.get("purpose") or "").strip()
+            if not purpose:
+                continue
             result["items"].append({
                 "business_date": biz_date,
-                "business": ecourts_biz,
-                "next_hearing": next_hearing,
-                "stage": stage,
+                "business": purpose.title(),
+                "next_hearing": _parse_date_dmy(item.get("hearing_date")),
+                "stage": purpose.title(),
             })
-
-            if i < len(links) - 1:
-                session.back_to_history()
+        result["total_available"] = len(purpose_items)
+        result["ecourts_available"] = bool(purpose_items)
 
     except RuntimeError as e:
         if "limit" in str(e).lower():
@@ -398,12 +357,16 @@ def fetch_and_update_case(case: Case) -> dict:
 
         if existing:
             existing.ecourts_business = biz_text
-            existing.business_summary = summarize_business(existing.business, biz_text, case=case)
+            existing.business_summary = existing.business or biz_text
+            existing.stage = stage or existing.stage
+            if next_hearing:
+                existing.next_date = next_hearing
+            existing._skip_summary_update = True
             existing.save()
             result["entries_updated"] += 1
         else:
             court_label = COURT_LABELS.get(case.court, case.court)
-            entry = DiaryEntry.objects.create(
+            DiaryEntry.objects.create(
                 case=case,
                 entry_type='business',
                 previous_date=biz_date,
@@ -421,8 +384,6 @@ def fetch_and_update_case(case: Case) -> dict:
                 business_summary=biz_text,
                 next_date=next_hearing or biz_date,
             )
-            entry.business_summary = summarize_business("", biz_text, case=case)
-            entry.save()
             result["entries_created"] += 1
 
     if scraped_data.get("limit_reached"):

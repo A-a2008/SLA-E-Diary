@@ -166,6 +166,9 @@ class DiaryEntry(models.Model):
         return self.representing == self.case.party_2_type
 
     def save(self, *args, **kwargs):
+        if getattr(self, '_skip_summary_update', False):
+            super().save(*args, **kwargs)
+            return
         is_new = self.pk is None
         if not is_new:
             old = DiaryEntry.objects.filter(pk=self.pk).values('business', 'ecourts_business').first()

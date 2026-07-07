@@ -160,8 +160,6 @@ def ecourts_upsert(request):
     except Case.DoesNotExist:
         return JsonResponse({'error': 'Case not found'}, status=404)
 
-    from .ecourts_integration import summarize_business
-
     def _parse_d(v):
         if not v:
             return None
@@ -191,13 +189,12 @@ def ecourts_upsert(request):
 
         if existing:
             existing.ecourts_business = biz_text
-            existing.business_summary = summarize_business(
-                existing.business, biz_text, case=case
-            )
+            existing.business_summary = existing.business or biz_text
             if next_hearing:
                 existing.next_date = next_hearing
             if stage:
                 existing.stage = stage
+            existing._skip_summary_update = True
             existing.save()
             updated += 1
         else:
@@ -217,7 +214,7 @@ def ecourts_upsert(request):
                 stage=stage,
                 business='',
                 ecourts_business=biz_text,
-                business_summary=summarize_business('', biz_text, case=case),
+                business_summary=biz_text,
                 next_date=next_hearing or biz_date,
             )
             created += 1

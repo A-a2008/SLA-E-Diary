@@ -99,66 +99,27 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 
     session = EcourtSession()
     try:
-        details = session.search_case(cnr)
+        session.search_case(cnr)
 
-        if not session.ecourts_available:
-            # Non-clickable case — fall back to purpose-of-hearing from case_history
-            purpose_items = session.get_purpose_hearings()
-            for item in purpose_items:
-                biz_date = _parse_date_dmy(item.get("business_date"))
-                if not biz_date:
-                    continue
-                date_str = biz_date.strftime('%d-%m-%Y')
-                if date_str in skip_dates:
-                    continue
-                result["items"].append({
-                    "previous_date": biz_date.strftime('%Y-%m-%d'),
-                    "business": item.get("purpose", ""),
-                    "next_hearing": item.get("hearing_date") or None,
-                    "stage": item.get("purpose", ""),
-                })
-            result["total_available"] = len(purpose_items)
-            result["ecourts_available"] = bool(purpose_items)
-            return result
-
-        links = session.get_business_links()
-        result["total_available"] = len(links)
-
-        for i, link in enumerate(links):
-            link_date = (link.get("business_date") or "").strip()
-
-            if link_date in skip_dates:
-                continue
-
-            try:
-                biz = session.view_business(link)
-            except RuntimeError as e:
-                if "limit" in str(e).lower():
-                    logger.warning(f"  Call limit reached after {i} items")
-                else:
-                    result["error"] = str(e)
-                break
-
-            biz_date = _parse_date_dmy(link.get("business_date"))
+        purpose_items = session.get_purpose_hearings()
+        for item in purpose_items:
+            biz_date = _parse_date_dmy(item.get("business_date"))
             if not biz_date:
-                biz_date = _parse_date_dmy(biz.get("date"))
-
-            biz_text = biz.get("business", "").strip()
-            if not biz_text:
                 continue
-
-            next_hearing = _parse_date_dmy(biz.get("next_hearing_date"))
-            stage = biz.get("next_purpose", "").strip()
-
+            date_str = biz_date.strftime('%d-%m-%Y')
+            if date_str in skip_dates:
+                continue
+            purpose = (item.get("purpose") or "").strip()
+            if not purpose:
+                continue
             result["items"].append({
-                "previous_date": biz_date.strftime('%Y-%m-%d') if biz_date else None,
-                "business": biz_text,
-                "next_hearing": next_hearing.strftime('%Y-%m-%d') if next_hearing else None,
-                "stage": stage,
+                "previous_date": biz_date.strftime('%Y-%m-%d'),
+                "business": purpose.title(),
+                "next_hearing": item.get("hearing_date") or None,
+                "stage": purpose.title(),
             })
-
-            if i < len(links) - 1:
-                session.back_to_history()
+        result["total_available"] = len(purpose_items)
+        result["ecourts_available"] = bool(purpose_items)
 
     except RuntimeError as e:
         result["error"] = str(e)
@@ -176,6 +137,7 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 # ============================================================
 
 import httpx
+import threading
 
 _rate_lock = threading.Lock()
 _last_call_time: float = 0

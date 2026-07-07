@@ -309,8 +309,38 @@ def parse_date(date_str):
     return None
 
 
+def _upsert_entry(case, entry_type, previous_date, advocate, business_text, stage, next_date, **extra):
+    """Create or update a diary entry. Advocate text always becomes business_summary."""
+    from main.models import DiaryEntry
+
+    existing = DiaryEntry.objects.filter(
+        case=case, previous_date=previous_date, entry_type=entry_type
+    ).first()
+    defaults = dict(
+        stage=stage,
+        business=business_text,
+        next_date=next_date,
+        advocate=advocate,
+        **extra,
+    )
+    if existing:
+        for k, v in defaults.items():
+            setattr(existing, k, v)
+        existing.business_summary = business_text
+        existing._skip_summary_update = True
+        existing.save()
+        return existing
+
+    entry = DiaryEntry.objects.create(
+        case=case, entry_type=entry_type, previous_date=previous_date,
+        **defaults,
+    )
+    entry.business_summary = business_text
+    entry.save()
+    return entry
+
+
 def create_entry_from_extraction(extraction, case, advocate=None):
-    from main.services import create_diary_entry
     from main.constants import COURT_LABELS
     from main.models import MediationStatus
 
@@ -358,51 +388,41 @@ def create_entry_from_extraction(extraction, case, advocate=None):
     if mediation_next_date and mediation_next_date < today - datetime.timedelta(days=180):
         mediation_next_date = mediation_next_date.replace(year=today.year)
 
+    biz_text = extraction.business.strip()
+    stage_text = (extraction.stage or '').strip()
+    common_extra = dict(
+        representing=case.representing,
+        representing_parties=case.representing_parties,
+        party_1_total=case.party_1_total,
+        party_2_total=case.party_2_total,
+    )
+
     # --- DUAL ENTRY: both a court next_date and a separate mediation date ---
     if mediation_next_date and not is_mediation:
         case.mediation_status = MediationStatus.REFERRED
         case.mediation_next_date = mediation_next_date
         case.save()
 
-        # Create mediation diary entry
-        create_diary_entry(
-            case=case,
-            entry_type='mediation',
-            previous_date=previous_date,
+        _upsert_entry(
+            case, 'mediation', previous_date, advocate, biz_text, 'Mediation',
+            mediation_next_date,
             court='Karnataka Mediation Centre',
             court_hall='Mediation',
             floor=0,
             case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
-            representing=case.representing,
-            stage='Mediation',
-            business=extraction.business.strip(),
-            next_date=mediation_next_date,
-            advocate=advocate,
-            representing_parties=case.representing_parties,
-            party_1_total=case.party_1_total,
-            party_2_total=case.party_2_total,
+            **common_extra,
         )
 
-        # Create regular court diary entry
         court = COURT_LABELS.get(case.court, case.court)
-        entry = create_diary_entry(
-            case=case,
-            entry_type='business',
-            previous_date=previous_date,
+        entry = _upsert_entry(
+            case, 'business', previous_date, advocate, biz_text, stage_text,
+            next_date,
             court=court,
             court_hall=case.court_hall,
             floor=case.floor,
             case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
-            representing=case.representing,
-            stage=(extraction.stage or '').strip(),
-            business=extraction.business.strip(),
-            next_date=next_date,
-            advocate=advocate,
-            representing_parties=case.representing_parties,
-            party_1_total=case.party_1_total,
-            party_2_total=case.party_2_total,
+            **common_extra,
         )
-        # Attach mediation info for the caller
         entry._mediation_entry_created = True
         entry._mediation_next_date = mediation_next_date
         return entry
@@ -422,7 +442,6 @@ def create_entry_from_extraction(extraction, case, advocate=None):
         floor = case.floor
         entry_type = 'business'
 
-        # If case is in mediation and this is a court entry, mark ongoing
         if case.mediation_status == MediationStatus.REFERRED:
             case.mediation_status = MediationStatus.ONGOING
             case.mediation_next_date = next_date
@@ -431,22 +450,14 @@ def create_entry_from_extraction(extraction, case, advocate=None):
             case.mediation_next_date = next_date
             case.save()
 
-    entry = create_diary_entry(
-        case=case,
-        entry_type=entry_type,
-        previous_date=previous_date,
+    entry = _upsert_entry(
+        case, entry_type, previous_date, advocate, biz_text, stage_text,
+        next_date,
         court=court,
         court_hall=court_hall,
         floor=floor,
         case_number_display=f"{case.case_type}/{case.case_number}/{case.case_year}",
-        representing=case.representing,
-        stage=(extraction.stage or '').strip(),
-        business=extraction.business.strip(),
-        next_date=next_date,
-        advocate=advocate,
-        representing_parties=case.representing_parties,
-        party_1_total=case.party_1_total,
-        party_2_total=case.party_2_total,
+        **common_extra,
     )
     return entry
 
@@ -469,6 +480,8 @@ def update_last_entry_from_advance(extraction, case, advocate=None):
     last_entry.next_date = next_date
     if extraction.business and extraction.business.strip():
         last_entry.business = extraction.business.strip()
+        last_entry.business_summary = extraction.business.strip()
+        last_entry._skip_summary_update = True
     if extraction.stage and extraction.stage.strip():
         last_entry.stage = extraction.stage.strip()
     if advocate:
