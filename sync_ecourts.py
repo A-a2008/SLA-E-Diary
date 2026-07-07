@@ -197,12 +197,54 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 
 
 # ============================================================
-# Rate limiter (26 req/min program-wide)
+# Rate limiter (15 req/min program-wide, auto-tuned from API)
 # ============================================================
+
+import httpx
 
 _rate_lock = threading.Lock()
 _last_call_time: float = 0
-_MIN_INTERVAL = 60.0 / 26  # ~2.3077 seconds between Groq calls
+_MIN_INTERVAL = 60.0 / 15  # default 4.0s — tuned down after probe
+
+
+def _probe_groq_rate_limit(api_key: str) -> dict:
+    """Make a single lightweight probe to Groq's models endpoint
+    to read rate-limit headers from the response."""
+    try:
+        with httpx.Client(timeout=5) as client:
+            resp = client.get(
+                'https://api.groq.com/openai/v1/models',
+                headers={'Authorization': f'Bearer {api_key}'},
+            )
+            headers = {}
+            for key in resp.headers:
+                lk = key.lower()
+                if lk.startswith('x-ratelimit-'):
+                    headers[lk] = resp.headers[key]
+            return headers
+    except Exception:
+        return {}
+
+
+def _auto_tune_rate_limit(headers: dict):
+    """Parse Groq rate-limit headers and tune _MIN_INTERVAL.
+
+    Groq docs: x-ratelimit-limit-tokens = TPM (Tokens Per Minute).
+    We estimate requests/min from TPM ÷ avg tokens per request (~400).
+    """
+    global _MIN_INTERVAL
+    tpm_str = headers.get('x-ratelimit-limit-tokens')
+    if tpm_str:
+        try:
+            tpm = int(tpm_str)
+            tokens_per_req = 400
+            rpm = max(1, min(tpm / tokens_per_req, 60))
+            new_interval = 60.0 / rpm
+            _MIN_INTERVAL = max(new_interval, 1.0)
+            logger.info(f'Groq TPM: {tpm} → ~{rpm:.0f} req/min at {tokens_per_req}t/req, '
+                       f'interval set to {_MIN_INTERVAL:.1f}s')
+        except (ValueError, TypeError):
+            pass
 
 
 def _wait_for_rate_limit():
@@ -232,6 +274,11 @@ def _get_groq():
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         return None
+
+    # Probe Groq rate limits once at startup
+    rate_headers = _probe_groq_rate_limit(api_key)
+    if rate_headers:
+        _auto_tune_rate_limit(rate_headers)
 
     for model in [GROQ_MODEL, GROQ_FALLBACK_MODEL, GROQ_FINAL_FALLBACK]:
         try:

@@ -34,6 +34,56 @@ GROQ_MODEL = "openai/gpt-oss-120b"
 GROQ_FALLBACK_MODEL = "openai/gpt-oss-20b"
 GROQ_FINAL_FALLBACK = "qwen/qwen3-32b"
 
+import threading
+import httpx
+
+# ---- Groq rate limiter (auto-tuned from API headers) ----
+_groq_lock = threading.Lock()
+_groq_last_call: float = 0
+_groq_min_interval = 60.0 / 15  # 4.0s default
+
+
+def _probe_groq_rate_limit(api_key: str) -> dict:
+    try:
+        with httpx.Client(timeout=5) as client:
+            resp = client.get(
+                'https://api.groq.com/openai/v1/models',
+                headers={'Authorization': f'Bearer {api_key}'},
+            )
+            headers = {}
+            for key in resp.headers:
+                lk = key.lower()
+                if lk.startswith('x-ratelimit-'):
+                    headers[lk] = resp.headers[key]
+            return headers
+    except Exception:
+        return {}
+
+
+def _auto_tune_groq_interval(headers: dict):
+    global _groq_min_interval
+    tpm_str = headers.get('x-ratelimit-limit-tokens')
+    if tpm_str:
+        try:
+            tpm = int(tpm_str)
+            tokens_per_req = 400
+            rpm = max(1, min(tpm / tokens_per_req, 60))
+            _groq_min_interval = max(60.0 / rpm, 1.0)
+            logger.info(f'Groq TPM: {tpm} → ~{rpm:.0f} req/min at {tokens_per_req}t/req, '
+                       f'interval set to {_groq_min_interval:.1f}s')
+        except (ValueError, TypeError):
+            pass
+
+
+def _wait_groq():
+    global _groq_last_call
+    with _groq_lock:
+        now = time.monotonic()
+        elapsed = now - _groq_last_call
+        if elapsed < _groq_min_interval:
+            time.sleep(_groq_min_interval - elapsed)
+        _groq_last_call = time.monotonic()
+
 
 def _get_groq():
     from langchain_groq import ChatGroq
@@ -47,6 +97,11 @@ def _get_groq():
     if not api_key:
         return None
 
+    # Probe Groq rate limits once at startup
+    rate_headers = _probe_groq_rate_limit(api_key)
+    if rate_headers:
+        _auto_tune_groq_interval(rate_headers)
+
     for model in [GROQ_MODEL, GROQ_FALLBACK_MODEL, GROQ_FINAL_FALLBACK]:
         try:
             llm = ChatGroq(api_key=api_key, model=model, temperature=0, max_retries=1, timeout=30)
@@ -55,6 +110,7 @@ def _get_groq():
                 ("system", "Respond concisely."),
                 ("human", "ok"),
             ]) | llm
+            _wait_groq()
             chain.invoke({})
             return llm
         except Exception:
@@ -113,6 +169,7 @@ PAST CASE HISTORY is provided for context only — it shows how this case has pr
     ])
 
     try:
+        _wait_groq()
         chain = prompt | llm
         result = chain.invoke({
             "history": history_block,
@@ -160,6 +217,7 @@ RULES:
         from langchain_core.output_parsers import JsonOutputParser
         parser = JsonOutputParser()
         chain = prompt | llm | parser
+        _wait_groq()
         result = chain.invoke({"business": business_text, "stage": stage_text})
         cleaned_biz = (result.get("business") or business_text).strip()
         cleaned_stage = (result.get("stage") or stage_text).strip()
