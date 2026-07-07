@@ -315,10 +315,6 @@ def create_entry_from_extraction(extraction, case, advocate=None):
     from main.models import MediationStatus
 
     today = datetime.date.today()
-    previous_date = parse_date(extraction.previous_date)
-    if not previous_date:
-        last_entry = case.diary_entries.order_by('-next_date').first()
-        previous_date = last_entry.next_date if last_entry else today
     next_date = parse_date(extraction.next_date)
     if not next_date:
         logger.error(f'No valid next_date in extraction: {extraction.next_date}')
@@ -328,6 +324,31 @@ def create_entry_from_extraction(extraction, case, advocate=None):
     if next_date < today - datetime.timedelta(days=180):
         next_date = next_date.replace(year=today.year)
         logger.warning(f'Corrected next_date year to {next_date}')
+
+    previous_date = parse_date(extraction.previous_date)
+    if previous_date:
+        # Year correction for previous_date (same as next_date)
+        if previous_date < today - datetime.timedelta(days=180):
+            previous_date = previous_date.replace(year=today.year)
+            logger.warning(f'Corrected previous_date year to {previous_date}')
+
+        # Sanity: appearance date should never be in the future
+        if previous_date > today:
+            logger.warning(f'previous_date {previous_date} is in the future, ignoring extracted value')
+            previous_date = None
+
+        # Sanity: appearance and next hearing can't be the same day
+        if previous_date and previous_date == next_date:
+            logger.warning(f'previous_date == next_date ({previous_date}), ignoring extracted value')
+            previous_date = None
+
+    if not previous_date:
+        last_entry = case.diary_entries.order_by('-next_date').first()
+        previous_date = last_entry.next_date if last_entry else today
+        # Chain date must not be in the future — use today if it is
+        if previous_date > today:
+            logger.warning(f'Chain previous_date {previous_date} is in the future, using today')
+            previous_date = today
 
     is_mediation = extraction.is_mediation and not extraction.mediation_clarification_needed
     clarification_needed = extraction.mediation_clarification_needed
