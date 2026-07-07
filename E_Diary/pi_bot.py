@@ -8,7 +8,6 @@ Requirements: requests, python-dotenv
 
 import os
 import time
-import threading
 import logging
 import requests
 from dotenv import load_dotenv
@@ -21,24 +20,9 @@ logger = logging.getLogger(__name__)
 API_BASE_URL = os.getenv('API_BASE_URL')  # e.g. https://slaediary.pythonanywhere.com
 API_TOKEN = os.getenv('API_TOKEN')
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '4'))
+POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '2'))
 
 TELEGRAM_API = f'https://api.telegram.org/bot{BOT_TOKEN}'
-
-# ---- program-wide rate limiter (15 req/min) ----
-_RATE_LOCK = threading.Lock()
-_LAST_PA_CALL: float = 0
-_MIN_PA_INTERVAL = 60.0 / 15  # 4.0 seconds
-
-
-def _wait_pa_rate():
-    global _LAST_PA_CALL
-    with _RATE_LOCK:
-        now = time.monotonic()
-        elapsed = now - _LAST_PA_CALL
-        if elapsed < _MIN_PA_INTERVAL:
-            time.sleep(_MIN_PA_INTERVAL - elapsed)
-        _LAST_PA_CALL = time.monotonic()
 
 
 def send_telegram(chat_id, text):
@@ -55,7 +39,6 @@ def send_telegram(chat_id, text):
 
 
 def mark_sent(msg_id):
-    _wait_pa_rate()
     try:
         r = requests.post(
             f'{API_BASE_URL}/api/mark-sent/{msg_id}/',
@@ -69,10 +52,8 @@ def mark_sent(msg_id):
 
 
 def poll():
-    logger.info(f'Polling {API_BASE_URL}/api/pending-messages/ every {POLL_INTERVAL}s (PA rate: 15 req/min)')
-    backoff = 1
+    logger.info(f'Polling {API_BASE_URL}/api/pending-messages/ every {POLL_INTERVAL}s')
     while True:
-        _wait_pa_rate()
         try:
             r = requests.get(
                 f'{API_BASE_URL}/api/pending-messages/',
@@ -84,7 +65,6 @@ def poll():
                 time.sleep(POLL_INTERVAL)
                 continue
 
-            backoff = 1  # reset on success
             messages = r.json().get('messages', [])
             for msg in messages:
                 ok = send_telegram(msg['chat_id'], msg['text'])
@@ -95,9 +75,6 @@ def poll():
                     logger.warning(f'Failed to send msg {msg["id"]}')
         except Exception as e:
             logger.error(f'Poll error: {e}')
-            time.sleep(backoff)
-            backoff = min(backoff * 2, 60)  # exponential backoff, cap at 60s
-            continue
 
         time.sleep(POLL_INTERVAL)
 

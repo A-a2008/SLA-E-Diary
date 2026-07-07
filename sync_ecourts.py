@@ -49,33 +49,9 @@ HEADERS = {'Authorization': f'Bearer {API_TOKEN}'} if API_TOKEN else {}
 
 
 # ============================================================
-# Rate limiter (15 PA req/min program-wide)
-# ============================================================
-
-import threading
-
-_PA_RATE_LOCK = threading.Lock()
-_LAST_PA_CALL: float = 0
-_MIN_PA_INTERVAL = 60.0 / 15  # 4.0 seconds
-
-
-def _wait_pa_rate():
-    global _LAST_PA_CALL
-    with _PA_RATE_LOCK:
-        now = time.monotonic()
-        elapsed = now - _LAST_PA_CALL
-        if elapsed < _MIN_PA_INTERVAL:
-            sleep_for = _MIN_PA_INTERVAL - elapsed
-            time.sleep(sleep_for)
-        _LAST_PA_CALL = time.monotonic()
-
-
-# ============================================================
 # API helpers
 # ============================================================
-
 def api_get(endpoint: str) -> dict:
-    _wait_pa_rate()
     url = f'{PA_URL}{endpoint}'
     params = {}
     if not API_TOKEN:
@@ -86,7 +62,6 @@ def api_get(endpoint: str) -> dict:
 
 
 def api_post(endpoint: str, data: dict) -> dict:
-    _wait_pa_rate()
     url = f'{PA_URL}{endpoint}'
     resp = requests.post(url, headers={**HEADERS, 'Content-Type': 'application/json'},
                          json=data, timeout=60)
@@ -259,6 +234,16 @@ def _wait_for_rate_limit():
         _last_call_time = time.monotonic()
 
 
+def _handle_groq_error(e: Exception):
+    """Dynamically back off when Groq returns 429."""
+    global _MIN_INTERVAL
+    estr = str(e)
+    if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
+        _MIN_INTERVAL = min(_MIN_INTERVAL * 2, 60.0)
+        logger.warning(f"Groq 429 detected, backing off to {_MIN_INTERVAL:.1f}s interval")
+        time.sleep(10)
+
+
 # ============================================================
 # Groq text cleanup (runs on laptop to save PA compute)
 # ============================================================
@@ -329,8 +314,8 @@ RULES:
             })
             item["business"] = (result.get("business") or item["business"]).strip()
             item["stage"] = (result.get("stage") or item["stage"]).strip()
-        except Exception:
-            pass
+        except Exception as e:
+            _handle_groq_error(e)
         cleaned.append(item)
     return cleaned
 

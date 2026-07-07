@@ -85,6 +85,16 @@ def _wait_groq():
         _groq_last_call = time.monotonic()
 
 
+def _handle_groq_429(e: Exception):
+    """Dynamically back off when Groq returns 429."""
+    global _groq_min_interval
+    estr = str(e)
+    if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
+        _groq_min_interval = min(_groq_min_interval * 2, 60.0)
+        logger.warning(f"Groq 429 detected, backing off to {_groq_min_interval:.1f}s interval")
+        time.sleep(10)
+
+
 def _get_groq():
     from langchain_groq import ChatGroq
 
@@ -179,6 +189,7 @@ PAST CASE HISTORY is provided for context only — it shows how this case has pr
         return (result.content if hasattr(result, "content") else str(result)).strip()
     except Exception as e:
         logger.warning(f"Groq summarization failed: {e}")
+        _handle_groq_429(e)
         return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
 
 
@@ -222,7 +233,8 @@ RULES:
         cleaned_biz = (result.get("business") or business_text).strip()
         cleaned_stage = (result.get("stage") or stage_text).strip()
         return (cleaned_biz, cleaned_stage)
-    except Exception:
+    except Exception as e:
+        _handle_groq_429(e)
         return (business_text, stage_text)
 
 
