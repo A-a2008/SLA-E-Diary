@@ -49,10 +49,33 @@ HEADERS = {'Authorization': f'Bearer {API_TOKEN}'} if API_TOKEN else {}
 
 
 # ============================================================
+# Rate limiter (15 PA req/min program-wide)
+# ============================================================
+
+import threading
+
+_PA_RATE_LOCK = threading.Lock()
+_LAST_PA_CALL: float = 0
+_MIN_PA_INTERVAL = 60.0 / 15  # 4.0 seconds
+
+
+def _wait_pa_rate():
+    global _LAST_PA_CALL
+    with _PA_RATE_LOCK:
+        now = time.monotonic()
+        elapsed = now - _LAST_PA_CALL
+        if elapsed < _MIN_PA_INTERVAL:
+            sleep_for = _MIN_PA_INTERVAL - elapsed
+            time.sleep(sleep_for)
+        _LAST_PA_CALL = time.monotonic()
+
+
+# ============================================================
 # API helpers
 # ============================================================
 
 def api_get(endpoint: str) -> dict:
+    _wait_pa_rate()
     url = f'{PA_URL}{endpoint}'
     params = {}
     if not API_TOKEN:
@@ -63,6 +86,7 @@ def api_get(endpoint: str) -> dict:
 
 
 def api_post(endpoint: str, data: dict) -> dict:
+    _wait_pa_rate()
     url = f'{PA_URL}{endpoint}'
     resp = requests.post(url, headers={**HEADERS, 'Content-Type': 'application/json'},
                          json=data, timeout=60)
@@ -175,8 +199,6 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 # ============================================================
 # Rate limiter (26 req/min program-wide)
 # ============================================================
-
-import threading
 
 _rate_lock = threading.Lock()
 _last_call_time: float = 0
