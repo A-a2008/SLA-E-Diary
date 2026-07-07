@@ -104,7 +104,6 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 
         if not session.ecourts_available:
             # Non-clickable case — fall back to purpose-of-hearing from case_history
-            result["ecourts_available"] = False
             purpose_items = session.get_purpose_hearings()
             for item in purpose_items:
                 biz_date = _parse_date_dmy(item.get("business_date"))
@@ -120,6 +119,7 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
                     "stage": item.get("purpose", ""),
                 })
             result["total_available"] = len(purpose_items)
+            result["ecourts_available"] = bool(purpose_items)
             return result
 
         links = session.get_business_links()
@@ -315,11 +315,7 @@ def main():
                     logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries with Groq...")
                     items = cleanup_texts(items)
 
-                status = 'done' if items or not ecourts_available else 'no_data'
-
-                # For unsupported cases with purpose-hearings, push them as regular entries
-                if not ecourts_available and items:
-                    status = 'done'
+                status = 'done' if items or ecourts_available else 'no_data'
 
                 logger.info(f"  [{label_phase}][{case_id}] Pushing {len(items)} entries (status={status})...")
                 result = api_post('/api/ecourts/upsert/', {
