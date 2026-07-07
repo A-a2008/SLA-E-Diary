@@ -175,7 +175,6 @@ def parse_case_details(casetype_list: str) -> dict:
                         "hearing_date": hearing_date,
                         "purpose": purpose,
                     })
-        result["case_history"] = result["case_history"][:5]
 
     return result
 

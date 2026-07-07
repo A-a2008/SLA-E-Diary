@@ -57,7 +57,7 @@ def main():
                 line += f"  (Adv: {r['advocate']})"
             print(line)
 
-        print(f"\n  Case History (latest {len(details['case_history'])}):")
+        print(f"\n  Case History ({len(details['case_history'])} rows):")
         if details["case_history"]:
             print(f"  {'Judge':<45} {'Business Date':<16} {'Hearing Date':<16} Purpose")
             print(f"  {'-'*44} {'-'*15} {'-'*15} {'-'*20}")
