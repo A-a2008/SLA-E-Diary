@@ -17,6 +17,7 @@ import os
 import sys
 import time
 import json
+import argparse
 import logging
 
 from dotenv import load_dotenv
@@ -287,6 +288,11 @@ RULES:
 # ============================================================
 
 def main():
+    parser = argparse.ArgumentParser(description='Sync eCourts data')
+    parser.add_argument('--force', action='store_true',
+                        help='Re-scrape ALL cases with CNRs, ignoring status')
+    args = parser.parse_args()
+
     if not API_TOKEN:
         logger.warning("API_TOKEN not set — using unauthenticated requests")
     if not PA_URL:
@@ -350,7 +356,8 @@ def main():
                 continue
 
     while True:
-        data = api_get('/api/ecourts/pending/')
+        endpoint = '/api/ecourts/pending/?force=true' if args.force else '/api/ecourts/pending/'
+        data = api_get(endpoint)
         pending = data.get('pending', [])
         refresh = data.get('refresh', [])
         pending_total = data.get('pending_total', 0)

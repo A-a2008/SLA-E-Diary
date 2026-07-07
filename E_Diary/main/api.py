@@ -70,35 +70,41 @@ def ecourts_pending(request):
         return resp
 
     today = timezone.localtime(timezone.now()).date()
+    force = request.GET.get('force') == 'true'
 
-    pending = Case.objects.filter(
-        ecourts_status='pending', cnr__isnull=False
-    ).exclude(cnr='')
+    if force:
+        all_cases = Case.objects.filter(cnr__isnull=False).exclude(cnr='')
+        pending = all_cases.filter(ecourts_status='pending')
+        refresh = all_cases
+    else:
+        pending = Case.objects.filter(
+            ecourts_status='pending', cnr__isnull=False
+        ).exclude(cnr='')
 
-    from django.db.models import Max, OuterRef, Subquery
+        from django.db.models import Max, OuterRef, Subquery
 
-    latest_next = DiaryEntry.objects.filter(
-        case=OuterRef('pk'), entry_type='business'
-    ).values('case').annotate(
-        max_date=Max('next_date')
-    ).values('max_date')
+        latest_next = DiaryEntry.objects.filter(
+            case=OuterRef('pk'), entry_type='business'
+        ).values('case').annotate(
+            max_date=Max('next_date')
+        ).values('max_date')
 
-    cutoff = timezone.now() - datetime.timedelta(hours=6)
+        cutoff = timezone.now() - datetime.timedelta(hours=6)
 
-    refresh = Case.objects.filter(
-        cnr__isnull=False, ecourts_last_checked__isnull=True
-    ).exclude(cnr='').annotate(
-        latest_next_date=Subquery(latest_next)
-    ).filter(
-        latest_next_date__isnull=False, latest_next_date__lte=today
-    ) | Case.objects.filter(
-        cnr__isnull=False, ecourts_last_checked__lt=cutoff
-    ).exclude(cnr='').annotate(
-        latest_next_date=Subquery(latest_next)
-    ).filter(
-        latest_next_date__isnull=False, latest_next_date__lte=today
-    )
-    refresh = refresh.distinct()[:15]
+        refresh = Case.objects.filter(
+            cnr__isnull=False, ecourts_last_checked__isnull=True
+        ).exclude(cnr='').annotate(
+            latest_next_date=Subquery(latest_next)
+        ).filter(
+            latest_next_date__isnull=False, latest_next_date__lte=today
+        ) | Case.objects.filter(
+            cnr__isnull=False, ecourts_last_checked__lt=cutoff
+        ).exclude(cnr='').annotate(
+            latest_next_date=Subquery(latest_next)
+        ).filter(
+            latest_next_date__isnull=False, latest_next_date__lte=today
+        )
+        refresh = refresh.distinct()[:15]
 
     def _serialize(case_qs):
         items = []
