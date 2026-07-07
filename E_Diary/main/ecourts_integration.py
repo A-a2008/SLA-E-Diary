@@ -85,14 +85,69 @@ def _wait_groq():
         _groq_last_call = time.monotonic()
 
 
+# ============================================================
+# Groq API key rotation (time-based + on 429), .env update
+# ============================================================
+
+GROQ_API_KEYS = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",") if k.strip()]
+if not GROQ_API_KEYS:
+    single = os.getenv("GROQ_API_KEY", "").strip()
+    if single:
+        GROQ_API_KEYS = [single]
+_groq_key_index = -1  # -1 = start with whatever is in .env
+_last_groq_rotation = time.monotonic()
+_groq_consecutive_429 = 0
+
+
+def _update_env_groq_key(new_key: str):
+    env_path = os.path.join(_project_root, 'E_Diary', '.env')
+    if not os.path.exists(env_path):
+        return
+    lines = []
+    found = False
+    with open(env_path) as f:
+        for line in f:
+            if line.startswith('GROQ_API_KEY='):
+                lines.append(f'GROQ_API_KEY={new_key}\n')
+                found = True
+            else:
+                lines.append(line)
+    if not found:
+        lines.append(f'GROQ_API_KEY={new_key}\n')
+    with open(env_path, 'w') as f:
+        f.writelines(lines)
+
+
+def _rotate_groq_key():
+    global _groq_key_index, _last_groq_rotation, _groq_consecutive_429
+    _groq_key_index = (_groq_key_index + 1) % len(GROQ_API_KEYS)
+    new_key = GROQ_API_KEYS[_groq_key_index]
+    os.environ['GROQ_API_KEY'] = new_key
+    _update_env_groq_key(new_key)
+    _last_groq_rotation = time.monotonic()
+    _groq_consecutive_429 += 1
+    logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
+                   f"(consecutive 429s: {_groq_consecutive_429})")
+    if _groq_consecutive_429 >= len(GROQ_API_KEYS) * 3:
+        logger.error("All %d Groq keys appear exhausted — daily quota likely reached",
+                     len(GROQ_API_KEYS))
+
+
+def _maybe_time_rotate_groq() -> bool:
+    if time.monotonic() - _last_groq_rotation >= 60:
+        _rotate_groq_key()
+        return True
+    return False
+
+
 def _handle_groq_429(e: Exception):
-    """Dynamically back off when Groq returns 429."""
+    """Rotate key on 429, double interval."""
     global _groq_min_interval
     estr = str(e)
     if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
         _groq_min_interval = min(_groq_min_interval * 2, 60.0)
-        logger.warning(f"Groq 429 detected, backing off to {_groq_min_interval:.1f}s interval")
-        time.sleep(10)
+        _rotate_groq_key()
+        time.sleep(5)
 
 
 def _get_groq():
@@ -178,19 +233,32 @@ PAST CASE HISTORY is provided for context only — it shows how this case has pr
         ("human", "PAST CASE HISTORY (for context only):\n{history}\n\nAdvocate's Notes:\n{advocate}\n\neCourts Record:\n{ecourts}"),
     ])
 
-    try:
-        _wait_groq()
-        chain = prompt | llm
-        result = chain.invoke({
-            "history": history_block,
-            "advocate": advocate_text,
-            "ecourts": ecourts_text,
-        })
-        return (result.content if hasattr(result, "content") else str(result)).strip()
-    except Exception as e:
-        logger.warning(f"Groq summarization failed: {e}")
-        _handle_groq_429(e)
-        return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
+    retries = len(GROQ_API_KEYS) + 1
+    for attempt in range(retries):
+        try:
+            _wait_groq()
+            _maybe_time_rotate_groq()
+            chain = prompt | llm
+            result = chain.invoke({
+                "history": history_block,
+                "advocate": advocate_text,
+                "ecourts": ecourts_text,
+            })
+            return (result.content if hasattr(result, "content") else str(result)).strip()
+        except Exception as e:
+            estr = str(e)
+            if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
+                logger.warning(f"Groq summarization 429 (attempt {attempt + 1}/{retries}): {e}")
+                if attempt >= retries - 1:
+                    break
+                _handle_groq_429(e)
+                llm = _get_groq()
+                if not llm:
+                    break
+            else:
+                logger.warning(f"Groq summarization failed: {e}")
+                break
+    return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
 
 
 # ---- date helpers ----
@@ -224,18 +292,31 @@ RULES:
         ("human", '{{"business": "{business}", "stage": "{stage}"}}'),
     ])
 
-    try:
-        from langchain_core.output_parsers import JsonOutputParser
-        parser = JsonOutputParser()
-        chain = prompt | llm | parser
-        _wait_groq()
-        result = chain.invoke({"business": business_text, "stage": stage_text})
-        cleaned_biz = (result.get("business") or business_text).strip()
-        cleaned_stage = (result.get("stage") or stage_text).strip()
-        return (cleaned_biz, cleaned_stage)
-    except Exception as e:
-        _handle_groq_429(e)
-        return (business_text, stage_text)
+    from langchain_core.output_parsers import JsonOutputParser
+    parser = JsonOutputParser()
+
+    retries = len(GROQ_API_KEYS) + 1
+    for attempt in range(retries):
+        try:
+            chain = prompt | llm | parser
+            _wait_groq()
+            _maybe_time_rotate_groq()
+            result = chain.invoke({"business": business_text, "stage": stage_text})
+            cleaned_biz = (result.get("business") or business_text).strip()
+            cleaned_stage = (result.get("stage") or stage_text).strip()
+            return (cleaned_biz, cleaned_stage)
+        except Exception as e:
+            estr = str(e)
+            if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
+                if attempt >= retries - 1:
+                    break
+                _handle_groq_429(e)
+                llm = _get_groq()
+                if not llm:
+                    break
+            else:
+                break
+    return (business_text, stage_text)
 
 
 def _parse_date_dmy(date_str: str):

@@ -197,14 +197,61 @@ def _wait_for_rate_limit():
         _last_call_time = time.monotonic()
 
 
-def _handle_groq_error(e: Exception):
-    """Dynamically back off when Groq returns 429."""
-    global _MIN_INTERVAL
-    estr = str(e)
-    if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
-        _MIN_INTERVAL = min(_MIN_INTERVAL * 2, 60.0)
-        logger.warning(f"Groq 429 detected, backing off to {_MIN_INTERVAL:.1f}s interval")
-        time.sleep(10)
+# ============================================================
+# Groq API key rotation (time-based + on 429), .env update
+# ============================================================
+
+GROQ_API_KEYS = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",") if k.strip()]
+if not GROQ_API_KEYS:
+    single = os.getenv("GROQ_API_KEY", "").strip()
+    if single:
+        GROQ_API_KEYS = [single]
+_groq_key_index = -1  # starts at -1 to keep current .env key on first run
+_last_key_rotation = time.monotonic()
+_groq_consecutive_429 = 0
+
+
+def _update_env_groq_key(new_key: str):
+    env_path = os.path.join(_project_root, 'E_Diary', '.env')
+    if not os.path.exists(env_path):
+        return
+    lines = []
+    found = False
+    with open(env_path) as f:
+        for line in f:
+            if line.startswith('GROQ_API_KEY='):
+                lines.append(f'GROQ_API_KEY={new_key}\n')
+                found = True
+            else:
+                lines.append(line)
+    if not found:
+        lines.append(f'GROQ_API_KEY={new_key}\n')
+    with open(env_path, 'w') as f:
+        f.writelines(lines)
+
+
+def _rotate_groq_key():
+    """Advance to the next key in GROQ_API_KEYS and persist to .env & os.environ."""
+    global _groq_key_index, _last_key_rotation, _groq_consecutive_429
+    _groq_key_index = (_groq_key_index + 1) % len(GROQ_API_KEYS)
+    new_key = GROQ_API_KEYS[_groq_key_index]
+    os.environ['GROQ_API_KEY'] = new_key
+    _update_env_groq_key(new_key)
+    _last_key_rotation = time.monotonic()
+    _groq_consecutive_429 += 1
+    logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
+                   f"(consecutive 429s: {_groq_consecutive_429})")
+    if _groq_consecutive_429 >= len(GROQ_API_KEYS) * 3:
+        logger.error("All %d Groq keys appear exhausted — daily quota likely reached",
+                     len(GROQ_API_KEYS))
+
+
+def _maybe_time_rotate_groq() -> bool:
+    """Rotate key if ≥60s since last rotation. Returns True if rotated."""
+    if time.monotonic() - _last_key_rotation >= 60:
+        _rotate_groq_key()
+        return True
+    return False
 
 
 # ============================================================
@@ -245,7 +292,8 @@ def _get_groq():
 
 
 def cleanup_texts(items: list) -> list:
-    """Pass scraped items through Groq to fix caps, punctuation, typos."""
+    """Pass scraped items through Groq to fix caps, punctuation, typos.
+    Rotates API keys on 429 or every 60s."""
     llm = _get_groq()
     if not llm:
         return items
@@ -269,16 +317,36 @@ RULES:
 
     cleaned = []
     for item in items:
-        try:
-            _wait_for_rate_limit()
-            result = chain.invoke({
-                "business": item.get("business", ""),
-                "stage": item.get("stage", ""),
-            })
-            item["business"] = (result.get("business") or item["business"]).strip()
-            item["stage"] = (result.get("stage") or item["stage"]).strip()
-        except Exception as e:
-            _handle_groq_error(e)
+        retries = len(GROQ_API_KEYS)
+        for attempt in range(retries + 1):
+            try:
+                _wait_for_rate_limit()
+                if _maybe_time_rotate_groq():
+                    llm = _get_groq()
+                    if not llm:
+                        break
+                    chain = prompt | llm | parser
+                result = chain.invoke({
+                    "business": item.get("business", ""),
+                    "stage": item.get("stage", ""),
+                })
+                item["business"] = (result.get("business") or item["business"]).strip()
+                item["stage"] = (result.get("stage") or item["stage"]).strip()
+                _groq_consecutive_429 = 0  # reset on success
+                break
+            except Exception as e:
+                estr = str(e)
+                if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
+                    if attempt >= retries:
+                        logger.warning("All Groq keys tried, skipping item")
+                        break
+                    _rotate_groq_key()
+                    llm = _get_groq()
+                    if not llm:
+                        break
+                    chain = prompt | llm | parser
+                else:
+                    break
         cleaned.append(item)
     return cleaned
 
