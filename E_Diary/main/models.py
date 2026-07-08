@@ -51,6 +51,7 @@ class UserProfile(models.Model):
 class Jurisdiction(models.TextChoices):
     URBAN = 'urban', 'Bengaluru Urban'
     RURAL = 'rural', 'Bengaluru Rural'
+    MANDYA = 'mandya', 'Mandya'
 
 
 class Party1Type(models.TextChoices):

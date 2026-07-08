@@ -254,6 +254,15 @@
         { value: 'dc_kandaya', label: 'DC Court, Kandaya Bhavan' },
         { value: 'ac_kandaya', label: 'AC Court, Kandaya Bhavan' }
     ];
+    const mandyaCourts = [
+        { value: 'mandya_district',      label: 'District Court Complex, Mandya' },
+        { value: 'mandya_maddur',        label: 'Court Complex, Maddur' },
+        { value: 'mandya_malavalli',     label: 'Court Complex, Malavalli' },
+        { value: 'mandya_srirangapatna', label: 'Court Complex, Srirangapatna' },
+        { value: 'mandya_nagamangala',   label: 'Court Complex, Nagamangala' },
+        { value: 'mandya_pandavapura',   label: 'Court Complex, Pandavapura' },
+        { value: 'mandya_krishnarajapet',label: 'Court Complex, Krishnarajapet' }
+    ];
     const ruralCourts = [
         { value: 'city_civil_rural',       label: 'City Civil Court Complex, Bengaluru Rural' },
         { value: 'dist_session_rural',     label: 'PRL. District and Sessions Judge, Bengaluru Rural' },
@@ -546,7 +555,10 @@
         ALL_BELOW_JURISDICTION.forEach(hide);
         if (!jurisdiction) return;
         show('court-complex-field');
-        populateSelect(document.getElementById('court'), jurisdiction === 'urban' ? urbanCourts : ruralCourts);
+        var courtList = urbanCourts;
+        if (jurisdiction === 'rural') courtList = ruralCourts;
+        else if (jurisdiction === 'mandya') courtList = mandyaCourts;
+        populateSelect(document.getElementById('court'), courtList);
         showCommonFields('district');
     };
 
