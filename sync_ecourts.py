@@ -204,6 +204,11 @@ def cleanup_texts(items: list) -> list:
                     break
             except (json.JSONDecodeError, TypeError):
                 continue
+        else:
+            logger.warning(f"NVIDIA: all models failed for item, keeping original")
+    return items
+            except (json.JSONDecodeError, TypeError):
+                continue
     return items
 
 
@@ -258,7 +263,8 @@ def main():
                 items = scraped.get('items', [])
 
                 if items:
-                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries with NVIDIA...")
+                    models_str = " → ".join(NVIDIA_MODELS)
+                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries (models: {models_str})...")
                     items = cleanup_texts(items)
 
                 status = 'done' if items or ecourts_available else 'no_data'

@@ -136,8 +136,10 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             {"role": "user", "content": user_msg},
         ], temperature=0.6)
         if result:
+            logger.info(f"NVIDIA summarise used model: {model}")
             return result.strip()
 
+    logger.warning("NVIDIA summarise: all models failed, using fallback")
     return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
 
 
@@ -176,10 +178,12 @@ def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
             parsed = json.loads(result)
             cleaned_biz = (parsed.get("business") or business_text).strip()
             cleaned_stage = (parsed.get("stage") or stage_text).strip()
+            logger.info(f"NVIDIA cleanup used model: {model}")
             return (cleaned_biz, cleaned_stage)
         except (json.JSONDecodeError, TypeError):
             continue
 
+    logger.warning("NVIDIA cleanup: all models failed, keeping original")
     return (business_text, stage_text)
 
 
