@@ -1494,13 +1494,22 @@ def ecourts_update_list(request):
     from django.db.models import Exists, OuterRef, Value, IntegerField
     from django.db.models import Case as DBCase, When
 
+    # Only show cases from city_civil_complex, magistrates_complex, family_court
+    FILTER_BUILDINGS = {'city_civil_complex', 'magistrates_complex', 'family_court'}
+    MAGISTRATE_COURTS = {c for c, b in COURT_TO_BUILDING.items() if b == 'magistrates_complex'}
+    ALLOWED_COURTS = [c for c, b in COURT_TO_BUILDING.items() if b in FILTER_BUILDINGS]
+
     q = request.GET.get('q', '').strip()
 
     has_ecourts_sub = DiaryEntry.objects.filter(
         case=OuterRef('pk'), entry_type='business'
     ).exclude(ecourts_business='').exclude(ecourts_business__isnull=True)
 
-    cases = Case.objects.exclude(
+    cases = Case.objects.filter(
+        court__in=ALLOWED_COURTS
+    ).exclude(
+        court__in=MAGISTRATE_COURTS, case_type__istartswith='cr'
+    ).exclude(
         ecourts_status__in=['done', 'unsupported', 'no_data']
     ).annotate(
         has_ecourts=Exists(has_ecourts_sub),
