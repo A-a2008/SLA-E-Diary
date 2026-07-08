@@ -137,6 +137,22 @@ def regenerate_telegram_code(request, user_id):
     return redirect('user_detail', user_id=user.id)
 
 
+@login_required
+@user_passes_test(lambda u: hasattr(u, 'userprofile') and u.userprofile.role == UserRole.ADMIN or u.is_superuser)
+def toggle_ecourts_access(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    try:
+        profile = user.userprofile
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'User has no profile.')
+        return redirect('manage_users')
+    profile.can_access_ecourts = not profile.can_access_ecourts
+    profile.save()
+    status = 'granted' if profile.can_access_ecourts else 'revoked'
+    messages.success(request, f'eCourts access {status} for "{user.username}".')
+    return redirect('user_detail', user_id=user.id)
+
+
 # ── SUPERUSER PORTAL ──
 
 @login_required
@@ -1483,6 +1499,8 @@ def _ecourts_update_access(user):
     if user.is_superuser:
         return True
     if hasattr(user, 'userprofile') and user.userprofile.role == UserRole.ADMIN:
+        return True
+    if hasattr(user, 'userprofile') and user.userprofile.can_access_ecourts:
         return True
     return SiteSetting.get_bool('ecourts_update_open', False)
 

@@ -73,6 +73,15 @@
         {% else %}
         <a href="{% url 'regenerate_telegram_code' profile_user.id %}" class="button small">Regenerate Telegram Code</a>
         {% endif %}
+        {% if profile_user.is_superuser %}
+        <span style="padding: 0.5rem 1rem; color: #777; font-size: 0.85rem;">Superusers always have eCourts access</span>
+        {% elif profile.role == 'admin' %}
+        <span style="padding: 0.5rem 1rem; color: #777; font-size: 0.85rem;">Admins always have eCourts access</span>
+        {% else %}
+        <a href="{% url 'toggle_ecourts_access' profile_user.id %}" class="button small" style="{% if profile.can_access_ecourts %}background: #2e7d32; color: #fff;{% endif %}">
+            eCourts: {{ profile.can_access_ecourts|yesno:'Granted,Revoked' }}
+        </a>
+        {% endif %}
     </div>
     </div>
 </div>

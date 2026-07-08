@@ -32,6 +32,7 @@ urlpatterns = [
     path('manage/users/<int:user_id>/reset_password/', admin_reset_password, name='admin_reset_password'),
     path('manage/users/<int:user_id>/', user_detail, name='user_detail'),
     path('manage/users/<int:user_id>/regenerate_telegram_code/', regenerate_telegram_code, name='regenerate_telegram_code'),
+    path('manage/users/<int:user_id>/toggle-ecourts/', toggle_ecourts_access, name='toggle_ecourts_access'),
     path('telegram/webhook/', telegram_webhook, name='telegram_webhook'),
     path('court_halls/suggest/', suggest_court_halls, name='suggest_court_halls'),
     path('court_hall_notes/', court_hall_notes, name='court_hall_notes'),
