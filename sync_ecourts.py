@@ -244,7 +244,11 @@ def _rotate_groq_key():
     if _groq_consecutive_429 % len(GROQ_API_KEYS) == 0:
         logger.warning("All %d keys returned 429. Cooling down for 5 minutes...",
                        len(GROQ_API_KEYS))
-        time.sleep(300)
+        for remaining in range(300, 0, -1):
+            m, s = divmod(remaining, 60)
+            print(f"\rGroq cooldown: {m}:{s:02d} remaining  ", end="", flush=True)
+            time.sleep(1)
+        print("\rGroq cooldown: done.                            ")
 
 
 def _maybe_time_rotate_groq() -> bool:
