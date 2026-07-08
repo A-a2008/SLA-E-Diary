@@ -37,7 +37,7 @@
             <!-- ── COURT COMPLEX ── -->
             <div class="field" id="court-complex-field" style="display:none;">
                 <label for="court">Court Complex</label>
-                <select name="court" id="court">
+                <select name="court" id="court" onchange="onCourtChange()">
                     <option value="">— Select Court Complex —</option>
                 </select>
             </div>
@@ -548,6 +548,33 @@
         show('court-complex-field');
         populateSelect(document.getElementById('court'), jurisdiction === 'urban' ? urbanCourts : ruralCourts);
         showCommonFields('district');
+    };
+
+    window.onCourtChange = function() {
+        var courtEl = document.getElementById('court');
+        if (!courtEl || !courtEl.value) return;
+        var courtLevel = document.getElementById('court_level').value;
+        if (!caseTypes[courtLevel]) return;
+        var groups = caseTypes[courtLevel].slice();
+        if (courtEl.value === 'dc_kandaya' || courtEl.value === 'ac_kandaya') {
+            var appealGroup = groups.find(function(g) { return g.group === 'Appeals'; });
+            if (!appealGroup) {
+                appealGroup = { group: 'Appeals', items: [] };
+                groups.push(appealGroup);
+            }
+            if (!appealGroup.items.some(function(i) { return i.value === 'A'; })) {
+                appealGroup.items.push({ value: 'A', label: 'A – Appeal' });
+            }
+        } else {
+            var existingGroup = groups.find(function(g) { return g.group === 'Appeals'; });
+            if (existingGroup) {
+                existingGroup.items = existingGroup.items.filter(function(i) { return i.value !== 'A'; });
+                if (existingGroup.items.length === 0) {
+                    groups = groups.filter(function(g) { return g.group !== 'Appeals'; });
+                }
+            }
+        }
+        buildCaseTypeDropdown(groups);
     };
 
     function showCommonFields(courtLevel) {
