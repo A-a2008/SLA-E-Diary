@@ -5,6 +5,7 @@ services.ecourts.gov.in, plus HTML parsing utilities.
 """
 
 import json
+import os
 import re
 import sys
 import time
@@ -12,7 +13,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 # ---------- config ----------
-NVIDIA_API_KEY = "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"
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "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")
 NVIDIA_OCR_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2"
 BASE_URL = "https://services.ecourts.gov.in/ecourtindia_v6/"
 MAX_RETRIES = 10
@@ -71,11 +72,13 @@ def _extract_ocr_text(raw: dict) -> str:
 def solve_captcha(image_bytes: bytes) -> str:
     import base64
     import requests
+    from .nvidia_rate_limiter import wait as nvidia_wait
 
     image_b64 = base64.b64encode(image_bytes).decode()
     if len(image_b64) >= 180_000:
         return ""
 
+    nvidia_wait()
     resp = requests.post(
         NVIDIA_OCR_URL,
         headers={

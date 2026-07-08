@@ -12,8 +12,6 @@ import os
 import sys
 import logging
 
-from django.conf import settings
-
 from .models import Case, DiaryEntry
 from .constants import COURT_LABELS
 
@@ -30,167 +28,64 @@ if _project_root not in sys.path:
 
 # ---- config ----
 ECOURTS_CALL_LIMIT = 200  # enough for the full history of any case
-GROQ_MODEL = "llama-3.3-70b-versatile"
-GROQ_FALLBACK_MODEL = "gemma2-9b-it"
-GROQ_FINAL_FALLBACK = "mixtral-8x7b-32768"
 
+import json
 import threading
-import httpx
+import time
 
-# ---- Groq rate limiter (auto-tuned from API headers) ----
-_groq_lock = threading.Lock()
-_groq_last_call: float = 0
-_groq_min_interval = 60.0 / 15  # 4.0s default
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODELS = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.5-397b-a17b",
+]
 
-
-def _probe_groq_rate_limit(api_key: str) -> dict:
-    try:
-        with httpx.Client(timeout=5) as client:
-            resp = client.get(
-                'https://api.groq.com/openai/v1/models',
-                headers={'Authorization': f'Bearer {api_key}'},
-            )
-            headers = {}
-            for key in resp.headers:
-                lk = key.lower()
-                if lk.startswith('x-ratelimit-'):
-                    headers[lk] = resp.headers[key]
-            return headers
-    except Exception:
-        return {}
+# ---- NVIDIA rate limiter (30 RPM = 2s interval) ----
+_nvidia_lock = threading.Lock()
+_nvidia_last_call: float = 0
+_NVIDIA_MIN_INTERVAL = 2.0
 
 
-def _auto_tune_groq_interval(headers: dict):
-    global _groq_min_interval
-    tpm_str = headers.get('x-ratelimit-limit-tokens')
-    if tpm_str:
-        try:
-            tpm = int(tpm_str)
-            tokens_per_req = 400
-            rpm = max(1, min(tpm / tokens_per_req, 60))
-            _groq_min_interval = max(60.0 / rpm, 1.0)
-            logger.info(f'Groq TPM: {tpm} → ~{rpm:.0f} req/min at {tokens_per_req}t/req, '
-                       f'interval set to {_groq_min_interval:.1f}s')
-        except (ValueError, TypeError):
-            pass
-
-
-def _wait_groq():
-    global _groq_last_call
-    with _groq_lock:
+def _wait_nvidia():
+    global _nvidia_last_call
+    with _nvidia_lock:
         now = time.monotonic()
-        elapsed = now - _groq_last_call
-        if elapsed < _groq_min_interval:
-            time.sleep(_groq_min_interval - elapsed)
-        _groq_last_call = time.monotonic()
+        elapsed = now - _nvidia_last_call
+        if elapsed < _NVIDIA_MIN_INTERVAL:
+            time.sleep(_NVIDIA_MIN_INTERVAL - elapsed)
+        _nvidia_last_call = time.monotonic()
 
 
-# ============================================================
-# Groq API key rotation (time-based + on 429), .env update
-# ============================================================
+def _nvidia_chat(model: str, messages: list, temperature: float = 0, max_tokens: int = 4096) -> str | None:
+    """Send a chat completion to NVIDIA with rate-limit enforcement."""
+    from openai import OpenAI
 
-GROQ_API_KEYS = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",") if k.strip()]
-if not GROQ_API_KEYS:
-    single = os.getenv("GROQ_API_KEY", "").strip()
-    if single:
-        GROQ_API_KEYS = [single]
-_groq_key_index = -1  # -1 = start with whatever is in .env
-_last_groq_rotation = time.monotonic()
-_groq_consecutive_429 = 0
-
-
-def _update_env_groq_key(new_key: str):
-    env_path = os.path.join(_project_root, 'E_Diary', '.env')
-    if not os.path.exists(env_path):
-        return
-    lines = []
-    found = False
-    with open(env_path) as f:
-        for line in f:
-            if line.startswith('GROQ_API_KEY='):
-                lines.append(f'GROQ_API_KEY={new_key}\n')
-                found = True
-            else:
-                lines.append(line)
-    if not found:
-        lines.append(f'GROQ_API_KEY={new_key}\n')
-    with open(env_path, 'w') as f:
-        f.writelines(lines)
-
-
-def _rotate_groq_key():
-    global _groq_key_index, _last_groq_rotation, _groq_consecutive_429, _groq_min_interval
-    _groq_key_index = (_groq_key_index + 1) % len(GROQ_API_KEYS)
-    new_key = GROQ_API_KEYS[_groq_key_index]
-    os.environ['GROQ_API_KEY'] = new_key
-    _update_env_groq_key(new_key)
-    _last_groq_rotation = time.monotonic()
-    _groq_consecutive_429 += 1
-    logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
-                   f"(consecutive 429s: {_groq_consecutive_429})")
-    if _groq_consecutive_429 % len(GROQ_API_KEYS) == 0:
-        logger.warning("All %d keys returned 429. Cooling down for 5 minutes...",
-                       len(GROQ_API_KEYS))
-        _groq_min_interval = 60.0 / 15
-        for remaining in range(300, 0, -1):
-            m, s = divmod(remaining, 60)
-            print(f"\rGroq cooldown: {m}:{s:02d} remaining  ", end="", flush=True)
-            time.sleep(1)
-        print("\rGroq cooldown: done.                            ")
-
-
-def _maybe_time_rotate_groq() -> bool:
-    if time.monotonic() - _last_groq_rotation >= 60:
-        _rotate_groq_key()
-        return True
-    return False
-
-
-def _handle_groq_429(e: Exception):
-    """Rotate key on 429, double interval."""
-    global _groq_min_interval
-    estr = str(e)
-    if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
-        _groq_min_interval = min(_groq_min_interval * 2, 60.0)
-        _rotate_groq_key()
-        time.sleep(5)
-
-
-def _get_groq():
-    from langchain_groq import ChatGroq
-
-    api_key = getattr(settings, "GROQ_API_KEY", None) or os.getenv("GROQ_API_KEY")
+    api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key:
         from dotenv import load_dotenv
         load_dotenv()
-        api_key = os.getenv("GROQ_API_KEY")
-
+        api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key:
+        logger.error("NVIDIA_API_KEY not set")
         return None
 
-    # Probe Groq rate limits once at startup
-    rate_headers = _probe_groq_rate_limit(api_key)
-    if rate_headers:
-        _auto_tune_groq_interval(rate_headers)
-
-    for model in [GROQ_MODEL, GROQ_FALLBACK_MODEL, GROQ_FINAL_FALLBACK]:
-        try:
-            llm = ChatGroq(api_key=api_key, model=model, temperature=0, max_retries=1, timeout=30)
-            from langchain_core.prompts import ChatPromptTemplate
-            chain = ChatPromptTemplate.from_messages([
-                ("system", "Respond concisely."),
-                ("human", "ok"),
-            ]) | llm
-            _wait_groq()
-            chain.invoke({})
-            return llm
-        except Exception:
-            continue
-    return None
+    client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
+    try:
+        _wait_nvidia()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        logger.warning(f"NVIDIA API error (model={model}): {e}")
+        return None
 
 
 def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
-    """Use Groq to merge advocate notes + eCourts data into one accurate summary.
+    """Use NVIDIA LLM to merge advocate notes + eCourts data into one accurate summary.
 
     Pass the Case object so past diary entries are included as context,
     helping the AI understand abbreviations and the case history.
@@ -205,10 +100,6 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
     if not advocate_text:
         return ecourts_text
 
-    llm = _get_groq()
-    if not llm:
-        return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
-
     # Build case-history context
     history_lines = []
     if case:
@@ -222,58 +113,40 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
                 history_lines.append(f"[{d}] {src.strip()}")
     history_block = "\n".join(history_lines) if history_lines else "No prior entries available."
 
-    from langchain_core.prompts import ChatPromptTemplate
+    system = (
+        "You are a legal assistant for an Indian law firm. Your job is to merge two descriptions of the SAME court hearing into a single accurate, readable summary.\n\n"
+        "RULES — STRICTLY FOLLOW:\n"
+        "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content. Do not guess what abbreviations stand for. Keep acronyms as-is (e.g. 'DHR' stays 'DHR', 'IA' stays 'IA').\n"
+        "2. If both descriptions say the same thing, output either one — they agree.\n"
+        "3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.\n"
+        "4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.\n"
+        "5. Output 1-3 sentences. Be concise but complete.\n"
+        "6. NEVER invent explanations for abbreviations — just keep them as they appear.\n\n"
+        "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations like DHR, IA, KMC etc. mean in THIS case. Do not include past history in the output unless it's directly relevant to understanding today's entry."
+    )
+    user_msg = (
+        f"PAST CASE HISTORY (for context only):\n{history_block}\n\n"
+        f"Advocate's Notes:\n{advocate_text}\n\n"
+        f"eCourts Record:\n{ecourts_text}"
+    )
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a legal assistant for an Indian law firm. Your job is to merge two descriptions of the SAME court hearing into a single accurate, readable summary.
+    for model in NVIDIA_MODELS:
+        result = _nvidia_chat(model, [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ], temperature=0.6)
+        if result:
+            return result.strip()
 
-RULES — STRICTLY FOLLOW:
-1. PRESERVE ALL FACTS — do not add, remove, reword, or "improve" any factual content. Do not guess what abbreviations stand for. Keep acronyms as-is (e.g. "DHR" stays "DHR", "IA" stays "IA").
-2. If both descriptions say the same thing, output either one — they agree.
-3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.
-4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.
-5. Output 1-3 sentences. Be concise but complete.
-6. NEVER invent explanations for abbreviations — just keep them as they appear.
-
-PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations like DHR, IA, KMC etc. mean in THIS case. Do not include past history in the output unless it's directly relevant to understanding today's entry."""),
-        ("human", "PAST CASE HISTORY (for context only):\n{history}\n\nAdvocate's Notes:\n{advocate}\n\neCourts Record:\n{ecourts}"),
-    ])
-
-    retries = len(GROQ_API_KEYS) + 1
-    for attempt in range(retries):
-        try:
-            _wait_groq()
-            _maybe_time_rotate_groq()
-            chain = prompt | llm
-            result = chain.invoke({
-                "history": history_block,
-                "advocate": advocate_text,
-                "ecourts": ecourts_text,
-            })
-            return (result.content if hasattr(result, "content") else str(result)).strip()
-        except Exception as e:
-            estr = str(e)
-            if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
-                logger.warning(f"Groq summarization 429 (attempt {attempt + 1}/{retries}): {e}")
-                if attempt >= retries - 1:
-                    break
-                _handle_groq_429(e)
-                llm = _get_groq()
-                if not llm:
-                    break
-            else:
-                logger.warning(f"Groq summarization failed: {e}")
-                break
     return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
 
 
 # ---- date helpers ----
 
 def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
-    """Use Groq to fix capitalization, punctuation, and obvious typos in eCourts text.
+    """Use NVIDIA LLM to fix capitalization, punctuation, and obvious typos in eCourts text.
 
-    Returns (cleaned_business, cleaned_stage) — if Groq fails, returns originals.
-    Only fixes formatting; preserves all facts, names, abbreviations, and legal terms.
+    Returns (cleaned_business, cleaned_stage) — if LLM fails, returns originals.
     """
     business_text = (business_text or "").strip()
     stage_text = (stage_text or "").strip()
@@ -281,47 +154,32 @@ def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
     if not business_text and not stage_text:
         return (business_text, stage_text)
 
-    llm = _get_groq()
-    if not llm:
-        return (business_text, stage_text)
+    system = (
+        "You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.\n"
+        "RULES:\n"
+        "1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.\n"
+        "2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).\n"
+        "3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.\n"
+        "4. If the text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.\n"
+        "5. Return a JSON object with keys \"business\" and \"stage\"."
+    )
 
-    from langchain_core.prompts import ChatPromptTemplate
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.
-RULES:
-1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.
-2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).
-3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.
-4. If the text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.
-5. Return a JSON object with keys "business" and "stage"."""),
-        ("human", '{{"business": "{business}", "stage": "{stage}"}}'),
-    ])
-
-    from langchain_core.output_parsers import JsonOutputParser
-    parser = JsonOutputParser()
-
-    retries = len(GROQ_API_KEYS) + 1
-    for attempt in range(retries):
+    for model in NVIDIA_MODELS:
+        user_msg = json.dumps({"business": business_text, "stage": stage_text})
+        result = _nvidia_chat(model, [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ])
+        if result is None:
+            continue
         try:
-            chain = prompt | llm | parser
-            _wait_groq()
-            _maybe_time_rotate_groq()
-            result = chain.invoke({"business": business_text, "stage": stage_text})
-            cleaned_biz = (result.get("business") or business_text).strip()
-            cleaned_stage = (result.get("stage") or stage_text).strip()
+            parsed = json.loads(result)
+            cleaned_biz = (parsed.get("business") or business_text).strip()
+            cleaned_stage = (parsed.get("stage") or stage_text).strip()
             return (cleaned_biz, cleaned_stage)
-        except Exception as e:
-            estr = str(e)
-            if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
-                if attempt >= retries - 1:
-                    break
-                _handle_groq_429(e)
-                llm = _get_groq()
-                if not llm:
-                    break
-            else:
-                break
+        except (json.JSONDecodeError, TypeError):
+            continue
+
     return (business_text, stage_text)
 
 

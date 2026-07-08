@@ -136,224 +136,75 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
 # ============================================================
 # Rate limiter (15 req/min program-wide, auto-tuned from API)
 # ============================================================
+from ecourt_scraper.nvidia_rate_limiter import wait as nvidia_wait
 
-import httpx
-import threading
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+if not NVIDIA_API_KEY:
+    logger.error("NVIDIA_API_KEY not set in .env")
+    sys.exit(1)
 
-_rate_lock = threading.Lock()
-_last_call_time: float = 0
-_MIN_INTERVAL = 60.0 / 15  # default 4.0s — tuned down after probe
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODELS = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.5-397b-a17b",
+]
 
 
-def _probe_groq_rate_limit(api_key: str) -> dict:
-    """Make a single lightweight probe to Groq's models endpoint
-    to read rate-limit headers from the response."""
+def _nvidia_chat(model: str, messages: list, temperature: float = 0, max_tokens: int = 4096) -> str | None:
+    """Send a chat completion to NVIDIA with rate-limit enforcement. Returns content string or None."""
+    from openai import OpenAI
+    client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=NVIDIA_API_KEY)
     try:
-        with httpx.Client(timeout=5) as client:
-            resp = client.get(
-                'https://api.groq.com/openai/v1/models',
-                headers={'Authorization': f'Bearer {api_key}'},
-            )
-            headers = {}
-            for key in resp.headers:
-                lk = key.lower()
-                if lk.startswith('x-ratelimit-'):
-                    headers[lk] = resp.headers[key]
-            return headers
-    except Exception:
-        return {}
-
-
-def _auto_tune_rate_limit(headers: dict):
-    """Parse Groq rate-limit headers and tune _MIN_INTERVAL.
-
-    Groq docs: x-ratelimit-limit-tokens = TPM (Tokens Per Minute).
-    We estimate requests/min from TPM ÷ avg tokens per request (~400).
-    """
-    global _MIN_INTERVAL
-    tpm_str = headers.get('x-ratelimit-limit-tokens')
-    if tpm_str:
-        try:
-            tpm = int(tpm_str)
-            tokens_per_req = 400
-            rpm = max(1, min(tpm / tokens_per_req, 60))
-            new_interval = 60.0 / rpm
-            _MIN_INTERVAL = max(new_interval, 1.0)
-            logger.info(f'Groq TPM: {tpm} → ~{rpm:.0f} req/min at {tokens_per_req}t/req, '
-                       f'interval set to {_MIN_INTERVAL:.1f}s')
-        except (ValueError, TypeError):
-            pass
-
-
-def _wait_for_rate_limit():
-    """Block until the minimum interval since the last Groq API call has elapsed."""
-    global _last_call_time
-    with _rate_lock:
-        now = time.monotonic()
-        elapsed = now - _last_call_time
-        if elapsed < _MIN_INTERVAL:
-            sleep_for = _MIN_INTERVAL - elapsed
-            time.sleep(sleep_for)
-        _last_call_time = time.monotonic()
-
-
-# ============================================================
-# Groq API key rotation (time-based + on 429), .env update
-# ============================================================
-
-GROQ_API_KEYS = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",") if k.strip()]
-if not GROQ_API_KEYS:
-    single = os.getenv("GROQ_API_KEY", "").strip()
-    if single:
-        GROQ_API_KEYS = [single]
-_groq_key_index = -1  # starts at -1 to keep current .env key on first run
-_last_key_rotation = time.monotonic()
-_groq_consecutive_429 = 0
-
-
-def _update_env_groq_key(new_key: str):
-    env_path = os.path.join(_project_root, 'E_Diary', '.env')
-    if not os.path.exists(env_path):
-        return
-    lines = []
-    found = False
-    with open(env_path) as f:
-        for line in f:
-            if line.startswith('GROQ_API_KEY='):
-                lines.append(f'GROQ_API_KEY={new_key}\n')
-                found = True
-            else:
-                lines.append(line)
-    if not found:
-        lines.append(f'GROQ_API_KEY={new_key}\n')
-    with open(env_path, 'w') as f:
-        f.writelines(lines)
-
-
-def _rotate_groq_key():
-    """Advance to the next key in GROQ_API_KEYS and persist to .env & os.environ."""
-    global _groq_key_index, _last_key_rotation, _groq_consecutive_429
-    _groq_key_index = (_groq_key_index + 1) % len(GROQ_API_KEYS)
-    new_key = GROQ_API_KEYS[_groq_key_index]
-    os.environ['GROQ_API_KEY'] = new_key
-    _update_env_groq_key(new_key)
-    _last_key_rotation = time.monotonic()
-    _groq_consecutive_429 += 1
-    logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
-                   f"(consecutive 429s: {_groq_consecutive_429})")
-    if _groq_consecutive_429 % len(GROQ_API_KEYS) == 0:
-        logger.warning("All %d keys returned 429. Cooling down for 5 minutes...",
-                       len(GROQ_API_KEYS))
-        for remaining in range(300, 0, -1):
-            m, s = divmod(remaining, 60)
-            print(f"\rGroq cooldown: {m}:{s:02d} remaining  ", end="", flush=True)
-            time.sleep(1)
-        print("\rGroq cooldown: done.                            ")
-
-
-def _maybe_time_rotate_groq() -> bool:
-    """Rotate key if ≥60s since last rotation. Returns True if rotated."""
-    if time.monotonic() - _last_key_rotation >= 60:
-        _rotate_groq_key()
-        return True
-    return False
-
-
-# ============================================================
-# Groq text cleanup (runs on laptop to save PA compute)
-# ============================================================
-
-GROQ_MODEL = "llama-3.3-70b-versatile"
-GROQ_FALLBACK_MODEL = "gemma2-9b-it"
-GROQ_FINAL_FALLBACK = "mixtral-8x7b-32768"
-
-
-def _get_groq():
-    from langchain_groq import ChatGroq
-
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+        nvidia_wait()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        logger.warning(f"NVIDIA API error (model={model}): {e}")
         return None
-
-    # Probe Groq rate limits once at startup
-    rate_headers = _probe_groq_rate_limit(api_key)
-    if rate_headers:
-        _auto_tune_rate_limit(rate_headers)
-
-    for model in [GROQ_MODEL, GROQ_FALLBACK_MODEL, GROQ_FINAL_FALLBACK]:
-        try:
-            llm = ChatGroq(api_key=api_key, model=model, temperature=0, max_retries=1, timeout=30)
-            from langchain_core.prompts import ChatPromptTemplate
-            chain = ChatPromptTemplate.from_messages([
-                ("system", "Respond concisely."),
-                ("human", "ok"),
-            ]) | llm
-            _wait_for_rate_limit()
-            chain.invoke({})
-            return llm
-        except Exception:
-            continue
-    return None
 
 
 def cleanup_texts(items: list) -> list:
-    """Pass scraped items through Groq to fix caps, punctuation, typos.
-    Rotates API keys on 429 or every 60s."""
-    llm = _get_groq()
-    if not llm:
-        return items
+    """Pass scraped items through NVIDIA LLM to fix caps, punctuation, typos.
+    Tries 3 models in order. Falls back to original text if all fail."""
+    system = (
+        "You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.\n"
+        "RULES:\n"
+        "1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.\n"
+        "2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).\n"
+        "3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.\n"
+        "4. If text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.\n"
+        "5. Return a JSON object with keys \"business\" and \"stage\"."
+    )
 
-    from langchain_core.prompts import ChatPromptTemplate
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a legal text formatter. Fix capitalization, punctuation, and obvious typos in court records.
-RULES:
-1. Do NOT change any factual content, case numbers, dates, names, legal terms, section numbers, or abbreviations.
-2. Keep all acronyms exactly as they appear (DHR, IA, KMC, CrPC, IPC, etc.).
-3. Only fix: capitalization (first letter of sentences, proper nouns), punctuation (missing periods, commas), extra spaces, and clear typos.
-4. If text is in ALL CAPS, convert to normal sentence case while preserving proper nouns and acronyms.
-5. Return a JSON object with keys "business" and "stage"."""),
-        ("human", '{{"business": "{business}", "stage": "{stage}"}}'),
-    ])
-
-    from langchain_core.output_parsers import JsonOutputParser
-    parser = JsonOutputParser()
-    chain = prompt | llm | parser
-
-    cleaned = []
     for item in items:
-        retries = len(GROQ_API_KEYS)
-        for attempt in range(retries + 1):
+        for model in NVIDIA_MODELS:
+            user_msg = json.dumps({
+                "business": item.get("business", ""),
+                "stage": item.get("stage", ""),
+            })
+            result = _nvidia_chat(model, [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ])
+            if result is None:
+                continue
             try:
-                _wait_for_rate_limit()
-                if _maybe_time_rotate_groq():
-                    llm = _get_groq()
-                    if not llm:
-                        break
-                    chain = prompt | llm | parser
-                result = chain.invoke({
-                    "business": item.get("business", ""),
-                    "stage": item.get("stage", ""),
-                })
-                item["business"] = (result.get("business") or item["business"]).strip()
-                item["stage"] = (result.get("stage") or item["stage"]).strip()
-                _groq_consecutive_429 = 0  # reset on success
-                break
-            except Exception as e:
-                estr = str(e)
-                if "429" in estr or "Too Many Requests" in estr or "rate_limit_exceeded" in estr:
-                    if attempt >= retries:
-                        logger.warning("All Groq keys tried, skipping item")
-                        break
-                    _rotate_groq_key()
-                    llm = _get_groq()
-                    if not llm:
-                        break
-                    chain = prompt | llm | parser
-                else:
+                parsed = json.loads(result)
+                biz = parsed.get("business", "")
+                stage = parsed.get("stage", "")
+                if biz or stage:
+                    item["business"] = biz.strip() or item.get("business", "")
+                    item["stage"] = stage.strip() or item.get("stage", "")
                     break
-        cleaned.append(item)
-    return cleaned
+            except (json.JSONDecodeError, TypeError):
+                continue
+    return items
 
 
 # ============================================================
