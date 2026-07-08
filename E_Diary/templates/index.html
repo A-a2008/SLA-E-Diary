@@ -45,6 +45,8 @@
 					{% endif %}
 					{% if user.is_superuser or user.userprofile.role == 'admin' %}
 					<li><a href="{% url 'manage_users' %}">Manage Users</a></li>
+					{% endif %}
+					{% if user.is_superuser or user.userprofile.role == 'admin' or ecourts_toggle_on %}
 					<li><a href="{% url 'ecourts_update_list' %}">eCourts Update</a></li>
 					{% endif %}
 					<li><a href="{% url 'logout' %}">Logout ({{ user.get_full_name }})</a></li>

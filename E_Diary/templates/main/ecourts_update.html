@@ -8,6 +8,26 @@
         <h1>eCourts Integration</h1>
         <p style="color: #585858;">Manage CNR numbers and fetch case data from the eCourts portal.</p>
 
+        {% if is_admin %}
+        <div style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; gap: 1rem;">
+            <span style="font-weight: 600;">Temporary access:</span>
+            <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600; background: {% if ecourts_toggle_on %}#d4edda; color: #155724;{% else %}#f8d7da; color: #721c24;{% endif %}">
+                {{ ecourts_toggle_on|yesno:"OPEN,CLOSED" }}
+            </span>
+            <form method="post" action="{% url 'ecourts_toggle_open' %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="button primary small">
+                    {{ ecourts_toggle_on|yesno:"Close,Open" }} to all users
+                </button>
+            </form>
+            {% if ecourts_toggle_on %}<span style="color: #856404; font-size: 0.85rem;">Non-admin users can now access this page.</span>{% endif %}
+        </div>
+        {% elif ecourts_toggle_on %}
+        <div style="margin-bottom: 1.5rem; padding: 0.5rem 1rem; border: 1px solid #d4edda; border-radius: 4px; background: #d4edda; color: #155724; font-size: 0.9rem;">
+            The admin has temporarily opened this page for all users.
+        </div>
+        {% endif %}
+
         <form method="get" style="margin-bottom: 2rem; display: flex; gap: 0.5rem;">
             <input type="text" name="q" placeholder="Search by case number, type, year, CNR, or party name..." value="{{ q }}" style="flex: 1;">
             <button type="submit" class="button primary small">Search</button>

@@ -40,6 +40,7 @@ urlpatterns = [
     path('send_reminders_now/', send_reminders_now, name='send_reminders_now'),
     path('ecourts/update/', ecourts_update_list, name='ecourts_update_list'),
     path('ecourts/update/<int:case_id>/', ecourts_update_single, name='ecourts_update_single'),
+    path('ecourts/toggle-open/', ecourts_toggle_open, name='ecourts_toggle_open'),
     path('api/pending-messages/', pending_messages, name='api_pending_messages'),
     path('api/mark-sent/<int:msg_id>/', mark_sent, name='api_mark_sent'),
     path('api/ecourts/pending/', ecourts_pending, name='api_ecourts_pending'),

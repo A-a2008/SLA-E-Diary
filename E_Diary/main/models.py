@@ -60,6 +60,7 @@ class Party1Type(models.TextChoices):
     COMPLAINANT = 'Complainant', 'Complainant'
     DECREE_HOLDER = 'Decree Holder', 'Decree Holder'
     CAVEATOR = 'Caveator', 'Caveator'
+    APPELLANT = 'Appellant', 'Appellant'
 
 
 class Party2Type(models.TextChoices):
@@ -279,3 +280,25 @@ class CourtHallIncharge(models.Model):
 
     def __str__(self):
         return f"{self.court_hall} on {self.date} ({'incharge' if self.is_incharge else 'not'})"
+
+
+class SiteSetting(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    value = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.key}={self.value}"
+
+    @classmethod
+    def get_bool(cls, key, default=False):
+        try:
+            val = cls.objects.get(key=key).value
+            return val.lower() in ('true', '1', 'yes')
+        except cls.DoesNotExist:
+            return default
+
+    @classmethod
+    def set_bool(cls, key, value):
+        obj, _ = cls.objects.get_or_create(key=key)
+        obj.value = 'true' if value else 'false'
+        obj.save()

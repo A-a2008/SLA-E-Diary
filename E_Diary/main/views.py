@@ -17,7 +17,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder, CourtHallIncharge
+from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder, CourtHallIncharge, SiteSetting
 from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
@@ -1479,8 +1479,16 @@ def send_reminders_now(request):
 
 # ── ECOURTS UPDATE ──
 
+def _ecourts_update_access(user):
+    if user.is_superuser:
+        return True
+    if hasattr(user, 'userprofile') and user.userprofile.role == UserRole.ADMIN:
+        return True
+    return SiteSetting.get_bool('ecourts_update_open', False)
+
+
 @login_required
-@user_passes_test(lambda u: u.is_superuser or (hasattr(u, 'userprofile') and u.userprofile.role == UserRole.ADMIN))
+@user_passes_test(_ecourts_update_access)
 def ecourts_update_list(request):
     """List cases and allow CNR entry + eCourts fetch trigger."""
     from django.db.models import Exists, OuterRef, Value, IntegerField
@@ -1522,11 +1530,13 @@ def ecourts_update_list(request):
         'page_obj': page_obj,
         'cases': page_obj.object_list,
         'q': q,
+        'is_admin': request.user.is_superuser or (hasattr(request.user, 'userprofile') and request.user.userprofile.role == UserRole.ADMIN),
+        'ecourts_toggle_on': SiteSetting.get_bool('ecourts_update_open', False),
     })
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or (hasattr(u, 'userprofile') and u.userprofile.role == UserRole.ADMIN))
+@user_passes_test(_ecourts_update_access)
 def ecourts_update_single(request, case_id):
     """Handle POST: update CNR and/or trigger eCourts fetch for a case."""
     case = get_object_or_404(Case, id=case_id)
@@ -1552,6 +1562,18 @@ def ecourts_update_single(request, case_id):
                 case.save()
                 messages.success(request, f'Case queued for eCourts sync (status: pending). Run sync_ecourts.py on your laptop to fetch the data.')
 
+    return redirect('ecourts_update_list')
+
+
+@login_required
+@require_http_methods(['POST'])
+def ecourts_toggle_open(request):
+    if not (request.user.is_superuser or (hasattr(request.user, 'userprofile') and request.user.userprofile.role == UserRole.ADMIN)):
+        messages.error(request, 'Only admins can toggle this setting.')
+        return redirect('ecourts_update_list')
+    current = SiteSetting.get_bool('ecourts_update_open', False)
+    SiteSetting.set_bool('ecourts_update_open', not current)
+    messages.success(request, f'eCourts update page is now {"open" if not current else "closed"} to non-admin users.')
     return redirect('ecourts_update_list')
 
 

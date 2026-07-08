@@ -32,6 +32,11 @@ class CourtHallInchargeAdmin(admin.ModelAdmin):
     list_display = ('date', 'court', 'court_hall', 'is_incharge')
     list_filter = ('date', 'court')
     search_fields = ('court_hall',)
+@admin.register(SiteSetting)
+class SiteSettingAdmin(admin.ModelAdmin):
+    list_display = ('key', 'value')
+    search_fields = ('key',)
+
 class OutgoingMessageAdmin(admin.ModelAdmin):
     list_display = ('chat_id', 'text', 'created_at', 'sent', 'sent_at')
     list_filter = ('sent',)
