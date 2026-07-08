@@ -241,9 +241,10 @@ def _rotate_groq_key():
     _groq_consecutive_429 += 1
     logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
                    f"(consecutive 429s: {_groq_consecutive_429})")
-    if _groq_consecutive_429 >= len(GROQ_API_KEYS) * 3:
-        logger.error("All %d Groq keys appear exhausted — daily quota likely reached",
-                     len(GROQ_API_KEYS))
+    if _groq_consecutive_429 % len(GROQ_API_KEYS) == 0:
+        logger.warning("All %d keys returned 429. Cooling down for 5 minutes...",
+                       len(GROQ_API_KEYS))
+        time.sleep(300)
 
 
 def _maybe_time_rotate_groq() -> bool:

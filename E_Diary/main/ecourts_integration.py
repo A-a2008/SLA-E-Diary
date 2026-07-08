@@ -119,7 +119,7 @@ def _update_env_groq_key(new_key: str):
 
 
 def _rotate_groq_key():
-    global _groq_key_index, _last_groq_rotation, _groq_consecutive_429
+    global _groq_key_index, _last_groq_rotation, _groq_consecutive_429, _groq_min_interval
     _groq_key_index = (_groq_key_index + 1) % len(GROQ_API_KEYS)
     new_key = GROQ_API_KEYS[_groq_key_index]
     os.environ['GROQ_API_KEY'] = new_key
@@ -128,9 +128,11 @@ def _rotate_groq_key():
     _groq_consecutive_429 += 1
     logger.warning(f"Rotated Groq key to #{_groq_key_index + 1}/{len(GROQ_API_KEYS)} "
                    f"(consecutive 429s: {_groq_consecutive_429})")
-    if _groq_consecutive_429 >= len(GROQ_API_KEYS) * 3:
-        logger.error("All %d Groq keys appear exhausted — daily quota likely reached",
-                     len(GROQ_API_KEYS))
+    if _groq_consecutive_429 % len(GROQ_API_KEYS) == 0:
+        logger.warning("All %d keys returned 429. Cooling down for 5 minutes...",
+                       len(GROQ_API_KEYS))
+        _groq_min_interval = 60.0 / 15
+        time.sleep(300)
 
 
 def _maybe_time_rotate_groq() -> bool:
