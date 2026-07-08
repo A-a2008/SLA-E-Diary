@@ -263,9 +263,9 @@ def _maybe_time_rotate_groq() -> bool:
 # Groq text cleanup (runs on laptop to save PA compute)
 # ============================================================
 
-GROQ_MODEL = "openai/gpt-oss-120b"
-GROQ_FALLBACK_MODEL = "openai/gpt-oss-20b"
-GROQ_FINAL_FALLBACK = "qwen/qwen3-32b"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_FALLBACK_MODEL = "gemma2-9b-it"
+GROQ_FINAL_FALLBACK = "mixtral-8x7b-32768"
 
 
 def _get_groq():
