@@ -207,9 +207,6 @@ def cleanup_texts(items: list) -> list:
         else:
             logger.warning(f"NVIDIA: all models failed for item, keeping original")
     return items
-            except (json.JSONDecodeError, TypeError):
-                continue
-    return items
 
 
 # ============================================================
