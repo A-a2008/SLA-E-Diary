@@ -258,7 +258,7 @@ def main():
                 items = scraped.get('items', [])
 
                 if items:
-                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries with Groq...")
+                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries with NVIDIA...")
                     items = cleanup_texts(items)
 
                 status = 'done' if items or ecourts_available else 'no_data'
