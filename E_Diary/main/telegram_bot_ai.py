@@ -3,7 +3,7 @@ import logging
 import datetime
 from typing import Optional
 
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
@@ -13,8 +13,9 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-LLM_MODEL = 'qwen/qwen3-32b'
+NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+LLM_MODEL = 'qwen/qwen3.5-397b-a17b'
 
 
 class ClassificationResult(BaseModel):
@@ -55,11 +56,12 @@ class ReminderDetails(BaseModel):
 
 
 def _get_llm():
-    return ChatGroq(
-        api_key=GROQ_API_KEY,
+    return ChatOpenAI(
+        api_key=NVIDIA_API_KEY,
         model=LLM_MODEL,
         temperature=0,
         max_retries=2,
+        base_url=NVIDIA_BASE_URL,
     )
 
 
