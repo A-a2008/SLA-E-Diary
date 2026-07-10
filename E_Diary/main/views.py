@@ -344,11 +344,13 @@ def diary_entry_case(request, case_id):
     latest_data = get_latest_entry_data(case)
 
     if request.method == 'POST':
-        if request.POST.get('dispose_case'):
-            dispose_case(case)
-            return redirect('diary_entry_case', case_id=case.id)
-        if request.POST.get('reinstate_case'):
-            reinstate_case(case)
+        if request.POST.get('dispose_case') or request.POST.get('reinstate_case'):
+            if not request.user.is_superuser:
+                return redirect('diary_entry_case', case_id=case.id)
+            if request.POST.get('dispose_case'):
+                dispose_case(case)
+            else:
+                reinstate_case(case)
             return redirect('diary_entry_case', case_id=case.id)
 
     court_hall_notes = CourtHallNote.objects.filter(
