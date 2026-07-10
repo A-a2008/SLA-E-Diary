@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-LLM_MODEL = 'qwen/qwen3.5-397b-a17b'
+LLM_MODEL = 'openai/gpt-oss-20b'
 
 
 class ClassificationResult(BaseModel):
@@ -62,6 +62,7 @@ def _get_llm():
         temperature=0,
         max_retries=2,
         base_url=NVIDIA_BASE_URL,
+        request_timeout=30,
     )
 
 
