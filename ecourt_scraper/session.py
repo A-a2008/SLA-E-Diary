@@ -22,6 +22,22 @@ MAX_RETRIES = 10
 _CALL_COUNTER = 0
 ECOURTS_CALL_LIMIT = 0  # 0 = no limit
 
+# --- eCourts rate limiter (1 req/min) ---
+import time as _time
+_LAST_ECOURTS_REQUEST = 0.0
+ECOURTS_MIN_INTERVAL = 60.0  # seconds between requests
+
+def _wait_for_ecourts_slot():
+    """Block until at least ECOURTS_MIN_INTERVAL has passed since last eCourts request."""
+    global _LAST_ECOURTS_REQUEST
+    now = _time.monotonic()
+    elapsed = now - _LAST_ECOURTS_REQUEST
+    if elapsed < ECOURTS_MIN_INTERVAL:
+        sleep_for = ECOURTS_MIN_INTERVAL - elapsed
+        print(f"  ⏳ Rate limit: waiting {sleep_for:.0f}s before next eCourts request...", file=sys.stderr)
+        _time.sleep(sleep_for)
+    _LAST_ECOURTS_REQUEST = _time.monotonic()
+
 
 def set_call_limit(n: int):
     global ECOURTS_CALL_LIMIT
@@ -256,6 +272,7 @@ class EcourtSession:
 
     def _solve_and_search(self, cnr: str) -> dict:
         """Load homepage, fill CNR, solve captcha, click search. Returns API JSON."""
+        _wait_for_ecourts_slot()
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
         self.page.wait_for_timeout(3000)
 
@@ -273,6 +290,7 @@ class EcourtSession:
 
         if not can_call():
             raise RuntimeError("eCourts API call limit reached")
+        _wait_for_ecourts_slot()
         with self.page.expect_response(
             lambda r: "cnr_status/searchByCNR" in r.url, timeout=20000
         ) as resp_info:
@@ -334,6 +352,7 @@ class EcourtSession:
         """Click a business date link and return the parsed business details."""
         if not can_call():
             raise RuntimeError("eCourts call limit reached")
+        _wait_for_ecourts_slot()
         args = (
             f"'{link['court_code']}','{link['dist_code']}','{link['nextdate']}',"
             f"'{link['case_number']}','{link['state_code']}','{link['business_status']}',"
