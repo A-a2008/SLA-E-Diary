@@ -82,16 +82,16 @@ def ecourts_pending(request):
     ).values('max_date')
 
     if force:
-        all_cases = Case.objects.filter(cnr__isnull=False).exclude(cnr='')
+        all_cases = Case.objects.filter(cnr__isnull=False).exclude(cnr='').filter(disposed=False)
         pending = all_cases.filter(ecourts_status='pending')
         refresh = all_cases
     elif update_only:
         pending = Case.objects.filter(
-            ecourts_status='pending', cnr__isnull=False
+            ecourts_status='pending', cnr__isnull=False, disposed=False
         ).exclude(cnr='')
 
         refresh = Case.objects.filter(
-            cnr__isnull=False
+            cnr__isnull=False, disposed=False
         ).exclude(cnr='').annotate(
             latest_next_date=Subquery(latest_next)
         ).filter(
@@ -100,19 +100,19 @@ def ecourts_pending(request):
         refresh = refresh.distinct()
     else:
         pending = Case.objects.filter(
-            ecourts_status='pending', cnr__isnull=False
+            ecourts_status='pending', cnr__isnull=False, disposed=False
         ).exclude(cnr='')
 
         cutoff = timezone.now() - datetime.timedelta(hours=6)
 
         refresh = Case.objects.filter(
-            cnr__isnull=False, ecourts_last_checked__isnull=True
+            cnr__isnull=False, ecourts_last_checked__isnull=True, disposed=False
         ).exclude(cnr='').annotate(
             latest_next_date=Subquery(latest_next)
         ).filter(
             latest_next_date__isnull=False, latest_next_date__lte=today
         ) | Case.objects.filter(
-            cnr__isnull=False, ecourts_last_checked__lt=cutoff
+            cnr__isnull=False, ecourts_last_checked__lt=cutoff, disposed=False
         ).exclude(cnr='').annotate(
             latest_next_date=Subquery(latest_next)
         ).filter(
