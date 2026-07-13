@@ -129,6 +129,18 @@ def handle_ai_diary_entry(chat_id, text, profile):
                      f'Please check the case details and try again.')
         return
 
+    # Re-extract with case context for forward-looking stage
+    try:
+        case_context = {
+            'representing': case.representing,
+            'party_1': case.party_1,
+            'party_2': case.party_2,
+            'case_display': f"{case.case_type}/{case.case_number}/{case.case_year}",
+        }
+        extraction = extract_diary_entry(text, case_context)
+    except Exception as e:
+        logger.exception(f'Diary entry re-extraction failed: {e}')
+
     if extraction.is_advance:
         entry = update_last_entry_from_advance(extraction, case, advocate=profile.user)
         if not entry:

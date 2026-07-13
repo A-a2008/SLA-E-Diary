@@ -76,10 +76,27 @@ def classify_message(text: str) -> ClassificationResult:
     return chain.invoke({'text': text})
 
 
-def extract_diary_entry(text: str) -> DiaryEntryExtraction:
+def extract_diary_entry(text: str, case_context: dict = None) -> DiaryEntryExtraction:
     llm = _get_llm().with_structured_output(DiaryEntryExtraction)
+
+    # Build case context block for the LLM
+    context_block = ""
+    if case_context:
+        representing = case_context.get('representing', 'unknown')
+        party_1 = case_context.get('party_1', '')
+        party_2 = case_context.get('party_2', '')
+        case_display = case_context.get('case_display', '')
+        context_block = f"""
+CASE CONTEXT (use this to determine 'theirs' vs 'ours'):
+- Case: {case_display}
+- We represent: {representing} ({'party_1' if representing == 'party_1' else 'party_2'})
+- Party 1: {party_1}
+- Party 2: {party_2}
+
+Use this to determine whose action is next. If 'defendant files vakalat' and we represent plaintiff, stage = 'Their Objection & Written Statement'. If we are defendant, stage = 'Our Objection & Written Statement'."""
+
     prompt = ChatPromptTemplate.from_messages([
-        ('system', '''You extract structured diary entry data from lawyer messages about Indian court cases. Today's date is ''' + datetime.date.today().strftime('%d-%m-%Y') + '''.
+        ('system', f'''You extract structured diary entry data from lawyer messages about Indian court cases. Today's date is {datetime.date.today().strftime('%d-%m-%Y')}.{context_block}
 
 Rules:
 - previous_date: If the user says "today" or doesn't mention a specific appearance date, leave it blank (null).
@@ -90,10 +107,14 @@ Rules:
 - business: Reformatted version of what happened in court. Keep ALL details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only. Preserve case numbers, dates, party names, order details, and any other specifics exactly as mentioned.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
- - stage: Generate a SHORT, informative stage label (1-5 words). This will appear in the cause list. Be specific — mention the witness or document if relevant. Examples: 'Cross of DW1', 'Chief of PW2', 'Arguments', 'Hg', 'Evidence', 'Judgment', 'Order', 'Adjourned', 'Defense Evidence', 'Accused Statement', 'Further Chief', 'Final Arguments', 'Mediation'. NEVER leave this blank — infer from context.
- - mentions_reminder: Did the user say anything about reminders?
- - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
- - mediation_next_date: ONLY set this when the message explicitly mentions a SEPARATE mediation date that is DIFFERENT from the court next_date. When the user says something like "mediation date 6/7, before court 7/9" or "mediation date 6/7. next date before court 7/9", set next_date='09-07-2026' (the court date) and mediation_next_date='06-07-2026' (the mediation date). If only a mediation date is mentioned with no separate court date, do NOT set this — just set next_date to the mediation date and is_mediation=True.
+ - stage: Generate a SHORT, informative stage label (1-5 words) FOR THE NEXT HEARING — what is expected to happen next. This appears in the cause list.
+   CRITICAL: Stage must be FORWARD-LOOKING (next business), NOT what happened today.
+   If next action is unclear from the message, set stage to "Awaiting Next Step — Ask User".
+   Examples of good forward-looking stages: "Their Objection & Written Statement", "Our Replication", "Cross of PW1", "Arguments", "Judgment", "Order", "Defence Evidence", "Accused Statement", "Final Arguments", "Mediation".
+   Bad (today-focused): "Filed Vakalat & Time Request", "Mediation Report Not Received".
+- mentions_reminder: Did the user say anything about reminders?
+- wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
+- mediation_next_date: ONLY set this when the message explicitly mentions a SEPARATE mediation date that is DIFFERENT from the court next_date. When the user says something like "mediation date 6/7, before court 7/9" or "mediation date 6/7. next date before court 7/9", set next_date='09-07-2026' (the court date) and mediation_next_date='06-07-2026' (the mediation date). If only a mediation date is mentioned with no separate court date, do NOT set this — just set next_date to the mediation date and is_mediation=True.
 
 ADVANCE DETECTION (IMPORTANT):
 - is_advance = True when the user is advancing/changing/preponing/postponing an existing case's next hearing date.
@@ -117,7 +138,8 @@ Examples:
 - "CC 6759/23 advanced to 06-07-2026" → is_advance=True, next_date='06-07-2026', business='Advance application filed', is_mediation=False
 - "Advance application filed for OS 1719/26, next date 01-07-2026, evidence of PW2" → is_advance=True, next_date='01-07-2026', stage='Evidence of PW2', business='Advance application allowed'
 - "MC/2423/26, Vaishali vs. Venkatesh, filed vakalat on behalf of respondent. matter referred to mediation. mediation date 6/7. before court 7/9" → is_mediation=False, is_advance=False, next_date='09-07-2026', mediation_next_date='06-07-2026', business='Filed vakalat on behalf of respondent. Matter referred to mediation.', stage='Referred to Mediation'
-- "OS 1234/25, parties attended mediation centre, mediation failed, next date 15-08-2026 for further proceedings" → is_mediation=True, is_advance=False, next_date='15-08-2026', mediation_next_date=null, business='Parties attended mediation centre. Mediation failed.', stage='Mediation Failed' '''),
+- "OS 1234/25, parties attended mediation centre, mediation failed, next date 15-08-2026 for further proceedings" → is_mediation=True, is_advance=False, next_date='15-08-2026', mediation_next_date=null, business='Parties attended mediation centre. Mediation failed.', stage='Mediation Failed'
+- "OS 3340/26, Sandesh Gowda vs Divya, defendant advocate filed vakalat asked time for objection and written statement, next date 17/8/26" → stage="Their Objection & Written Statement" (if we represent plaintiff), stage="Our Objection & Written Statement" (if we represent defendant)'''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
