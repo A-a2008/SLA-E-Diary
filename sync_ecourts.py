@@ -217,6 +217,8 @@ def main():
     parser = argparse.ArgumentParser(description='Sync eCourts data')
     parser.add_argument('--force', action='store_true',
                         help='Re-scrape ALL cases with CNRs, ignoring status')
+    parser.add_argument('--update', action='store_true',
+                        help='Only refresh cases whose next hearing date is today or past (skip pending)')
     args = parser.parse_args()
 
     if not API_TOKEN:
@@ -283,24 +285,30 @@ def main():
                 continue
 
     while True:
-        endpoint = '/api/ecourts/pending/?force=true' if args.force else '/api/ecourts/pending/'
+        if args.update:
+            endpoint = '/api/ecourts/pending/?update=true'
+        else:
+            endpoint = '/api/ecourts/pending/?force=true' if args.force else '/api/ecourts/pending/'
         data = api_get(endpoint)
         pending = data.get('pending', [])
         refresh = data.get('refresh', [])
         pending_total = data.get('pending_total', 0)
         refresh_total = data.get('refresh_total', 0)
 
-        if not pending and not refresh:
-            logger.info(f"Nothing to process (pending={pending_total}, refresh={refresh_total}). Done.")
+        if args.update:
+            logger.info(f"Update mode: Refresh: {len(refresh)} (queue total: {refresh_total})")
+        else:
+            logger.info(f"Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
+
+        if not refresh and (not pending or args.update):
+            logger.info(f"Nothing to process. Done.")
             break
 
-        logger.info(f"Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
+        if not args.update and pending:
+            _process_phase('PENDING', pending)
 
-        # Phase 1 — process pending cases (full history scrape)
-        _process_phase('PENDING', pending)
-
-        # Phase 2 — process refresh cases (hearing dates already passed)
-        _process_phase('REFRESH', refresh)
+        if refresh:
+            _process_phase('REFRESH', refresh)
 
         time.sleep(1)
 
