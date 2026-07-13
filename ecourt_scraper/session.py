@@ -25,7 +25,7 @@ ECOURTS_CALL_LIMIT = 0  # 0 = no limit
 # --- eCourts rate limiter (1 req/min) ---
 import time as _time
 _LAST_ECOURTS_REQUEST = 0.0
-ECOURTS_MIN_INTERVAL = 60.0  # seconds between requests
+ECOURTS_MIN_INTERVAL = 20.0  # seconds between requests
 
 def _wait_for_ecourts_slot():
     """Block until at least ECOURTS_MIN_INTERVAL has passed since last eCourts request."""
