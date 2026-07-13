@@ -202,7 +202,7 @@ def _finalize_entry(chat_id, extraction, case, profile):
     if needs_reminder_check:
         return
 
-    if extraction.wants_reminder is False:
+    if extraction.wants_reminder is False and extraction.mentions_reminder is True:
         send_message(chat_id, '✅ No reminder will be set (as requested).')
         return
 
