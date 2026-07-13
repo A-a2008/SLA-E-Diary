@@ -152,9 +152,18 @@ def extract_reminder_details(text: str, next_date_str: str) -> ReminderDetails:
     prompt = ChatPromptTemplate.from_messages([
         ('system', f'''Extract reminder details from the user's message. Today is {today}. The next hearing date is {next_date_str}.
 
-Frequency options: daily, alternate (alternate days), twice_week (Mondays and Thursdays), weekly.
-Ramp_up: true means send daily reminders in the last week before the next hearing date.
-start_on: Default to today ({today}) if not specified. Format DD-MM-YYYY.'''),
+Frequency options (must match EXACTLY): "daily", "alternate" (alternate days), "twice_week" (Mondays & Thursdays), "weekly".
+Ramp_up: true/false — true means send daily reminders in the last week before the next hearing.
+start_on: Default to today ({today}) if not specified. Format DD-MM-YYYY.
+
+Examples:
+- "Prepare arguments, daily, yes, start tomorrow" → task="Prepare arguments", frequency="daily", ramp_up=true, start_on="{(datetime.date.today() + datetime.timedelta(days=1)).strftime('%d-%m-%Y')}"
+- "File document, weekly, no" → task="File document", frequency="weekly", ramp_up=false, start_on="{today}"
+- "Cross examination prep, alternate days, yes ramp up" → task="Cross examination prep", frequency="alternate", ramp_up=true, start_on="{today}"
+- "Written statement, twice_week" → task="Written statement", frequency="twice_week", ramp_up=false, start_on="{today}"
+
+If user says "yes" to ramp-up without details, set ramp_up=true. If "no" or not mentioned, ramp_up=false.
+If frequency is unclear, default to "daily".'''),
         ('human', '{text}'),
     ])
     chain = prompt | llm
