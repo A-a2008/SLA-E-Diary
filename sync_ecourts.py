@@ -296,15 +296,15 @@ def main():
         refresh_total = data.get('refresh_total', 0)
 
         if args.update:
-            logger.info(f"Update mode: Refresh: {len(refresh)} (queue total: {refresh_total})")
+            logger.info(f"Update mode: Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
         else:
             logger.info(f"Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
 
-        if not refresh and (not pending or args.update):
+        if not pending and not refresh:
             logger.info(f"Nothing to process. Done.")
             break
 
-        if not args.update and pending:
+        if pending:
             _process_phase('PENDING', pending)
 
         if refresh:
