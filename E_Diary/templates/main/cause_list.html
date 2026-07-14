@@ -66,18 +66,18 @@
             <h2 style="margin-top: 2rem; color: #f2849e;">{{ bldg_code|building_label }}</h2>
 
             <div class="table-wrapper" style="overflow-x: auto;">
-                <table class="alt" style="width: 100%; table-layout: fixed; word-break: break-word;">
+<table class="alt" style="width: 100%; table-layout: fixed; word-break: break-word;">
                     <colgroup>
                         <col style="width: 5%;">
                         <col style="width: 6%;">
-                        <col style="width: 18%;">
-                        <col style="width: 32%;">
-                        <col style="width: 10%;">
-                        <col style="width: 7%;">
-                        <col style="width: 22%;">
+                        <col style="width: 14%;">
+                        <col style="width: 35%;">
+                        <col style="width: 15%;">
+                        <col style="width: 12%;">
+                        <col style="width: 13%;">
                     </colgroup>
                     <thead>
-                        <tr>
+                        <tr style="white-space: nowrap;">
                             <th>Sl No.</th>
                             <th>Floor</th>
                             <th>Court Hall</th>
@@ -95,7 +95,7 @@
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
                                 {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
-                                {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
+                                {{ court_labels|dict_key:effective_court }}, <strong>{{ effective_hall }}</strong>
                                 {% if hall_key in court_hall_incharges %}
                                 <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
                                 {% endif %}
