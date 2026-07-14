@@ -68,13 +68,13 @@
             <div class="table-wrapper" style="overflow-x: auto;">
                 <table class="alt" style="width: 100%; table-layout: fixed; word-break: break-word;">
                     <colgroup>
+                        <col style="width: 3%;">
                         <col style="width: 4%;">
-                        <col style="width: 5%;">
-                        <col style="width: 14%;">
-                        <col style="width: 37%;">
-                        <col style="width: 12%;">
+                        <col style="width: 16%;">
+                        <col style="width: 32%;">
+                        <col style="width: 10%;">
                         <col style="width: 8%;">
-                        <col style="width: 20%;">
+                        <col style="width: 27%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -95,7 +95,7 @@
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
                                 {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
-                                {{ court_labels|dict_key:effective_court }}, <strong>{{ effective_hall }}</strong>
+                                {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
                                 {% if hall_key in court_hall_incharges %}
                                 <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
                                 {% endif %}

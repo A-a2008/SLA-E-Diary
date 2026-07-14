@@ -1066,7 +1066,7 @@ def cause_list_docx(request):
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
-            widths = [Cm(0.7), Cm(0.9), Cm(2.5), Cm(6.7), Cm(2.2), Cm(1.4), Cm(3.6)]
+            widths = [Cm(0.5), Cm(0.7), Cm(2.9), Cm(5.8), Cm(1.8), Cm(1.4), Cm(4.9)]
             for i, h in enumerate(headers):
                 hdr[i].width = widths[i]
                 hdr[i].text = h
@@ -1091,7 +1091,7 @@ def cause_list_docx(request):
                 p = cell.paragraphs[0]
                 p.clear()
                 if i == 2:
-                    run_court = p.add_run(f"{effective_court_label}, ")
+                    run_court = p.add_run(f"{effective_court_label}\n")
                     run_court.font.size = Pt(8)
                     run_hall = p.add_run(effective_hall)
                     run_hall.bold = True
