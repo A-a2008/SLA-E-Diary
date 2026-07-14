@@ -5,21 +5,21 @@
     <meta charset="utf-8">
     <title>Cause List — {{ date_obj|date:"d F Y" }}</title>
     <style>
-        @page { size: A4; margin: 0.7cm; }
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12pt; color: #222; }
-        h1 { font-size: 18pt; text-align: center; margin-bottom: 0.2cm; }
-        .subtitle { text-align: center; font-size: 13pt; color: #555; margin-bottom: 0.6cm; }
-        h2 { font-size: 14pt; color: #c44569; margin-top: 0.5cm; margin-bottom: 0.15cm; border-bottom: 1px solid #ddd; padding-bottom: 0.05cm; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 0.4cm; table-layout: fixed; }
-        th, td { border: 1px solid #ccc; padding: 3px 5px; text-align: left; font-size: 10pt; overflow-wrap: break-word; }
+        @page { size: A4 landscape; margin: 0.5cm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #222; }
+        h1 { font-size: 16pt; text-align: center; margin-bottom: 0.2cm; }
+        .subtitle { text-align: center; font-size: 12pt; color: #555; margin-bottom: 0.5cm; }
+        h2 { font-size: 13pt; color: #c44569; margin-top: 0.4cm; margin-bottom: 0.1cm; border-bottom: 1px solid #ddd; padding-bottom: 0.05cm; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 0.3cm; table-layout: fixed; }
+        th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: left; font-size: 9pt; overflow-wrap: break-word; }
         th { background: #f5f5f5; font-weight: bold; text-align: center; }
-        .sl { text-align: center; width: 5%; }
+        .sl { text-align: center; width: 4%; }
         .floor { text-align: center; width: 5%; }
-        .case-col { width: 34%; }
-        .rep-col { text-align: center; width: 17%; }
-        .stage-col { text-align: center; width: 12%; }
-        .cl { text-align: center; width: 27%; }
-        .court-hall { font-size: 9pt; color: #555; }
+        .ch { text-align: left; width: 16%; }
+        .case-col { width: 30%; }
+        .rep-col { width: 14%; }
+        .stage-col { width: 11%; }
+        .cl { width: 20%; }
     </style>
 </head>
 <body>
@@ -33,6 +33,7 @@
             <tr>
                 <th class="sl">Sl No.</th>
                 <th class="floor">Floor</th>
+                <th class="ch">Court Hall</th>
                 <th class="case-col">Case &amp; Parties</th>
                 <th class="rep-col">Representing</th>
                 <th class="stage-col">Stage</th>
@@ -44,16 +45,19 @@
             <tr>
                 <td class="sl">{{ entry.sl_no }}</td>
                 <td class="floor">{{ entry.case.floor }}</td>
-                <td class="case-col">
+                <td class="ch">
                     {% with effective_court=entry.mediation_court|default:entry.case.court %}
                     {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
                     {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
-                    <span class="court-hall">{{ court_labels|dict_key:effective_court }}, {{ effective_hall }}
-                        {% if hall_key in court_hall_incharges %} ★ Incharge{% endif %}
-                    </span><br>
+                    {{ court_labels|dict_key:effective_court }}, {{ effective_hall }}
+                    {% if hall_key in court_hall_incharges %}
+                    <span style="color: #c44569;">★ Incharge</span>
+                    {% endif %}
                     {% endwith %}
                     {% endwith %}
                     {% endwith %}
+                </td>
+                    <td class="case-col">
                     <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                     {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                 </td>

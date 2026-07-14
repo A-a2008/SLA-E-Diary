@@ -1059,49 +1059,49 @@ def cause_list_docx(request):
         if bldg_name != current_building:
             current_building = bldg_name
             doc.add_heading(bldg_name, level=2)
-            table = doc.add_table(rows=1, cols=6)
+            table = doc.add_table(rows=1, cols=7)
             table.style = 'Table Grid'
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             hdr = table.rows[0].cells
-            headers = ['Sl No.', 'Floor', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
+            headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
             for i, h in enumerate(headers):
                 hdr[i].text = h
                 for p in hdr[i].paragraphs:
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     for run in p.runs:
                         run.bold = True
-                        run.font.size = Pt(9)
+                        run.font.size = Pt(8)
 
         row = table.add_row().cells
         case_num = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
         parties = f"{entry.case.party_1} vs {entry.case.party_2}"
         cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
-        data = [str(entry.sl_no), str(entry.case.floor), None, entry.case.representing, entry.stage or '—', cause_list_nos]
+        effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
+        effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
+        effective_court_label = COURT_LABELS.get(effective_court, effective_court)
+        ch_key = f"{effective_court}__{effective_hall}"
+        court_hall_text = f"{effective_court_label}, {effective_hall}"
+        data = [str(entry.sl_no), str(entry.case.floor), court_hall_text, None, entry.case.representing, entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
             if val is None:
                 cell = row[i]
                 p = cell.paragraphs[0]
                 p.clear()
-                effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
-                effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
-                effective_court_label = COURT_LABELS.get(effective_court, effective_court)
-                ch_key = f"{effective_court}__{effective_hall}"
-                incharge_tag = ' ★ Incharge' if ch_key in court_hall_incharges else ''
-                run = p.add_run(f"{effective_court_label}, {effective_hall}{incharge_tag}\n{case_num}\n")
-                run.font.size = Pt(9)
+                run0 = p.add_run(f"{case_num}\n")
+                run0.font.size = Pt(8)
                 run1 = p.add_run(entry.case.party_1)
                 run1.bold = entry.case.represents_party_1
-                run1.font.size = Pt(9)
+                run1.font.size = Pt(8)
                 run_vs = p.add_run(' vs ')
-                run_vs.font.size = Pt(9)
+                run_vs.font.size = Pt(8)
                 run2 = p.add_run(entry.case.party_2)
                 run2.bold = entry.case.represents_party_2
-                run2.font.size = Pt(9)
+                run2.font.size = Pt(8)
             else:
                 row[i].text = val
                 for p in row[i].paragraphs:
                     for run in p.runs:
-                        run.font.size = Pt(9)
+                        run.font.size = Pt(8)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="cause_list_{date_str}.docx"'
