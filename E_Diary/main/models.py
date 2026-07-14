@@ -213,6 +213,7 @@ class CourtHallNote(models.Model):
     court = models.CharField(max_length=100)
     court_hall = models.CharField(max_length=100)
     note = models.TextField()
+    default_floor = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -729,9 +729,19 @@
     var courtHallOptions = document.getElementById('court-hall-options');
     var chSuggestTimeout = null;
     var chSelected = false;
+    var courtHallFloors = {{ court_hall_floors_json|safe }};
 
     function showCourtHallPanel() { courtHallPanel.style.display = 'block'; }
     function hideCourtHallPanel() { courtHallPanel.style.display = 'none'; }
+
+    function autoFillFloor() {
+        var court = document.getElementById('court');
+        var hall = courtHallInput.value.trim();
+        var floorInput = document.getElementById('floor');
+        if (court && court.value && hall && courtHallFloors[court.value] && courtHallFloors[court.value][hall] !== undefined) {
+            floorInput.value = courtHallFloors[court.value][hall];
+        }
+    }
 
     function fetchCourtHallSuggestions(q) {
         fetch('/court_halls/suggest/?q=' + encodeURIComponent(q))
@@ -751,6 +761,7 @@
                         courtHallInput.value = item.value;
                         chSelected = true;
                         hideCourtHallPanel();
+                        autoFillFloor();
                     });
                     courtHallOptions.appendChild(div);
                 });

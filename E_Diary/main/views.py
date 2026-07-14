@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder, CourtHallIncharge, SiteSetting
-from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING, COURT_HALLS
+from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING, COURT_HALLS, COURT_HALL_FLOORS
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
 
@@ -270,11 +270,13 @@ def new_case(request):
 
         return redirect("diary_entry")
     else:
+        import json
         data = {
             'party1_choices': Party1Type.choices,
             'party2_choices': Party2Type.choices,
             'jurisdiction_choices': Jurisdiction.choices,
             'court_level_choices': CourtLevel.choices,
+            'court_hall_floors_json': json.dumps(COURT_HALL_FLOORS),
         }
         return render(request, 'main/new_case.html', data)
 
@@ -1349,6 +1351,7 @@ def add_court_hall_note(request):
         court_code = request.POST.get('court')
         court_hall = request.POST.get('court_hall')
         note = request.POST.get('note', '').strip()
+        default_floor_raw = request.POST.get('default_floor', '').strip()
         if court_code and court_hall:
             obj, created = CourtHallNote.objects.get_or_create(
                 court=court_code,
@@ -1360,7 +1363,12 @@ def add_court_hall_note(request):
                     obj.note += f'\n\n---\n\n{note}'
                 else:
                     obj.note = note
-                obj.save()
+            if default_floor_raw:
+                try:
+                    obj.default_floor = int(default_floor_raw)
+                except ValueError:
+                    pass
+            obj.save()
             messages.success(request, 'Court hall note saved.')
         else:
             messages.error(request, 'Court and Court Hall are required.')

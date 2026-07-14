@@ -34,6 +34,7 @@
                     <tr>
                         <th>Court Complex</th>
                         <th>Court Hall</th>
+                        <th>Floor</th>
                         <th>Note</th>
                         <th>Last Updated</th>
                         <th></th>
@@ -44,6 +45,7 @@
                     <tr>
                         <td>{{ note.court|court_label }}</td>
                         <td>{{ note.court_hall }}</td>
+                        <td style="text-align: center;">{{ note.default_floor|default:'—' }}</td>
                         <td>{{ note.note }}</td>
                         <td>{{ note.updated_at|date:"d M Y h:i A" }}</td>
                         <td><a href="{% url 'add_court_hall_note' %}?court={{ note.court }}&court_hall={{ note.court_hall }}" class="button small">Edit</a></td>
