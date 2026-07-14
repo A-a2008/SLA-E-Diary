@@ -13,7 +13,7 @@
 
             <div class="field">
                 <label for="court">Court Complex</label>
-                <select name="court" id="court" required>
+                <select name="court" id="court" required onchange="updateCourtHalls()">
                     <option value="">— Select —</option>
                     {% for code, label in court_labels.items %}
                     <option value="{{ code }}" {% if court == code %}selected{% endif %}>{{ label }}</option>
@@ -24,9 +24,18 @@
 
             <div class="field">
                 <label for="court_hall">Court Hall</label>
-                <input type="text" name="court_hall" id="court_hall" value="{{ court_hall }}" placeholder="e.g. CCH-4" required>
+                <select name="court_hall" id="court_hall" required>
+                    <option value="">— Select Court Complex First —</option>
+                </select>
             </div>
             <br>
+
+            <div id="hidden-halls" style="display:none;">
+                {% for code, halls in court_halls.items %}
+                <select id="halls-{{ code }}" data-halls="{{ halls|join:'||' }}">
+                </select>
+                {% endfor %}
+            </div>
 
             {% if existing_note and existing_note.note %}
             <div style="background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 0.5rem;">
@@ -50,4 +59,47 @@
         </form>
     </div>
 </div>
+
+<script>
+    var courtHalls = {
+        {% for code, halls in court_halls.items %}
+        '{{ code }}': [{% for h in halls %}'{{ h|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        {% endfor %}
+    };
+
+    function updateCourtHalls() {
+        var courtSelect = document.getElementById('court');
+        var hallSelect = document.getElementById('court_hall');
+        var selectedCourt = courtSelect.value;
+
+        hallSelect.innerHTML = '';
+
+        if (!selectedCourt || !courtHalls[selectedCourt]) {
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— Select Court Complex First —';
+            hallSelect.appendChild(opt);
+            return;
+        }
+
+        var halls = courtHalls[selectedCourt];
+        {% if court_hall %}
+        var selectedHall = '{{ court_hall|escapejs }}';
+        {% else %}
+        var selectedHall = '';
+        {% endif %}
+
+        halls.forEach(function(hall) {
+            var opt = document.createElement('option');
+            opt.value = hall;
+            opt.textContent = hall;
+            if (hall === selectedHall) opt.selected = true;
+            hallSelect.appendChild(opt);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCourtHalls();
+    });
+</script>
 {% endblock %}

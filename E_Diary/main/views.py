@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Party1Type, Party2Type, Jurisdiction, CourtLevel, MediationStatus, MediationEntryType, Case, DiaryEntry, CauseListEntry, UserProfile, UserRole, CourtHallNote, Reminder, CourtHallIncharge, SiteSetting
-from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING
+from .constants import COURT_LABELS, BUILDING_LABELS, BUILDING_ORDER, COURT_TO_BUILDING, COURT_HALLS
 from .services import search_cases, get_latest_entry_data, create_diary_entry, create_case, dispose_case, reinstate_case
 from .telegram_utils import send_message
 
@@ -1339,6 +1339,7 @@ def court_hall_notes(request):
         'court': court,
         'court_hall': court_hall,
         'court_labels': COURT_LABELS,
+        'court_halls': COURT_HALLS,
     })
 
 
@@ -1349,6 +1350,10 @@ def add_court_hall_note(request):
         court_hall = request.POST.get('court_hall')
         note = request.POST.get('note', '').strip()
         if court_code and court_hall:
+            valid_halls = COURT_HALLS.get(court_code, [])
+            if court_hall not in valid_halls:
+                messages.error(request, f'"{court_hall}" is not a valid court hall for the selected court complex.')
+                return redirect(request.POST.get('next', 'cause_list'))
             obj, created = CourtHallNote.objects.get_or_create(
                 court=court_code,
                 court_hall=court_hall,
@@ -1377,6 +1382,7 @@ def add_court_hall_note(request):
         'court_hall': court_hall,
         'next': request.GET.get('next', 'cause_list'),
         'court_labels': COURT_LABELS,
+        'court_halls': COURT_HALLS,
         'existing_note': existing_note,
     })
 

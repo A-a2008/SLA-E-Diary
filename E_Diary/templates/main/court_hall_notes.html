@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load court_extras %}
 
 {% block content %}
 <div id="main">
@@ -41,7 +42,7 @@
                 <tbody>
                     {% for note in notes %}
                     <tr>
-                        <td>{{ note.court }}</td>
+                        <td>{{ note.court|court_label }}</td>
                         <td>{{ note.court_hall }}</td>
                         <td>{{ note.note }}</td>
                         <td>{{ note.updated_at|date:"d M Y h:i A" }}</td>
