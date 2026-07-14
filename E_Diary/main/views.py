@@ -1066,7 +1066,9 @@ def cause_list_docx(request):
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
+            widths = [Cm(0.9), Cm(1.1), Cm(2.5), Cm(6.3), Cm(2.7), Cm(2.2), Cm(2.3)]
             for i, h in enumerate(headers):
+                hdr[i].width = widths[i]
                 hdr[i].text = h
                 for p in hdr[i].paragraphs:
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
