@@ -68,13 +68,13 @@
             <div class="table-wrapper" style="overflow-x: auto;">
                 <table class="alt" style="width: 100%; table-layout: fixed; word-break: break-word;">
                     <colgroup>
-                        <col style="width: 3%;">
-                        <col style="width: 4%;">
-                        <col style="width: 16%;">
+                        <col style="width: 5%;">
+                        <col style="width: 6%;">
+                        <col style="width: 18%;">
                         <col style="width: 32%;">
                         <col style="width: 10%;">
-                        <col style="width: 8%;">
-                        <col style="width: 27%;">
+                        <col style="width: 7%;">
+                        <col style="width: 22%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -91,7 +91,7 @@
                         {% for entry in bldg_entries %}
                         <tr>
                             <td style="text-align: center;">{{ entry.sl_no }}</td>
-                            <td style="text-align: center;">{{ entry.case.floor }}</td>
+<td style="text-align: center;">{{ entry.case.floor }}</td>
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
                                 {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
@@ -102,7 +102,7 @@
                                 {% endwith %}
                                 {% endwith %}
                                 {% endwith %}</td>
-                            <td>
+                            <td style="padding: 0 8px;">
                                 <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                                 {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                             </td>
