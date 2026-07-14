@@ -95,7 +95,7 @@
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
                                 {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
-                                {{ court_labels|dict_key:effective_court }}, {{ effective_hall }}
+                                {{ court_labels|dict_key:effective_court }}, <strong>{{ effective_hall }}</strong>
                                 {% if hall_key in court_hall_incharges %}
                                 <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
                                 {% endif %}

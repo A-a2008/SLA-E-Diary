@@ -1082,23 +1082,29 @@ def cause_list_docx(request):
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
         ch_key = f"{effective_court}__{effective_hall}"
-        court_hall_text = f"{effective_court_label}, {effective_hall}"
-        data = [str(entry.sl_no), str(entry.case.floor), court_hall_text, None, entry.case.representing, entry.stage or '—', cause_list_nos]
+        data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
             if val is None:
                 cell = row[i]
                 p = cell.paragraphs[0]
                 p.clear()
-                run0 = p.add_run(f"{case_num}\n")
-                run0.font.size = Pt(8)
-                run1 = p.add_run(entry.case.party_1)
-                run1.bold = entry.case.represents_party_1
-                run1.font.size = Pt(8)
-                run_vs = p.add_run(' vs ')
-                run_vs.font.size = Pt(8)
-                run2 = p.add_run(entry.case.party_2)
-                run2.bold = entry.case.represents_party_2
-                run2.font.size = Pt(8)
+                if i == 2:
+                    run_court = p.add_run(f"{effective_court_label}, ")
+                    run_court.font.size = Pt(8)
+                    run_hall = p.add_run(effective_hall)
+                    run_hall.bold = True
+                    run_hall.font.size = Pt(8)
+                elif i == 3:
+                    run0 = p.add_run(f"{case_num}\n")
+                    run0.font.size = Pt(8)
+                    run1 = p.add_run(entry.case.party_1)
+                    run1.bold = entry.case.represents_party_1
+                    run1.font.size = Pt(8)
+                    run_vs = p.add_run(' vs ')
+                    run_vs.font.size = Pt(8)
+                    run2 = p.add_run(entry.case.party_2)
+                    run2.bold = entry.case.represents_party_2
+                    run2.font.size = Pt(8)
             else:
                 row[i].text = val
                 for p in row[i].paragraphs:
