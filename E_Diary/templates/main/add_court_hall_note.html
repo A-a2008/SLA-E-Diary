@@ -13,7 +13,7 @@
 
             <div class="field">
                 <label for="court">Court Complex</label>
-                <select name="court" id="court" required onchange="updateCourtHalls()">
+                <select name="court" id="court" required onchange="updateHallSuggestions()">
                     <option value="">— Select —</option>
                     {% for code, label in court_labels.items %}
                     <option value="{{ code }}" {% if court == code %}selected{% endif %}>{{ label }}</option>
@@ -24,18 +24,10 @@
 
             <div class="field">
                 <label for="court_hall">Court Hall</label>
-                <select name="court_hall" id="court_hall" required>
-                    <option value="">— Select Court Complex First —</option>
-                </select>
+                <input type="text" name="court_hall" id="court_hall" value="{{ court_hall }}" placeholder="Select court complex first..." required autocomplete="off">
+                <div id="hall-suggestions" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; max-height:200px; overflow-y:auto; z-index:1000; width:100%;"></div>
             </div>
             <br>
-
-            <div id="hidden-halls" style="display:none;">
-                {% for code, halls in court_halls.items %}
-                <select id="halls-{{ code }}" data-halls="{{ halls|join:'||' }}">
-                </select>
-                {% endfor %}
-            </div>
 
             {% if existing_note and existing_note.note %}
             <div style="background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 0.5rem;">
@@ -67,39 +59,69 @@
         {% endfor %}
     };
 
-    function updateCourtHalls() {
-        var courtSelect = document.getElementById('court');
-        var hallSelect = document.getElementById('court_hall');
-        var selectedCourt = courtSelect.value;
+    var hallInput = document.getElementById('court_hall');
+    var courtSelect = document.getElementById('court');
+    var suggestionsPanel = document.getElementById('hall-suggestions');
 
-        hallSelect.innerHTML = '';
+    function updateHallSuggestions() {
+        var court = courtSelect.value;
+        if (court && courtHalls[court]) {
+            hallInput.placeholder = 'Type or select a court hall...';
+        } else {
+            hallInput.placeholder = 'Select court complex first...';
+            suggestionsPanel.style.display = 'none';
+        }
+        filterSuggestions();
+    }
 
-        if (!selectedCourt || !courtHalls[selectedCourt]) {
-            var opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = '— Select Court Complex First —';
-            hallSelect.appendChild(opt);
+    function filterSuggestions() {
+        var court = courtSelect.value;
+        var val = hallInput.value.toLowerCase().trim();
+
+        suggestionsPanel.innerHTML = '';
+        if (!court || !courtHalls[court]) {
+            suggestionsPanel.style.display = 'none';
             return;
         }
 
-        var halls = courtHalls[selectedCourt];
-        {% if court_hall %}
-        var selectedHall = '{{ court_hall|escapejs }}';
-        {% else %}
-        var selectedHall = '';
-        {% endif %}
-
-        halls.forEach(function(hall) {
-            var opt = document.createElement('option');
-            opt.value = hall;
-            opt.textContent = hall;
-            if (hall === selectedHall) opt.selected = true;
-            hallSelect.appendChild(opt);
+        var matches = courtHalls[court].filter(function(h) {
+            return h.toLowerCase().includes(val);
         });
+
+        if (matches.length === 0 || val === '') {
+            suggestionsPanel.style.display = 'none';
+            return;
+        }
+
+        matches.forEach(function(h) {
+            var div = document.createElement('div');
+            div.textContent = h;
+            div.style.cssText = 'padding: 6px 10px; cursor: pointer; font-size: 0.9rem;';
+            div.addEventListener('mouseenter', function() { this.style.background = '#f0f0f0'; });
+            div.addEventListener('mouseleave', function() { this.style.background = ''; });
+            div.addEventListener('click', function() {
+                hallInput.value = h;
+                suggestionsPanel.style.display = 'none';
+            });
+            suggestionsPanel.appendChild(div);
+        });
+
+        suggestionsPanel.style.display = 'block';
     }
 
+    hallInput.addEventListener('input', filterSuggestions);
+    hallInput.addEventListener('focus', function() {
+        if (hallInput.value.trim()) filterSuggestions();
+    });
+    hallInput.addEventListener('blur', function() {
+        setTimeout(function() { suggestionsPanel.style.display = 'none'; }, 200);
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
-        updateCourtHalls();
+        updateHallSuggestions();
+        {% if court_hall %}
+        hallInput.value = '{{ court_hall|escapejs }}';
+        {% endif %}
     });
 </script>
 {% endblock %}

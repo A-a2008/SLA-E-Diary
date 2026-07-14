@@ -1350,10 +1350,6 @@ def add_court_hall_note(request):
         court_hall = request.POST.get('court_hall')
         note = request.POST.get('note', '').strip()
         if court_code and court_hall:
-            valid_halls = COURT_HALLS.get(court_code, [])
-            if court_hall not in valid_halls:
-                messages.error(request, f'"{court_hall}" is not a valid court hall for the selected court complex.')
-                return redirect(request.POST.get('next', 'cause_list'))
             obj, created = CourtHallNote.objects.get_or_create(
                 court=court_code,
                 court_hall=court_hall,
