@@ -106,9 +106,9 @@
                                 <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                                 {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                             </td>
-                            <td style="font-size: 0.85rem;">{{ entry.case.representing }}</td>
-                            <td style="font-size: 0.85rem;">{{ entry.stage|default:'—' }}</td>
-                            <td style="font-size: 0.85rem;">
+                            <td>{{ entry.case.representing }}</td>
+                            <td>{{ entry.stage|default:'—' }}</td>
+                            <td>
                                 <span id="display-list-{{ entry.case.id }}">
                                     List I: {{ entry.list_i|default:'—' }}<br>
                                     List II: {{ entry.list_ii|default:'—' }}
