@@ -271,14 +271,20 @@ class EcourtSession:
         return self._ecourts_available
 
     def _solve_and_search(self, cnr: str) -> dict:
-        """Load homepage, fill CNR, solve captcha, click search. Returns API JSON."""
+        """Load homepage, type CNR like human, wait for captcha, solve, click search. Returns API JSON."""
         _wait_for_ecourts_slot()
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
-        self.page.wait_for_timeout(3000)
 
-        self.page.evaluate(f"document.getElementById('cino').value = '{cnr}'")
+        cino_input = self.page.locator("#cino, input[name='cino'], input[id*='cino']")
+        cino_input.wait_for(state="visible", timeout=30000)
+        
+        for char in cnr:
+            cino_input.type(char, delay=150)
+        self.page.wait_for_timeout(800)
 
-        self.page.wait_for_selector("#captcha_image", timeout=5000)
+        self.page.wait_for_selector("#captcha_image", timeout=10000)
+        self.page.wait_for_timeout(1500)
+        
         captcha_png = self.page.locator("#captcha_image").screenshot()
         captcha_text = solve_captcha(captcha_png)
 
@@ -286,7 +292,11 @@ class EcourtSession:
             return None
 
         print(f"  OCR: {captcha_text}", file=sys.stderr)
-        self.page.evaluate(f"document.getElementById('fcaptcha_code').value = '{captcha_text}'")
+        captcha_input = self.page.locator("#fcaptcha_code")
+        captcha_input.wait_for(state="visible", timeout=5000)
+        for char in captcha_text:
+            captcha_input.type(char, delay=100)
+        self.page.wait_for_timeout(500)
 
         if not can_call():
             raise RuntimeError("eCourts API call limit reached")
@@ -294,7 +304,7 @@ class EcourtSession:
         with self.page.expect_response(
             lambda r: "cnr_status/searchByCNR" in r.url, timeout=20000
         ) as resp_info:
-            self.page.evaluate("document.getElementById('searchbtn').click()")
+            self.page.locator("#searchbtn").click()
             response = resp_info.value
 
         return json.loads(response.text())
