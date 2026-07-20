@@ -61,9 +61,8 @@ def ecourts_pending(request):
 
     Two groups:
       - pending:  ecourts_status='pending' (queued by user)
-      - refresh:  any case with CNR where latest next_date ≤ today
-                  (hearing passed; may have new business entries).
-                  Non-clickable cases get purpose-of-hearing fallback.
+      - refresh:  any case with CNR having DiaryEntries missing ecourts_business
+                  (even if advocate entry exists with a next date).
                   Uses Asia/Kolkata date.
     """
     resp = _check_token(request)
@@ -74,13 +73,15 @@ def ecourts_pending(request):
     force = request.GET.get('force') == 'true'
     update_only = request.GET.get('update') == 'true'
 
-    from django.db.models import Max, OuterRef, Subquery
+    from django.db.models import OuterRef, Subquery, Exists, Q
 
-    latest_next = DiaryEntry.objects.filter(
-        case=OuterRef('pk'), entry_type='business'
-    ).values('case').annotate(
-        max_date=Max('next_date')
-    ).values('max_date')
+    has_missing_ecourts = Exists(
+        DiaryEntry.objects.filter(
+            case=OuterRef('pk'),
+            entry_type='business',
+            ecourts_business='',
+        )
+    )
 
     if force:
         all_cases = Case.objects.filter(cnr__isnull=False).exclude(cnr='').filter(disposed=False)
@@ -93,10 +94,8 @@ def ecourts_pending(request):
 
         refresh = Case.objects.filter(
             cnr__isnull=False, disposed=False
-        ).exclude(cnr='').annotate(
-            latest_next_date=Subquery(latest_next)
-        ).filter(
-            latest_next_date__isnull=False, latest_next_date__lte=today
+        ).exclude(cnr='').filter(
+            has_missing_ecourts
         )
         refresh = refresh.distinct()
     else:
@@ -107,19 +106,12 @@ def ecourts_pending(request):
         cutoff = timezone.now() - datetime.timedelta(hours=6)
 
         refresh = Case.objects.filter(
-            cnr__isnull=False, ecourts_last_checked__isnull=True, disposed=False
-        ).exclude(cnr='').annotate(
-            latest_next_date=Subquery(latest_next)
+            cnr__isnull=False, disposed=False
+        ).exclude(cnr='').filter(
+            Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
         ).filter(
-            latest_next_date__isnull=False, latest_next_date__lte=today
-        ) | Case.objects.filter(
-            cnr__isnull=False, ecourts_last_checked__lt=cutoff, disposed=False
-        ).exclude(cnr='').annotate(
-            latest_next_date=Subquery(latest_next)
-        ).filter(
-            latest_next_date__isnull=False, latest_next_date__lte=today
-        )
-        refresh = refresh.distinct()[:15]
+            has_missing_ecourts
+        ).distinct()[:15]
 
     def _serialize(case_qs):
         items = []

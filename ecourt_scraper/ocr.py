@@ -6,7 +6,7 @@ import requests
 from .config import NVIDIA_OCR_URL, CAPTCHA_DEBUG_DIR
 from .nvidia_rate_limiter import wait as nvidia_wait
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "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")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 
 
 def solve_captcha(image_bytes: bytes, debug_name: str = "captcha") -> tuple[str, dict]:

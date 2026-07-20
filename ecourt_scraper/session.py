@@ -13,7 +13,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 # ---------- config ----------
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "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")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 NVIDIA_OCR_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2"
 BASE_URL = "https://services.ecourts.gov.in/ecourtindia_v6/"
 MAX_RETRIES = 10
@@ -57,7 +57,7 @@ def reset_call_counter():
     _CALL_COUNTER = 0
 
 
-# ---------- OCR ----------
+# ---------- OCR (re-export from ocr.py for backward compat) ----------
 
 def _extract_ocr_text(raw: dict) -> str:
     try:
@@ -83,31 +83,6 @@ def _extract_ocr_text(raw: dict) -> str:
     except KeyError:
         pass
     return ""
-
-
-def solve_captcha(image_bytes: bytes) -> str:
-    import base64
-    import requests
-    from .nvidia_rate_limiter import wait as nvidia_wait
-
-    image_b64 = base64.b64encode(image_bytes).decode()
-    if len(image_b64) >= 180_000:
-        return ""
-
-    nvidia_wait()
-    resp = requests.post(
-        NVIDIA_OCR_URL,
-        headers={
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
-            "Accept": "application/json",
-        },
-        json={
-            "input": [{"type": "image_url", "url": f"data:image/png;base64,{image_b64}"}]
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return _extract_ocr_text(resp.json()).strip()
 
 
 # ---------- HTML helpers ----------
@@ -286,7 +261,8 @@ class EcourtSession:
         self.page.wait_for_timeout(1500)
         
         captcha_png = self.page.locator("#captcha_image").screenshot()
-        captcha_text = solve_captcha(captcha_png)
+        from .ocr import solve_captcha
+        captcha_text = solve_captcha(captcha_png)[0]
 
         if not captcha_text:
             return None
@@ -311,9 +287,16 @@ class EcourtSession:
 
     def search_case(self, cnr: str) -> dict:
         """Search for a CNR and return parsed case details."""
+        from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
+
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"  [{attempt}/{MAX_RETRIES}] Loading eCourts ...", file=sys.stderr)
-            data = self._solve_and_search(cnr)
+            try:
+                data = self._solve_and_search(cnr)
+            except (TimeoutError, PlaywrightTimeoutError) as e:
+                print(f"  Page load timeout: {e}, retrying...", file=sys.stderr)
+                time.sleep(2)
+                continue
 
             if data is None:
                 print("  OCR empty, retrying...", file=sys.stderr)

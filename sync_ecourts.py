@@ -28,12 +28,6 @@ _project_root = os.path.dirname(os.path.abspath(__file__))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from ecourt_scraper.session import (
-    EcourtSession,
-    set_call_limit,
-    reset_call_counter,
-)
-
 load_dotenv(os.path.join(_project_root, 'E_Diary', '.env'))
 
 logging.basicConfig(
@@ -86,7 +80,7 @@ def _parse_date_dmy(date_str: str):
     return None
 
 
-def scrape_case(cnr: str, skip_dates: set = None) -> dict:
+def scrape_case(cnr: str, skip_dates: set = None, session=None) -> dict:
     """Run the Playwright scraper locally. Returns dict with items, ecourts_available, error."""
     from ecourt_scraper.session import (
         EcourtSession, set_call_limit, reset_call_counter,
@@ -98,7 +92,9 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
     result = {"items": [], "ecourts_available": True, "error": None, "total_available": 0}
     skip_dates = skip_dates or set()
 
-    session = EcourtSession()
+    own_session = session is None
+    if own_session:
+        session = EcourtSession()
     try:
         session.search_case(cnr)
 
@@ -128,7 +124,8 @@ def scrape_case(cnr: str, skip_dates: set = None) -> dict:
         result["error"] = str(e)
         logger.exception("Scraper error")
     finally:
-        session.close()
+        if own_session:
+            session.close()
 
     return result
 
@@ -169,7 +166,7 @@ def _nvidia_chat(model: str, messages: list, temperature: float = 0, max_tokens:
         return None
 
 
-def cleanup_texts(items: list) -> list:
+def cleanup_texts(items: list, log_prefix: str = "") -> list:
     """Pass scraped items through NVIDIA LLM to fix caps, punctuation, typos.
     Tries 3 models in order. Falls back to original text if all fail."""
     system = (
@@ -182,7 +179,9 @@ def cleanup_texts(items: list) -> list:
         "5. Return a JSON object with keys \"business\" and \"stage\"."
     )
 
+    first_item = True
     for item in items:
+        used_model = None
         for model in NVIDIA_MODELS:
             user_msg = json.dumps({
                 "business": item.get("business", ""),
@@ -199,11 +198,16 @@ def cleanup_texts(items: list) -> list:
                 biz = parsed.get("business", "")
                 stage = parsed.get("stage", "")
                 if biz or stage:
+                    used_model = model
                     item["business"] = biz.strip() or item.get("business", "")
                     item["stage"] = stage.strip() or item.get("stage", "")
                     break
             except (json.JSONDecodeError, TypeError):
                 continue
+        if used_model:
+            if first_item:
+                logger.info(f"{log_prefix} Cleaning {len(items)} entries (model: {used_model})")
+                first_item = False
         else:
             logger.warning(f"NVIDIA: all models failed for item, keeping original")
     return items
@@ -236,53 +240,56 @@ def main():
             logger.info(f"  [{label_phase}] No cases to process")
             return
 
-        for case_data in cases:
-            case_id = case_data['id']
-            cnr = case_data['cnr']
-            label = f"{case_data['case_type']} {case_data['case_number']}/{case_data['case_year']}"
-            skip_dates = set(case_data.get('already_fetched_dates', []))
+        from ecourt_scraper.session import EcourtSession
+        session = EcourtSession()
+        try:
+            for case_data in cases:
+                case_id = case_data['id']
+                cnr = case_data['cnr']
+                label = f"{case_data['case_type']} {case_data['case_number']}/{case_data['case_year']}"
+                skip_dates = set(case_data.get('already_fetched_dates', []))
 
-            logger.info(f"  [{label_phase}][{case_id}] {label} (CNR: {cnr}) — scraping...")
+                logger.info(f"  [{label_phase}][{case_id}] {label} (CNR: {cnr}) — scraping...")
 
-            try:
-                scraped = scrape_case(cnr, skip_dates=skip_dates)
+                try:
+                    scraped = scrape_case(cnr, skip_dates=skip_dates, session=session)
 
-                if scraped.get('error'):
-                    logger.error(f"  [{label_phase}][{case_id}] Scraper error: {scraped['error']}")
-                    payload = {
+                    if scraped.get('error'):
+                        logger.error(f"  [{label_phase}][{case_id}] Scraper error: {scraped['error']}")
+                        payload = {
+                            'case_id': case_id,
+                            'status': 'pending' if label_phase == 'PENDING' else 'done',
+                            'entries': [],
+                            'ecourts_available': scraped.get('ecourts_available', True),
+                        }
+                        api_post('/api/ecourts/upsert/', payload)
+                        continue
+
+                    ecourts_available = scraped.get('ecourts_available', True)
+                    items = scraped.get('items', [])
+
+                    if items:
+                        items = cleanup_texts(items, f"  [{label_phase}][{case_id}]")
+
+                    status = 'done' if items or ecourts_available else 'no_data'
+
+                    logger.info(f"  [{label_phase}][{case_id}] Pushing {len(items)} entries (status={status})...")
+                    result = api_post('/api/ecourts/upsert/', {
                         'case_id': case_id,
-                        'status': 'pending' if label_phase == 'PENDING' else 'done',
-                        'entries': [],
-                        'ecourts_available': scraped.get('ecourts_available', True),
-                    }
-                    api_post('/api/ecourts/upsert/', payload)
+                        'status': status,
+                        'entries': items,
+                        'ecourts_available': ecourts_available,
+                    })
+                    logger.info(f"  [{label_phase}][{case_id}] Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
+                    total_processed += 1
+
+                    time.sleep(2)
+
+                except Exception as e:
+                    logger.exception(f"  [{label_phase}][{case_id}] Failed: {e}")
                     continue
-
-                ecourts_available = scraped.get('ecourts_available', True)
-                items = scraped.get('items', [])
-
-                if items:
-                    models_str = " → ".join(NVIDIA_MODELS)
-                    logger.info(f"  [{label_phase}][{case_id}] Cleaning {len(items)} entries (models: {models_str})...")
-                    items = cleanup_texts(items)
-
-                status = 'done' if items or ecourts_available else 'no_data'
-
-                logger.info(f"  [{label_phase}][{case_id}] Pushing {len(items)} entries (status={status})...")
-                result = api_post('/api/ecourts/upsert/', {
-                    'case_id': case_id,
-                    'status': status,
-                    'entries': items,
-                    'ecourts_available': ecourts_available,
-                })
-                logger.info(f"  [{label_phase}][{case_id}] Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
-                total_processed += 1
-
-                time.sleep(2)
-
-            except Exception as e:
-                logger.exception(f"  [{label_phase}][{case_id}] Failed: {e}")
-                continue
+        finally:
+            session.close()
 
     while True:
         if args.update:
