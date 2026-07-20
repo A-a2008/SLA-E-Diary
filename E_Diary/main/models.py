@@ -255,9 +255,14 @@ class Reminder(models.Model):
 class OutgoingMessage(models.Model):
     chat_id = models.CharField(max_length=100)
     text = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    sent = models.BooleanField(default=False, db_index=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['sent', 'created_at'], name='idx_outmsg_sent_created'),
+        ]
 
     def __str__(self):
         return f"Msg to {self.chat_id}: {self.text[:60]} ({'sent' if self.sent else 'pending'})"
