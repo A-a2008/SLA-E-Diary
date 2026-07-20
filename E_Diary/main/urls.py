@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import *
-from .api import pending_messages, mark_sent, ecourts_pending, ecourts_upsert
+from .api import pending_messages, mark_sent, ecourts_pending, ecourts_upsert, queue_by_cnr
 
 urlpatterns = [
     path('', home, name='home'),
@@ -46,4 +46,5 @@ urlpatterns = [
     path('api/mark-sent/<int:msg_id>/', mark_sent, name='api_mark_sent'),
     path('api/ecourts/pending/', ecourts_pending, name='api_ecourts_pending'),
     path('api/ecourts/upsert/', ecourts_upsert, name='api_ecourts_upsert'),
+    path('api/ecourts/queue/', queue_by_cnr, name='api_ecourts_queue'),
 ]

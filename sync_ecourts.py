@@ -223,6 +223,10 @@ def main():
                         help='Re-scrape ALL cases with CNRs, ignoring status')
     parser.add_argument('--update', action='store_true',
                         help='Only refresh cases whose next hearing date is today or past (skip pending)')
+    parser.add_argument('--single', type=int, metavar='CASE_ID',
+                        help='Queue and process a single case by ID, then exit')
+    parser.add_argument('--cnr', type=str, metavar='CNR',
+                        help='Update CNR when used with --single')
     args = parser.parse_args()
 
     if not API_TOKEN:
@@ -232,6 +236,37 @@ def main():
         sys.exit(1)
 
     logger.info(f"Starting eCourts sync against {PA_URL}")
+
+    if args.single:
+        payload = {'case_id': args.single}
+        if args.cnr:
+            payload['cnr'] = args.cnr
+        resp = requests.post(
+            f'{PA_URL}/api/ecourts/queue/',
+            headers={**HEADERS, 'Content-Type': 'application/json'},
+            json=payload,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        logger.info(f"Queued case {args.single} (cnr: {result.get('cnr', '?')}) — processing now...")
+        scraped = scrape_case(result['cnr'])
+        if scraped.get('error'):
+            logger.error(f"Error: {scraped['error']}")
+        else:
+            items = scraped.get('items', [])
+            if items:
+                items = cleanup_texts(items, f"  [SINGLE][{args.single}]")
+            status = 'done' if items or scraped.get('ecourts_available') else 'no_data'
+            push = api_post('/api/ecourts/upsert/', {
+                'case_id': args.single,
+                'status': status,
+                'entries': items,
+                'ecourts_available': scraped.get('ecourts_available', True),
+            })
+            logger.info(f"Done — created {push.get('created', 0)}, updated {push.get('updated', 0)}")
+        return
+
     total_processed = 0
 
     def _process_phase(label_phase: str, cases: list):

@@ -249,3 +249,46 @@ def ecourts_upsert(request):
         'updated': updated,
         'status': case.ecourts_status,
     })
+
+
+@csrf_exempt
+@require_POST
+def queue_by_cnr(request):
+    """Queue a case for eCourts sync by CNR and/or case_id.
+
+    POST JSON: {"case_id": 123, "cnr": "KABC..."}
+    - case_id required
+    - cnr optional (updates the case's CNR if provided)
+    """
+    resp = _check_token(request)
+    if resp:
+        return resp
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    case_id = body.get('case_id')
+    cnr = body.get('cnr', '').strip()
+
+    if not case_id:
+        return JsonResponse({'error': 'case_id required'}, status=400)
+
+    try:
+        case = Case.objects.get(id=case_id)
+    except Case.DoesNotExist:
+        return JsonResponse({'error': 'Case not found'}, status=404)
+
+    if cnr:
+        case.cnr = cnr
+    case.ecourts_status = 'pending'
+    case.save()
+
+    logger.info(f"Queued case {case_id} ({case.cnr}) for eCourts sync")
+    return JsonResponse({
+        'ok': True,
+        'case_id': case_id,
+        'cnr': case.cnr,
+        'ecourts_status': 'pending',
+    })

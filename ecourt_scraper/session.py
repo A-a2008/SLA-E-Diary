@@ -288,6 +288,7 @@ class EcourtSession:
     def search_case(self, cnr: str) -> dict:
         """Search for a CNR and return parsed case details."""
         from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
+        import json as _json
 
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"  [{attempt}/{MAX_RETRIES}] Loading eCourts ...", file=sys.stderr)
@@ -295,6 +296,10 @@ class EcourtSession:
                 data = self._solve_and_search(cnr)
             except (TimeoutError, PlaywrightTimeoutError) as e:
                 print(f"  Page load timeout: {e}, retrying...", file=sys.stderr)
+                time.sleep(2)
+                continue
+            except _json.JSONDecodeError as e:
+                print(f"  Empty API response: {e}, retrying...", file=sys.stderr)
                 time.sleep(2)
                 continue
 
