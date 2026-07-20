@@ -1,6 +1,5 @@
 import os
 import json
-import time
 import datetime
 import logging
 
@@ -34,18 +33,9 @@ def pending_messages(request):
     if resp:
         return resp
 
-    block = request.GET.get('block') == '1'
-    max_wait = min(int(request.GET.get('timeout', '15')), 30)
-    deadline = time.time() + max_wait
-
-    while True:
-        msgs = OutgoingMessage.objects.filter(sent=False).order_by('created_at')
-        data = [{'id': m.id, 'chat_id': m.chat_id, 'text': m.text} for m in msgs]
-        if data:
-            return JsonResponse({'messages': data})
-        if not block or time.time() >= deadline:
-            return JsonResponse({'messages': []})
-        time.sleep(0.5)
+    msgs = OutgoingMessage.objects.filter(sent=False).order_by('created_at')
+    data = [{'id': m.id, 'chat_id': m.chat_id, 'text': m.text} for m in msgs]
+    return JsonResponse({'messages': data})
 
 
 @csrf_exempt
