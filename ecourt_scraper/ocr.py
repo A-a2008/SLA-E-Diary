@@ -56,8 +56,9 @@ def _extract_text(raw: dict) -> str:
             if t and t not in ("-", "—", ""):
                 parts.append(t)
         if parts:
-            best = max(parts, key=len)
-            return best
+            result = "".join(parts)
+            result = result.replace(" ", "")
+            return result
     except (KeyError, TypeError, IndexError):
         pass
 
