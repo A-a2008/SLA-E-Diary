@@ -101,15 +101,13 @@ def scrape_case(cnr: str, skip_dates: set = None, session=None) -> dict:
         business_links = session.get_business_links()
 
         if business_links:
-            total = len(business_links)
-            for idx, link in enumerate(business_links, 1):
+            for link in business_links:
                 biz_date = _parse_date_dmy(link.get("business_date"))
                 if not biz_date:
                     continue
                 date_str = biz_date.strftime('%d-%m-%Y')
                 if date_str in skip_dates:
                     continue
-                print(f"  Business {idx}/{total} — {date_str}", file=sys.stderr)
                 details = session.view_business(link)
                 business = (details.get("business") or "").strip()
                 if not business:
