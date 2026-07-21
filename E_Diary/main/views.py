@@ -1153,7 +1153,7 @@ def cause_list_docx(request):
 
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
-col_widths = [Cm(1.5), Cm(1.0), Cm(3.0), Cm(5.0), Cm(2.5), Cm(2.0), Cm(3.2)]
+            col_widths = [Cm(1.5), Cm(1.0), Cm(3.0), Cm(5.0), Cm(2.5), Cm(2.0), Cm(3.2)]
             for i, h in enumerate(headers):
                 set_cell_width(hdr[i], col_widths[i])
                 hdr[i].text = ''
