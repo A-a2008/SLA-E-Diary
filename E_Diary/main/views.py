@@ -1126,13 +1126,21 @@ def cause_list_docx(request):
             if tblPr is None:
                 tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
                 tbl.insert(0, tblPr)
-            tblW = parse_xml(f'<w:tblW {nsdecls("w")} w:w="{int(Cm(18.2).emu / 635)}" w:type="dxa"/>')
+
             existing_tblW = tblPr.find(qn('w:tblW'))
             if existing_tblW is not None:
                 tblPr.remove(existing_tblW)
-            tblPr.append(tblW)
+            tblPr.append(parse_xml(f'<w:tblW {nsdecls("w")} w:w="{int(Cm(18.2).emu / 635)}" w:type="dxa"/>'))
 
-            tblBorders = parse_xml(
+            existing_layout = tblPr.find(qn('w:tblLayout'))
+            if existing_layout is not None:
+                tblPr.remove(existing_layout)
+            tblPr.append(parse_xml(f'<w:tblLayout {nsdecls("w")} w:type="fixed"/>'))
+
+            existing_borders = tblPr.find(qn('w:tblBorders'))
+            if existing_borders is not None:
+                tblPr.remove(existing_borders)
+            tblPr.append(parse_xml(
                 f'<w:tblBorders {nsdecls("w")}>'
                 f'  <w:top w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
                 f'  <w:left w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
@@ -1141,8 +1149,7 @@ def cause_list_docx(request):
                 f'  <w:insideH w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
                 f'  <w:insideV w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
                 f'</w:tblBorders>'
-            )
-            tblPr.append(tblBorders)
+            ))
 
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
