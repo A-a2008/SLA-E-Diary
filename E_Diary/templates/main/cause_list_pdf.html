@@ -26,20 +26,20 @@
     <h2>{{ bldg_code|building_label }}</h2>
     <table>
         <colgroup>
-            <col style="width: 0.8cm;">
-            <col style="width: 1.2cm;">
+            <col style="width: 1.5cm;">
+            <col style="width: 1.0cm;">
             <col style="width: 3.0cm;">
-            <col style="width: 5.5cm;">
+            <col style="width: 5.0cm;">
             <col style="width: 2.5cm;">
             <col style="width: 2.0cm;">
             <col style="width: 3.2cm;">
         </colgroup>
         <thead>
             <tr>
-                <th style="width: 0.8cm;">Sl No.</th>
-                <th style="width: 1.2cm;">Floor</th>
+                <th style="width: 1.5cm;">Sl No.</th>
+                <th style="width: 1.0cm;">Floor</th>
                 <th style="width: 3.0cm;">Court Hall</th>
-                <th style="width: 5.5cm;">Case &amp; Parties</th>
+                <th style="width: 5.0cm;">Case &amp; Parties</th>
                 <th style="width: 2.5cm;">Representing</th>
                 <th style="width: 2.0cm;">Stage</th>
                 <th style="width: 3.2cm;">Cause List</th>
@@ -48,8 +48,8 @@
         <tbody>
             {% for entry in bldg_entries %}
             <tr>
-                <td class="sl" style="width: 0.8cm;">{{ entry.sl_no }}</td>
-                <td class="floor" style="width: 1.2cm;">{{ entry.case.floor }}</td>
+                <td class="sl" style="width: 1.5cm;">{{ entry.sl_no }}</td>
+                <td class="floor" style="width: 1.0cm;">{{ entry.case.floor }}</td>
                 <td class="ch" style="width: 3.0cm;">
                     {% with effective_court=entry.mediation_court|default:entry.case.court %}
                     {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
@@ -62,7 +62,7 @@
                     {% endwith %}
                     {% endwith %}
                 </td>
-                <td class="case-col" style="width: 5.5cm;">
+                <td class="case-col" style="width: 5.0cm;">
                     <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                     {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                 </td>
