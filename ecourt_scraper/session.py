@@ -5,10 +5,12 @@ services.ecourts.gov.in, plus HTML parsing utilities.
 """
 
 import json
+import logging
 import os
 import re
-import sys
 import time
+
+logger = logging.getLogger(__name__)
 
 from playwright.sync_api import sync_playwright
 
@@ -34,7 +36,7 @@ def _wait_for_ecourts_slot():
     elapsed = now - _LAST_ECOURTS_REQUEST
     if elapsed < ECOURTS_MIN_INTERVAL:
         sleep_for = ECOURTS_MIN_INTERVAL - elapsed
-        print(f"  ⏳ Rate limit: waiting {sleep_for:.0f}s before next eCourts request...", file=sys.stderr)
+        logger.info(f"  ⏳ Rate limit: waiting {sleep_for:.0f}s before next eCourts request...")
         _time.sleep(sleep_for)
     _LAST_ECOURTS_REQUEST = _time.monotonic()
 
@@ -258,7 +260,11 @@ class EcourtSession:
         self.page.wait_for_timeout(800)
 
         self.page.wait_for_selector("#captcha_image", timeout=10000)
-        self.page.wait_for_timeout(2000)
+        self.page.wait_for_function(
+            "() => document.getElementById('captcha_image').naturalWidth > 0",
+            timeout=5000,
+        )
+        self.page.wait_for_timeout(500)
         
         captcha_png = self.page.locator("#captcha_image").screenshot()
         from .ocr import solve_captcha
@@ -267,7 +273,7 @@ class EcourtSession:
         if not captcha_text:
             return None
 
-        print(f"  OCR: {captcha_text}", file=sys.stderr)
+        logger.info(f"  OCR: {captcha_text}")
         captcha_input = self.page.locator("#fcaptcha_code")
         captcha_input.wait_for(state="visible", timeout=5000)
         for char in captcha_text:
@@ -291,20 +297,20 @@ class EcourtSession:
         import json as _json
 
         for attempt in range(1, MAX_RETRIES + 1):
-            print(f"  [{attempt}/{MAX_RETRIES}] Loading eCourts ...", file=sys.stderr)
+            logger.info(f"  [{attempt}/{MAX_RETRIES}] Loading eCourts ...")
             try:
                 data = self._solve_and_search(cnr)
             except (TimeoutError, PlaywrightTimeoutError) as e:
-                print(f"  Page load timeout: {e}, retrying...", file=sys.stderr)
+                logger.info(f"  Page load timeout: {e}, retrying...")
                 time.sleep(2)
                 continue
             except _json.JSONDecodeError as e:
-                print(f"  Empty API response: {e}, retrying...", file=sys.stderr)
+                logger.info(f"  Empty API response: {e}, retrying...")
                 time.sleep(2)
                 continue
 
             if data is None:
-                print("  OCR empty, retrying...", file=sys.stderr)
+                logger.info("  OCR empty, retrying...")
                 continue
 
             if data.get("status") == 1:
@@ -316,7 +322,7 @@ class EcourtSession:
                     self._ecourts_available = False
                 return details
 
-            print(f"  Captcha wrong, retrying...", file=sys.stderr)
+            logger.info(f"  Captcha wrong, retrying...")
             time.sleep(1)
 
         raise RuntimeError(f"Failed after {MAX_RETRIES} attempts")
