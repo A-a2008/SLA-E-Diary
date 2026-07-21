@@ -247,7 +247,7 @@ class EcourtSession:
     def ecourts_available(self) -> bool:
         return self._ecourts_available
 
-    def _solve_and_search(self, cnr: str) -> dict:
+    def _solve_and_search(self, cnr: str, attempt: int = 1) -> dict:
         """Load homepage, type CNR like human, wait for captcha, solve, click search. Returns API JSON."""
         _wait_for_ecourts_slot()
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
@@ -264,11 +264,12 @@ class EcourtSession:
             "() => document.getElementById('captcha_image').naturalWidth > 0",
             timeout=5000,
         )
-        self.page.wait_for_timeout(500)
+        self.page.wait_for_timeout(1500)
         
         captcha_png = self.page.locator("#captcha_image").screenshot()
         from .ocr import solve_captcha
-        captcha_text = solve_captcha(captcha_png)[0]
+        debug_name = f"{cnr}_attempt_{attempt}"
+        captcha_text, raw = solve_captcha(captcha_png, debug_name)
 
         if not captcha_text:
             return None
@@ -299,7 +300,7 @@ class EcourtSession:
         for attempt in range(1, MAX_RETRIES + 1):
             logger.info(f"  [{attempt}/{MAX_RETRIES}] Loading eCourts ...")
             try:
-                data = self._solve_and_search(cnr)
+                data = self._solve_and_search(cnr, attempt)
             except (TimeoutError, PlaywrightTimeoutError) as e:
                 logger.info(f"  Page load timeout: {e}, retrying...")
                 time.sleep(2)

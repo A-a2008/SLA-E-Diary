@@ -8,4 +8,5 @@ __pycache__/
 venv/
 E_Diary/db.sqlite3
 *.Identifier
+ecourt_scraper/captcha_debug/
 
