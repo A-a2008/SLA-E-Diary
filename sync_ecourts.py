@@ -98,25 +98,50 @@ def scrape_case(cnr: str, skip_dates: set = None, session=None) -> dict:
     try:
         session.search_case(cnr)
 
-        purpose_items = session.get_purpose_hearings()
-        for item in purpose_items:
-            biz_date = _parse_date_dmy(item.get("business_date"))
-            if not biz_date:
-                continue
-            date_str = biz_date.strftime('%d-%m-%Y')
-            if date_str in skip_dates:
-                continue
-            purpose = (item.get("purpose") or "").strip()
-            if not purpose:
-                continue
-            result["items"].append({
-                "previous_date": biz_date.strftime('%Y-%m-%d'),
-                "business": purpose.title(),
-                "next_hearing": item.get("hearing_date") or None,
-                "stage": purpose.title(),
-            })
-        result["total_available"] = len(purpose_items)
-        result["ecourts_available"] = bool(purpose_items)
+        business_links = session.get_business_links()
+
+        if business_links:
+            for link in business_links:
+                biz_date = _parse_date_dmy(link.get("business_date"))
+                if not biz_date:
+                    continue
+                date_str = biz_date.strftime('%d-%m-%Y')
+                if date_str in skip_dates:
+                    continue
+                details = session.view_business(link)
+                session.back_to_history()
+                business = (details.get("business") or "").strip()
+                if not business:
+                    continue
+                next_hearing = details.get("next_hearing_date") or None
+                result["items"].append({
+                    "previous_date": biz_date.strftime('%Y-%m-%d'),
+                    "business": business.title(),
+                    "next_hearing": next_hearing,
+                    "stage": business.title(),
+                })
+            result["total_available"] = len(business_links)
+            result["ecourts_available"] = bool(business_links)
+        else:
+            purpose_items = session.get_purpose_hearings()
+            for item in purpose_items:
+                biz_date = _parse_date_dmy(item.get("business_date"))
+                if not biz_date:
+                    continue
+                date_str = biz_date.strftime('%d-%m-%Y')
+                if date_str in skip_dates:
+                    continue
+                purpose = (item.get("purpose") or "").strip()
+                if not purpose:
+                    continue
+                result["items"].append({
+                    "previous_date": biz_date.strftime('%Y-%m-%d'),
+                    "business": purpose.title(),
+                    "next_hearing": item.get("hearing_date") or None,
+                    "stage": purpose.title(),
+                })
+            result["total_available"] = len(purpose_items)
+            result["ecourts_available"] = bool(purpose_items)
 
     except RuntimeError as e:
         result["error"] = str(e)
