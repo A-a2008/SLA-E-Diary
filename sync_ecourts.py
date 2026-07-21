@@ -109,7 +109,6 @@ def scrape_case(cnr: str, skip_dates: set = None, session=None) -> dict:
                 if date_str in skip_dates:
                     continue
                 details = session.view_business(link)
-                session.back_to_history()
                 business = (details.get("business") or "").strip()
                 if not business:
                     continue
