@@ -258,7 +258,10 @@ class EcourtSession:
         self.page.wait_for_timeout(800)
 
         self.page.wait_for_selector("#captcha_image", timeout=10000)
-        self.page.wait_for_timeout(1500)
+        self.page.wait_for_function(
+            "() => document.getElementById('captcha_image').naturalWidth > 0",
+            timeout=5000,
+        )
         
         captcha_png = self.page.locator("#captcha_image").screenshot()
         from .ocr import solve_captcha
