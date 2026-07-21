@@ -89,7 +89,7 @@
                     </thead>
                     <tbody>
                         {% for entry in bldg_entries %}
-                        <tr data-case-id="{{ entry.case.id }}" style="cursor: pointer;">
+                        <tr class="cause-list-row" data-case-id="{{ entry.case.id }}">
                             <td style="text-align: center;">{{ entry.sl_no }}</td>
 <td style="text-align: center;">{{ entry.case.floor }}</td>
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
@@ -224,4 +224,16 @@
         {% endif %}
     </div>
 </div>
+
+<style>
+    .cause-list-row:hover {
+        background-color: rgba(242, 132, 158, 0.05) !important;
+    }
+    .cause-list-row td {
+        transition: color 0.2s ease;
+    }
+    .cause-list-row:hover td strong {
+        color: #f2849e;
+    }
+</style>
 {% endblock %}
