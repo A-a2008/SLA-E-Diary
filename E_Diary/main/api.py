@@ -33,7 +33,13 @@ def pending_messages(request):
     if resp:
         return resp
 
-    msgs = OutgoingMessage.objects.filter(sent=False).order_by('created_at')
+    try:
+        limit = int(request.GET.get('limit', '50'))
+    except (ValueError, TypeError):
+        limit = 50
+    limit = max(1, min(limit, 200))
+
+    msgs = OutgoingMessage.objects.filter(sent=False).order_by('created_at')[:limit]
     data = [{'id': m.id, 'chat_id': m.chat_id, 'text': m.text} for m in msgs]
     return JsonResponse({'messages': data})
 
@@ -48,10 +54,32 @@ def mark_sent(request, msg_id):
         msg = OutgoingMessage.objects.get(id=msg_id, sent=False)
         msg.sent = True
         msg.sent_at = timezone.now()
-        msg.save()
+        msg.save(update_fields=['sent', 'sent_at'])
         return JsonResponse({'ok': True})
     except OutgoingMessage.DoesNotExist:
         return JsonResponse({'error': 'Not found or already sent'}, status=404)
+
+
+@csrf_exempt
+@require_POST
+def mark_sent_batch(request):
+    resp = _check_token(request)
+    if resp:
+        return resp
+    try:
+        body = json.loads(request.body)
+        ids = body.get('ids', [])
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    if not ids:
+        return JsonResponse({'error': 'ids required'}, status=400)
+
+    now = timezone.now()
+    updated = OutgoingMessage.objects.filter(
+        id__in=ids, sent=False
+    ).update(sent=True, sent_at=now)
+    return JsonResponse({'ok': True, 'sent': list(ids[:updated]), 'count': updated})
 
 
 @csrf_exempt
