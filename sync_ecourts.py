@@ -113,11 +113,12 @@ def scrape_case(cnr: str, skip_dates: set = None, session=None) -> dict:
                 if not business:
                     continue
                 next_hearing = details.get("next_hearing_date") or None
+                next_purpose = (details.get("next_purpose") or "").strip()
                 result["items"].append({
                     "previous_date": biz_date.strftime('%Y-%m-%d'),
                     "business": business.title(),
                     "next_hearing": next_hearing,
-                    "stage": business.title(),
+                    "stage": next_purpose.title() if next_purpose else business.title(),
                 })
             result["total_available"] = len(business_links)
             result["ecourts_available"] = bool(business_links)

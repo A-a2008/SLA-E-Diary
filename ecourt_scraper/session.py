@@ -282,12 +282,12 @@ class EcourtSession:
 
         if not can_call():
             raise RuntimeError("eCourts API call limit reached")
-        _wait_for_ecourts_slot()
         with self.page.expect_response(
             lambda r: "cnr_status/searchByCNR" in r.url, timeout=20000
         ) as resp_info:
             self.page.locator("#searchbtn").click()
             response = resp_info.value
+        _LAST_ECOURTS_REQUEST = _time.monotonic()
 
         return json.loads(response.text())
 
