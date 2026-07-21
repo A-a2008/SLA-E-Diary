@@ -89,7 +89,7 @@
                     </thead>
                     <tbody>
                         {% for entry in bldg_entries %}
-                        <tr>
+                        <tr data-case-id="{{ entry.case.id }}" style="cursor: pointer;">
                             <td style="text-align: center;">{{ entry.sl_no }}</td>
 <td style="text-align: center;">{{ entry.case.floor }}</td>
                             <td>{% with effective_court=entry.mediation_court|default:entry.case.court %}
@@ -165,6 +165,13 @@
                         this.style.background = cb.checked ? '#f2849e' : '#fff';
                         this.style.color = cb.checked ? '#fff' : '#555';
                         this.querySelector('.incharge-indicator').textContent = cb.checked ? '★' : '☆';
+                    });
+                });
+                document.querySelectorAll('tr[data-case-id]').forEach(function(row) {
+                    row.addEventListener('click', function(e) {
+                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'LABEL' || e.target.tagName === 'A') return;
+                        var caseId = this.getAttribute('data-case-id');
+                        window.location.href = "{% url 'diary_entry_case' 0 %}".replace('0', caseId);
                     });
                 });
             </script>
