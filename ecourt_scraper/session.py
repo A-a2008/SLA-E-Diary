@@ -265,13 +265,24 @@ class EcourtSession:
             timeout=5000,
         )
         self.page.wait_for_timeout(1500)
-        
-        captcha_png = self.page.locator("#captcha_image").screenshot()
-        from .ocr import solve_captcha
-        debug_name = f"{cnr}_attempt_{attempt}"
-        captcha_text, raw = solve_captcha(captcha_png, debug_name)
 
-        if not captcha_text:
+        from .ocr import solve_captcha
+
+        captcha_text = None
+        for snap in range(1, 4):
+            captcha_png = self.page.locator("#captcha_image").screenshot()
+            debug_name = f"{cnr}_attempt_{attempt}_snap_{snap}"
+            captcha_text, raw = solve_captcha(captcha_png, debug_name)
+            if captcha_text:
+                captcha_text = captcha_text.strip()
+                if len(captcha_text) >= 5:
+                    break
+                logger.info(f"  OCR too short ({len(captcha_text)} chars), retaking screenshot...")
+            else:
+                logger.info(f"  OCR empty, retaking screenshot...")
+            self.page.wait_for_timeout(1000)
+
+        if not captcha_text or len(captcha_text.strip()) < 5:
             return None
 
         logger.info(f"  OCR: {captcha_text}")
