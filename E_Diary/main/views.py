@@ -988,9 +988,11 @@ def cause_list_docx(request):
         return HttpResponse('Invalid date.', status=400)
 
     from docx import Document
-    from docx.shared import Pt, Inches, Cm
+    from docx.shared import Pt, Inches, Cm, RGBColor
     from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn, nsdecls
+    from docx.oxml import parse_xml
 
     entries = CauseListEntry.objects.filter(date=date_obj).select_related('case')
 
@@ -1045,12 +1047,51 @@ def cause_list_docx(request):
     section = doc.sections[0]
     section.page_height = Cm(29.7)
     section.page_width = Cm(21.0)
-    section.left_margin = Cm(1.5)
-    section.right_margin = Cm(1.5)
-    section.top_margin = Cm(1.5)
-    section.bottom_margin = Cm(1.5)
+    section.left_margin = Cm(0.5)
+    section.right_margin = Cm(0.5)
+    section.top_margin = Cm(0.5)
+    section.bottom_margin = Cm(0.5)
 
-    doc.add_heading(f'Cause List — {date_obj.strftime("%d %B %Y")}', 0)
+    normal_style = doc.styles['Normal']
+    normal_style.font.name = 'Helvetica'
+    normal_style.font.size = Pt(10)
+
+    def set_cell_shading(cell, color):
+        shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{color}"/>')
+        cell._tc.get_or_add_tcPr().append(shading)
+
+    def set_cell_width(cell, width):
+        cell.width = width
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        tcW = tcPr.find(qn('w:tcW'))
+        if tcW is None:
+            tcW = parse_xml(f'<w:tcW {nsdecls("w")} w:w="{int(width.emu / 635)}" w:type="dxa"/>')
+            tcPr.append(tcW)
+        else:
+            tcW.set(qn('w:w'), str(int(width.emu / 635)))
+            tcW.set(qn('w:type'), 'dxa')
+
+    def set_run_font(run, size=Pt(9)):
+        run.font.name = 'Helvetica'
+        run.font.size = size
+
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title_para.add_run(f'Cause List — {date_obj.strftime("%d %B %Y")}')
+    title_run.bold = True
+    title_run.font.size = Pt(16)
+    title_run.font.name = 'Helvetica'
+    title_para.paragraph_format.space_after = Pt(0)
+
+    sub_para = doc.add_paragraph()
+    sub_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sub_run = sub_para.add_run(date_obj.strftime("%A"))
+    sub_run.bold = True
+    sub_run.font.size = Pt(12)
+    sub_run.font.name = 'Helvetica'
+    sub_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+    sub_para.paragraph_format.space_after = Pt(6)
 
     current_building = None
 
@@ -1060,21 +1101,61 @@ def cause_list_docx(request):
         bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(effective_court, effective_court))
         if bldg_name != current_building:
             current_building = bldg_name
-            doc.add_heading(bldg_name, level=2)
+            bldg_para = doc.add_paragraph()
+            bldg_para.paragraph_format.space_before = Pt(8)
+            bldg_para.paragraph_format.space_after = Pt(2)
+            pPr = bldg_para._p.get_or_add_pPr()
+            pBdr = parse_xml(
+                f'<w:pBdr {nsdecls("w")}>'
+                f'  <w:bottom w:val="single" w:sz="4" w:space="1" w:color="dddddd"/>'
+                f'</w:pBdr>'
+            )
+            pPr.append(pBdr)
+            bldg_run = bldg_para.add_run(bldg_name)
+            bldg_run.bold = True
+            bldg_run.font.size = Pt(13)
+            bldg_run.font.name = 'Helvetica'
+            bldg_run.font.color.rgb = RGBColor(0xc4, 0x45, 0x69)
+
             table = doc.add_table(rows=1, cols=7)
-            table.style = 'Table Grid'
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            table.autofit = False
+
+            tbl = table._tbl
+            tblPr = tbl.tblPr
+            if tblPr is None:
+                tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
+                tbl.insert(0, tblPr)
+            tblW = parse_xml(f'<w:tblW {nsdecls("w")} w:w="{int(Cm(18.2).emu / 635)}" w:type="dxa"/>')
+            existing_tblW = tblPr.find(qn('w:tblW'))
+            if existing_tblW is not None:
+                tblPr.remove(existing_tblW)
+            tblPr.append(tblW)
+
+            tblBorders = parse_xml(
+                f'<w:tblBorders {nsdecls("w")}>'
+                f'  <w:top w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'  <w:left w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'  <w:bottom w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'  <w:right w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'  <w:insideH w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'  <w:insideV w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+                f'</w:tblBorders>'
+            )
+            tblPr.append(tblBorders)
+
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
-            widths = [Cm(0.7), Cm(1.1), Cm(2.9), Cm(5.2), Cm(2.3), Cm(1.8), Cm(3.2)]
+            col_widths = [Cm(0.8), Cm(1.2), Cm(3.0), Cm(5.5), Cm(2.5), Cm(2.0), Cm(3.2)]
             for i, h in enumerate(headers):
-                hdr[i].width = widths[i]
-                hdr[i].text = h
-                for p in hdr[i].paragraphs:
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in p.runs:
-                        run.bold = True
-                        run.font.size = Pt(8)
+                set_cell_width(hdr[i], col_widths[i])
+                hdr[i].text = ''
+                p = hdr[i].paragraphs[0]
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = p.add_run(h)
+                run.bold = True
+                set_run_font(run)
+                set_cell_shading(hdr[i], 'f5f5f5')
 
         row = table.add_row().cells
         case_num = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
@@ -1083,35 +1164,38 @@ def cause_list_docx(request):
         effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
-        ch_key = f"{effective_court}__{effective_hall}"
         data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
+            cell = row[i]
+            set_cell_width(cell, col_widths[i])
             if val is None:
-                cell = row[i]
                 p = cell.paragraphs[0]
                 p.clear()
                 if i == 2:
                     run_court = p.add_run(f"{effective_court_label}\n")
-                    run_court.font.size = Pt(8)
+                    set_run_font(run_court)
                     run_hall = p.add_run(effective_hall)
                     run_hall.bold = True
-                    run_hall.font.size = Pt(8)
+                    set_run_font(run_hall)
                 elif i == 3:
                     run0 = p.add_run(f"{case_num}\n")
-                    run0.font.size = Pt(8)
+                    run0.bold = True
+                    set_run_font(run0)
                     run1 = p.add_run(entry.case.party_1)
                     run1.bold = entry.case.represents_party_1
-                    run1.font.size = Pt(8)
+                    set_run_font(run1)
                     run_vs = p.add_run(' vs ')
-                    run_vs.font.size = Pt(8)
+                    set_run_font(run_vs)
                     run2 = p.add_run(entry.case.party_2)
                     run2.bold = entry.case.represents_party_2
-                    run2.font.size = Pt(8)
+                    set_run_font(run2)
             else:
-                row[i].text = val
-                for p in row[i].paragraphs:
-                    for run in p.runs:
-                        run.font.size = Pt(8)
+                cell.text = ''
+                p = cell.paragraphs[0]
+                if i in (0, 1):
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = p.add_run(val)
+                set_run_font(run)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="cause_list_{date_str}.docx"'
