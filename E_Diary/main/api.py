@@ -92,12 +92,15 @@ def ecourts_pending(request):
             ecourts_status='pending', cnr__isnull=False, disposed=False
         ).exclude(cnr='')
 
+        cutoff = timezone.now() - datetime.timedelta(hours=6)
+
         refresh = Case.objects.filter(
             cnr__isnull=False, disposed=False
         ).exclude(cnr='').filter(
+            Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
+        ).filter(
             has_missing_ecourts
-        )
-        refresh = refresh.distinct()
+        ).distinct()[:50]
     else:
         pending = Case.objects.filter(
             ecourts_status='pending', cnr__isnull=False, disposed=False
