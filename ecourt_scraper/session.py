@@ -361,7 +361,7 @@ class EcourtSession:
             f"'{link['search_by']}','{link['srno']}'"
         )
         with self.page.expect_response(
-            lambda r: "home/viewBusiness" in r.url, timeout=20000
+            lambda r: "viewBusiness" in r.url, timeout=30000
         ) as resp_info:
             self.page.evaluate(f"viewBusiness({args})")
             response = resp_info.value
