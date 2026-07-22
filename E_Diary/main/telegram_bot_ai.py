@@ -62,7 +62,7 @@ def _get_llm():
         temperature=0,
         max_retries=2,
         base_url=NVIDIA_BASE_URL,
-        request_timeout=30,
+        request_timeout=120,
     )
 
 
