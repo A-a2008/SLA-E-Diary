@@ -126,29 +126,46 @@ def process_message(request):
     }
 
     replies = []
+    timing = {}
 
     def collector(cid, t, parse_mode='HTML'):
         replies.append({'chat_id': str(cid), 'text': t})
         return True
 
+    t0 = time.time()
+
     from main import telegram_handler as handler
+    timing['import_handler'] = time.time() - t0
+
+    t1 = time.time()
     orig_send = handler.send_message
     orig_group = handler.send_group_message
     handler.send_message = collector
     handler.send_group_message = lambda t, parse_mode='HTML': collector(chat_id, t, parse_mode)
+    timing['patch'] = time.time() - t1
 
+    t2 = time.time()
     try:
         handler.process_update(update)
     except Exception as e:
-        logger.exception(f'process_message failed: {e}')
+        logger.exception(f'process_message failed after {time.time()-t0:.1f}s: {e}')
         handler.send_message = orig_send
         handler.send_group_message = orig_group
         return JsonResponse({'error': 'Processing failed', 'detail': str(e)}, status=500)
+    timing['process_update'] = time.time() - t2
 
+    t3 = time.time()
     handler.send_message = orig_send
     handler.send_group_message = orig_group
+    timing['restore'] = time.time() - t3
+    timing['total'] = time.time() - t0
 
-    return JsonResponse({'ok': True, 'replies': replies})
+    logger.info(f'process_message OK in {timing["total"]:.1f}s '
+                f'(import={timing["import_handler"]:.1f}s, '
+                f'process={timing["process_update"]:.1f}s, '
+                f'replies={len(replies)})')
+
+    return JsonResponse({'ok': True, 'replies': replies, 'timing': timing})
 
 
 @csrf_exempt
