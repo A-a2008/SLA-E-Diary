@@ -1,6 +1,5 @@
 import os
 import json
-import time
 import datetime
 import logging
 
@@ -25,14 +24,6 @@ def _check_token(request):
         auth = request.GET.get('token', '')
     if not API_TOKEN or auth != API_TOKEN:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
-
-
-@csrf_exempt
-@require_GET
-def ping(request):
-    from main import telegram_handler
-    from main import telegram_bot_ai
-    return JsonResponse({'pong': True, 'ts': timezone.now().isoformat()})
 
 
 @csrf_exempt
@@ -92,83 +83,6 @@ def mark_sent_batch(request):
 
 
 @csrf_exempt
-@require_POST
-def process_message(request):
-    resp = _check_token(request)
-    if resp:
-        return resp
-
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-    chat_id = str(data.get('chat_id', ''))
-    text = data.get('text', '').strip()
-    first_name = data.get('first_name', '')
-
-    if not chat_id or not text:
-        return JsonResponse({'error': 'chat_id and text required'}, status=400)
-
-    try:
-        chat_id_int = int(chat_id)
-    except ValueError:
-        return JsonResponse({'error': 'chat_id must be numeric string'}, status=400)
-
-    update = {
-        'message': {
-            'chat': {'id': chat_id_int, 'type': 'private', 'first_name': first_name},
-            'text': text,
-            'message_id': 0,
-            'date': int(time.time()),
-        },
-        'update_id': 0,
-    }
-
-    replies = []
-    timing = {}
-
-    def collector(cid, t, parse_mode='HTML'):
-        replies.append({'chat_id': str(cid), 'text': t})
-        return True
-
-    t0 = time.time()
-
-    from main import telegram_handler as handler
-    timing['import_handler'] = time.time() - t0
-
-    t1 = time.time()
-    orig_send = handler.send_message
-    orig_group = handler.send_group_message
-    handler.send_message = collector
-    handler.send_group_message = lambda t, parse_mode='HTML': collector(chat_id, t, parse_mode)
-    timing['patch'] = time.time() - t1
-
-    t2 = time.time()
-    try:
-        handler.process_update(update)
-    except Exception as e:
-        logger.exception(f'process_message failed after {time.time()-t0:.1f}s: {e}')
-        handler.send_message = orig_send
-        handler.send_group_message = orig_group
-        return JsonResponse({'error': 'Processing failed', 'detail': str(e)}, status=500)
-    timing['process_update'] = time.time() - t2
-
-    t3 = time.time()
-    handler.send_message = orig_send
-    handler.send_group_message = orig_group
-    timing['restore'] = time.time() - t3
-    timing['total'] = time.time() - t0
-
-    logger.info(f'process_message OK in {timing["total"]:.1f}s '
-                f'(import={timing["import_handler"]:.1f}s, '
-                f'process={timing["process_update"]:.1f}s, '
-                f'replies={len(replies)})')
-
-    return JsonResponse({'ok': True, 'replies': replies, 'timing': timing})
-
-
-@csrf_exempt
 @require_GET
 def ecourts_pending(request):
     """Return cases that need eCourts fetching.
@@ -215,18 +129,6 @@ def ecourts_pending(request):
         ).filter(
             has_missing_ecourts
         ).distinct()[:50]
-
-        latest_next_date = DiaryEntry.objects.filter(
-            case=OuterRef('pk'), entry_type='business',
-        ).order_by('-previous_date').values('next_date')[:1]
-
-        overdue = Case.objects.filter(
-            ecourts_status='done', cnr__isnull=False, disposed=False,
-        ).exclude(cnr='').annotate(
-            last_next_date=Subquery(latest_next_date),
-        ).filter(
-            last_next_date__lte=today,
-        ).distinct()
     else:
         pending = Case.objects.filter(
             ecourts_status='pending', cnr__isnull=False, disposed=False
@@ -268,15 +170,11 @@ def ecourts_pending(request):
             })
         return items
 
-    overdue_list = _serialize(overdue) if update_only else []
-
     return JsonResponse({
         'pending': _serialize(pending),
         'pending_total': pending.count(),
         'refresh': _serialize(refresh),
         'refresh_total': refresh.count(),
-        'overdue': overdue_list,
-        'overdue_total': len(overdue_list),
     })
 
 
