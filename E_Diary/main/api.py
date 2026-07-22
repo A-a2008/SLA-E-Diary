@@ -30,6 +30,8 @@ def _check_token(request):
 @csrf_exempt
 @require_GET
 def ping(request):
+    from main import telegram_handler
+    from main import telegram_bot_ai
     return JsonResponse({'pong': True, 'ts': timezone.now().isoformat()})
 
 
