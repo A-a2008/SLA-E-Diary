@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fee Agreement — {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</title>
+  {% load payments_extras %}
+  <style>
+    @page { margin: 1.8cm; }
+    body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11pt; color: #222; line-height: 1.7; }
+    .letterhead { text-align: center; border-bottom: 3px solid #c44569; padding-bottom: 0.6cm; margin-bottom: 0.8cm; }
+    .letterhead h1 { font-size: 20pt; color: #c44569; margin: 0.2cm 0; font-weight: 900; letter-spacing: 1px; }
+    .letterhead p { font-size: 10pt; color: #555; margin: 0.1cm 0; }
+    .doc-title { text-align: center; font-size: 15pt; font-weight: 900; color: #333; margin: 0.6cm 0; text-transform: uppercase; letter-spacing: 3px; }
+    .agreement-text { font-size: 11pt; text-align: justify; margin-bottom: 0.5cm; }
+    .case-ref { margin: 0.5cm 0; padding: 0.4cm; background: #f9f9f9; border-left: 4px solid #c44569; }
+    .case-ref table { width: 100%; font-size: 10pt; }
+    .case-ref td { padding: 0.08cm 0.2cm; vertical-align: top; }
+    table.charges { width: 100%; border-collapse: collapse; margin: 0.5cm 0; font-size: 10pt; }
+    table.charges th { background: #333; color: #fff; padding: 0.3cm 0.4cm; text-align: left; }
+    table.charges td { padding: 0.25cm 0.4cm; border-bottom: 1px solid #ddd; }
+    table.charges td:last-child { text-align: right; }
+    .nil-text { color: #888; font-style: italic; }
+    .one-time-note { font-size: 10pt; margin: 0.3cm 0; padding: 0.3cm; background: #fff8e1; border-radius: 4px; }
+    .signatures { margin-top: 1.5cm; width: 100%; }
+    .signatures td { vertical-align: top; padding: 0 0.5cm; }
+    .signature-box-advocate { border: 2px solid #333; height: 3cm; width: 100%; margin-top: 0.3cm; border-radius: 4px; }
+    .signature-box-client { border: 2px solid #333; height: 5cm; width: 100%; margin-top: 0.3cm; border-radius: 4px; }
+    .sig-label { font-weight: bold; font-size: 10pt; text-align: center; display: block; }
+    .date-line { margin-top: 1cm; font-size: 10pt; }
+  </style>
+</head>
+<body>
+  <div class="letterhead">
+    <h1>SHAILAJA LAW ASSOCIATES</h1>
+    <p>Advocates &amp; Legal Consultants</p>
+    <p>Bengaluru, Karnataka</p>
+  </div>
+  <div class="doc-title">Fee Agreement</div>
+  <div class="agreement-text">
+    <p>This Fee Agreement is entered into on this <strong>{{ today }}</strong> between <strong>SHAILAJA LAW ASSOCIATES</strong> (hereinafter referred to as <strong>"the Advocate"</strong>) of the one part, and the Client(s) of the other part.</p>
+    <p>WHEREAS the Client(s) have retained the Advocate to represent them in the following matter:</p>
+  </div>
+  <div class="case-ref">
+    <table>
+      <tr><td style="width: 30%;"><strong>Case:</strong></td><td>{{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</td></tr>
+      <tr><td><strong>Court:</strong></td><td>{{ case.court }} — {{ case.court_hall }}</td></tr>
+      <tr><td><strong>Parties:</strong></td><td>{{ case.party_1 }} ({{ case.party_1_type }}) vs {{ case.party_2 }} ({{ case.party_2_type }})</td></tr>
+      <tr><td><strong>Representing:</strong></td><td>{{ case.representing_display }}</td></tr>
+      {% if pricing.client_name %}
+      <tr><td><strong>Client(s):</strong></td><td>{{ pricing.client_name }}</td></tr>
+      {% endif %}
+    </table>
+  </div>
+  <div class="agreement-text">
+    <p>NOW IT IS HEREBY AGREED AS FOLLOWS:</p>
+    <p>1. The Client(s) agree to pay the Advocate the following fees for the conduct of the above case:</p>
+  </div>
+  <table class="charges">
+    <thead><tr><th>Charge Description</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for ca in charge_amounts %}
+      <tr>
+        <td>{{ ca.name }}</td>
+        <td>{% if ca.amount is None or ca.amount == 0 or ca.amount == '0.00' %}<span class="nil-text">NIL</span>{% else %}{{ ca.amount|format_amount }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if pricing.is_one_time %}
+  <div class="one-time-note">
+    <strong>One-Time Engagement:</strong> This is a consolidated one-time fee arrangement.
+    Total one-time fee: <strong>{{ pricing.one_time_amount|format_amount }}</strong>.<br>
+    Appearance charges are {% if pricing.appearance_included %}included in the one-time fee{% else %}<strong>NOT</strong> included — charged separately at {{ pricing.appearance_amount|format_amount }} per appearance{% endif %}.
+    {% if one_time_extras %}
+    <br><strong>Additional components:</strong>
+    {% for ote in one_time_extras %}
+    <br>— {{ ote.name }}: {% if ote.included_in_one_time %}Included in one-time{% else %}{{ ote.per_occurrence_amount|format_amount }} per occurrence{% endif %}
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endif %}
+  <p class="agreement-text" style="margin-top: 0.5cm;">2. Amounts marked <strong>NIL</strong> are not charged and may be agreed upon separately if required.</p>
+  <p class="agreement-text">IN WITNESS WHEREOF, the parties have signed this Agreement on the date first above written.</p>
+  <table class="signatures">
+    <tr>
+      <td style="width: 40%;">
+        <span class="sig-label">ADVOCATE</span>
+        <div class="signature-box-advocate"></div>
+      </td>
+      <td style="width: 60%;">
+        <span class="sig-label">CLIENTS (all parties to sign here)</span>
+        <div class="signature-box-client"></div>
+      </td>
+    </tr>
+  </table>
+  <div class="date-line">
+    <p><strong>Date:</strong> ____________________</p>
+  </div>
+</body>
+</html>

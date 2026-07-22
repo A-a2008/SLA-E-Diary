@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Payments Dashboard</h1>
+    <div class="row gtr-uniform" style="margin-top: 1.5rem;">
+      <div class="col-3 col-6-medium col-12-small">
+        <div class="box alt" style="padding: 1.5rem; text-align: center; background: #fff5f5; border-radius: 8px;">
+          <h3 style="color: #c44569; font-size: 1.1rem;">Unpaid Entries</h3>
+          <p style="font-size: 2rem; font-weight: 900; color: #c62828; margin: 0.5rem 0;">{{ unpaid_count }}</p>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div class="box alt" style="padding: 1.5rem; text-align: center; background: #fff8e1; border-radius: 8px;">
+          <h3 style="color: #f57f17; font-size: 1.1rem;">Total Due</h3>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #e65100; margin: 0.5rem 0;">{{ total_unpaid }}</p>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div class="box alt" style="padding: 1.5rem; text-align: center; background: #e8f5e9; border-radius: 8px;">
+          <h3 style="color: #2e7d32; font-size: 1.1rem;">Total Cases</h3>
+          <p style="font-size: 2rem; font-weight: 900; color: #1b5e20; margin: 0.5rem 0;">{{ total_cases }}</p>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div class="box alt" style="padding: 1.5rem; text-align: center; background: #e3f2fd; border-radius: 8px;">
+          <h3 style="color: #1565c0; font-size: 1.1rem;">Fully Paid</h3>
+          <p style="font-size: 2rem; font-weight: 900; color: #0d47a1; margin: 0.5rem 0;">{{ fully_paid }}</p>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: 2rem;">
+      <ul class="actions">
+        <li><a href="{% url 'payments:payments_due' %}" class="button primary">View Due Payments</a></li>
+        <li><a href="{% url 'payments:case_list' %}" class="button">All Cases</a></li>
+        {% if user.is_superuser %}
+        <li><a href="{% url 'payments:manage_payments_users' %}" class="button">Manage Payments Users</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

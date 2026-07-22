@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Entries: {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <p>{{ case.party_1 }} vs {{ case.party_2 }} — {{ case.court }}</p>
+    {% if pricing.client_name or pricing.client_phone %}
+    <p><strong>Client:</strong> {{ pricing.client_name }} {% if pricing.client_phone %}— {{ pricing.client_phone }}{% endif %}</p>
+    {% endif %}
+    <ul class="actions">
+      <li><a href="{% url 'payments:case_pricing' case.id %}" class="button small">Pricing</a></li>
+      <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
+      <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
+    </ul>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Stage</th><th>Business</th><th>Charges</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for ed in entry_data %}
+          <tr>
+            <td>{{ ed.entry.previous_date|date:"d-m-Y" }}</td>
+            <td>{{ ed.entry.stage }}</td>
+            <td style="max-width: 300px;">{{ ed.entry.business|truncatewords:20 }}</td>
+            <td>{{ ed.charge_labels }}</td>
+            <td>{{ ed.total }}</td>
+            <td>{% if ed.payment.is_paid %}<span style="color:#2e7d32;">Paid</span>{% else %}<span style="color:#c62828;">Unpaid</span>{% endif %}</td>
+            <td>
+              <a href="{% url 'payments:edit_classification' ed.entry.id %}" class="button small">Classify</a>
+              <a href="{% url 'payments:invoice_pdf' ed.entry.id %}" class="button small">PDF</a>
+              <a href="{% url 'payments:invoice_image' ed.entry.id %}" class="button small">Image</a>
+              <form method="post" action="{% url 'payments:toggle_payment' ed.entry.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="button small">{% if ed.payment.is_paid %}Unpay{% else %}Pay{% endif %}</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7">No entries yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

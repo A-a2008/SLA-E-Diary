@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice — {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</title>
+  {% load payments_extras %}
+  <style>
+    @page { margin: 1.5cm; }
+    body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11pt; color: #222; line-height: 1.6; }
+    .letterhead { text-align: center; border-bottom: 2px solid #c44569; padding-bottom: 0.5cm; margin-bottom: 0.5cm; }
+    .letterhead img { height: 60px; }
+    .letterhead h1 { font-size: 18pt; color: #c44569; margin: 0.2cm 0; font-weight: 900; }
+    .letterhead p { font-size: 9pt; color: #555; margin: 0.1cm 0; }
+    .invoice-title { text-align: center; font-size: 16pt; font-weight: 900; color: #333; margin: 0.5cm 0; text-transform: uppercase; letter-spacing: 2px; }
+    .meta { margin-bottom: 0.5cm; }
+    .meta table { width: 100%; font-size: 10pt; }
+    .meta td { padding: 0.1cm 0; vertical-align: top; }
+    .meta td:last-child { text-align: right; }
+    table.charges { width: 100%; border-collapse: collapse; margin: 0.5cm 0; font-size: 10pt; }
+    table.charges th { background: #c44569; color: #fff; padding: 0.3cm 0.4cm; text-align: left; }
+    table.charges td { padding: 0.3cm 0.4cm; border-bottom: 1px solid #ddd; }
+    table.charges td:last-child { text-align: right; }
+    table.charges tr.total td { font-weight: bold; border-top: 2px solid #333; font-size: 11pt; }
+    .status-badge { display: inline-block; padding: 0.15cm 0.5cm; border-radius: 4px; font-weight: bold; font-size: 10pt; }
+    .status-paid { background: #d4edda; color: #155724; }
+    .status-unpaid { background: #fce4e4; color: #c62828; }
+    .footer { margin-top: 1cm; text-align: center; font-size: 9pt; color: #888; border-top: 1px solid #ddd; padding-top: 0.3cm; }
+    .business-text { font-size: 10pt; color: #444; margin: 0.3cm 0; padding: 0.3cm; background: #f9f9f9; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="letterhead">
+    <h1>SHAILAJA LAW ASSOCIATES</h1>
+    <p>Advocates &amp; Legal Consultants</p>
+    <p>Bengaluru, Karnataka</p>
+  </div>
+  <div class="invoice-title">Invoice</div>
+  <div class="meta">
+    <table>
+      <tr><td><strong>Case:</strong> {{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</td><td><strong>Date:</strong> {{ entry.previous_date|date:"d M Y" }}</td></tr>
+      <tr><td><strong>Court:</strong> {{ case.court }} — {{ case.court_hall }}</td><td><strong>Stage:</strong> {{ entry.stage }}</td></tr>
+      <tr><td><strong>Client:</strong> {{ pricing.client_name|default:case.party_1 }}{% if pricing.client_phone %} — {{ pricing.client_phone }}{% endif %}</td><td></td></tr>
+    </table>
+  </div>
+  {% if entry.business or entry.ecourts_business %}
+  <div class="business-text">
+    <strong>Business:</strong><br>
+    {{ entry.business|linebreaksbr }}
+    {% if entry.ecourts_business %}<br><br><em>eCourts:</em> {{ entry.ecourts_business|linebreaksbr }}{% endif %}
+  </div>
+  {% endif %}
+  <table class="charges">
+    <thead><tr><th>Charge Description</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{% if item.charge_type %}{{ item.charge_type.name }}{% else %}{{ item.custom_charge_name }}{% endif %}</td>
+        <td>{{ item.amount|format_amount }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total"><td>Total</td><td>{{ total|format_amount }}</td></tr>
+    </tfoot>
+  </table>
+  <p style="text-align: right;">
+    <span class="status-badge {% if payment and payment.is_paid %}status-paid{% else %}status-unpaid{% endif %}">
+      {% if payment and payment.is_paid %}PAID{% else %}PENDING{% endif %}
+    </span>
+  </p>
+  <div class="footer">
+    <p>Thank you for your business. — Shailaja Law Associates</p>
+  </div>
+</body>
+</html>

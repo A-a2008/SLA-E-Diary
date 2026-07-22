@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Manage Payments Group</h1>
+    <h2>Current Members</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Username</th><th>Name</th><th>Role</th><th></th></tr></thead>
+        <tbody>
+          {% for user in members %}
+          <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.get_full_name }}</td>
+            <td>{{ user.userprofile.role|title }}</td>
+            <td>
+              <form method="post" action="{% url 'payments:remove_payments_user' user.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="button small">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No members yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <h2>Add User</h2>
+    <form method="post" action="{% url 'payments:add_payments_user' %}">
+      {% csrf_token %}
+      <div class="row gtr-uniform">
+        <div class="col-4 col-12-xsmall">
+          <select name="user_id">
+            <option value="">— Select user —</option>
+            {% for u in non_members %}
+            <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} ({{ u.username }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions"><li><input type="submit" value="Add to Payments Group" class="primary"></li></ul>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

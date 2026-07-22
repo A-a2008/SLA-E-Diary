@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Payments Due</h1>
+    <form method="get" style="margin: 1rem 0;">
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <input type="text" name="q" placeholder="Search by case, client..." value="{{ q }}">
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions"><li><input type="submit" value="Search" class="primary"></li></ul>
+        </div>
+      </div>
+    </form>
+    {% for item in cases_dict %}
+    <div style="margin-bottom: 2rem; border: 1px solid #ddd; border-radius: 8px; padding: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong>{{ item.pricing.client_name|default:item.case.party_1 }}</strong>
+          {% if item.pricing.client_phone %} — {{ item.pricing.client_phone }}{% endif %}
+          <br>
+          <a href="{% url 'payments:case_pricing' item.case.id %}">{{ item.case.case_type }}/{{ item.case.case_number }}/{{ item.case.case_year }}</a>
+          — {{ item.case.party_1 }} vs {{ item.case.party_2 }}
+        </div>
+        <div style="text-align: right;">
+          <strong>Total Due: {{ item.total_due|format_amount }}</strong>
+          <br>
+          <form method="post" action="{% url 'payments:mark_full_paid' item.case.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="button small">Mark All Paid</button>
+          </form>
+        </div>
+      </div>
+      <div class="table-wrapper" style="margin-top: 0.5rem;">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Stage</th><th>Charges</th><th>Amount</th><th>Status</th><th></th><th>Invoice</th></tr>
+          </thead>
+          <tbody>
+            {% for ed in item.entries %}
+            <tr>
+              <td>{{ ed.entry.previous_date|date:"d-m-Y" }}</td>
+              <td>{{ ed.entry.stage }}</td>
+              <td>{{ ed.charge_labels }}</td>
+              <td>{{ ed.total|format_amount }}</td>
+              <td>{% if ed.payment.is_paid %}<span style="color: #2e7d32;">Paid</span>{% else %}<span style="color: #c62828;">Unpaid</span>{% endif %}</td>
+              <td>
+                <form method="post" action="{% url 'payments:toggle_payment' ed.entry.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="button small">{% if ed.payment.is_paid %}Unpay{% else %}Pay{% endif %}</button>
+                </form>
+              </td>
+              <td>
+                <a href="{% url 'payments:invoice_pdf' ed.entry.id %}" class="button small">PDF</a>
+                <a href="{% url 'payments:invoice_image' ed.entry.id %}" class="button small">Image</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% empty %}
+    <p>No unpaid entries. All payments are up to date!</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

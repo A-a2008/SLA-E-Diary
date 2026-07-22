@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Classification: {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <p>{{ entry.previous_date|date:"d-m-Y" }} — <strong>{{ entry.stage }}</strong></p>
+    <div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+      <p><strong>Business:</strong><br>{{ entry.business|linebreaksbr }}</p>
+      {% if entry.ecourts_business %}
+      <p><strong>eCourts:</strong><br>{{ entry.ecourts_business|linebreaksbr }}</p>
+      {% endif %}
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Include</th><th>Charge</th><th>Amount</th></tr></thead>
+          <tbody>
+            {% for ct in charge_types %}
+            <tr>
+              <td><input type="checkbox" name="charge_types" value="{{ ct.id }}" {% if ct.id in selected %}checked{% endif %}></td>
+              <td>{{ ct.name }}</td>
+              <td>{{ charge_amounts|dict_key:ct.id|default:'NIL' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h2>Custom Charges for This Entry</h2>
+      <div id="custom-items">
+        {% for item in custom_items %}
+        <div class="row gtr-uniform custom-item" style="margin-bottom: 0.5rem;">
+          <div class="col-4 col-8-xsmall">
+            <input type="text" name="custom_name[]" placeholder="Charge name" value="{{ item.custom_charge_name }}">
+          </div>
+          <div class="col-3 col-4-xsmall">
+            <input type="text" name="custom_amount[]" placeholder="Amount" value="{% if item.amount %}{{ item.amount }}{% endif %}">
+          </div>
+          <div class="col-1"><button type="button" class="button small" onclick="this.closest('.custom-item').remove()">x</button></div>
+        </div>
+        {% endfor %}
+      </div>
+      <ul class="actions">
+        <li><button type="button" class="button small" id="add-custom">+ Add Custom</button></li>
+      </ul>
+      <ul class="actions">
+        <li><input type="submit" value="Save Classification" class="primary"></li>
+        <li><a href="{% url 'payments:case_entries' case.id %}" class="button">Cancel</a></li>
+      </ul>
+    </form>
+    <form method="post" action="{% url 'payments:reclassify_single' entry.id %}" style="margin-top: 1rem;">
+      {% csrf_token %}
+      <button type="submit" class="button small">Re-run AI Classification</button>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('add-custom')?.addEventListener('click', function() {
+  var div = document.createElement('div');
+  div.className = 'row gtr-uniform custom-item';
+  div.style.marginBottom = '0.5rem';
+  div.innerHTML = '<div class="col-4 col-8-xsmall"><input type="text" name="custom_name[]" placeholder="Charge name"></div><div class="col-3 col-4-xsmall"><input type="text" name="custom_amount[]" placeholder="Amount"></div><div class="col-1"><button type="button" class="button small" onclick="this.closest(\'.custom-item\').remove()">x</button></div>';
+  document.getElementById('custom-items').appendChild(div);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>All Cases</h1>
+    <form method="get" style="margin: 1rem 0;">
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <input type="text" name="q" placeholder="Search by case number, party name..." value="{{ q }}">
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions">
+            <li><input type="submit" value="Search" class="primary"></li>
+          </ul>
+        </div>
+      </div>
+    </form>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Case #</th>
+            <th>Parties</th>
+            <th>Client</th>
+            <th>Phone</th>
+            <th>Unpaid</th>
+            <th>Due Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in cases %}
+          <tr>
+            <td><strong>{{ item.case.case_type }}/{{ item.case.case_number }}/{{ item.case.case_year }}</strong></td>
+            <td>{{ item.case.party_1 }} vs {{ item.case.party_2 }}</td>
+            <td>{{ item.pricing.client_name|default:item.case.party_1 }}</td>
+            <td>{{ item.pricing.client_phone|default:'--' }}</td>
+            <td>{{ item.unpaid_count }}</td>
+            <td>{{ item.total_unpaid }}</td>
+            <td>{% if item.pricing.fully_paid %}<span style="color: #2e7d32;">Paid</span>{% else %}<span style="color: #c62828;">Pending</span>{% endif %}</td>
+            <td><a href="{% url 'payments:case_pricing' item.case.id %}" class="button small">Pricing</a>
+              <a href="{% url 'payments:case_entries' item.case.id %}" class="button small">Entries</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8">No cases found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

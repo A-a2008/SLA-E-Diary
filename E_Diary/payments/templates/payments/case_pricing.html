@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Pricing: {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <p>{{ case.party_1 }} vs {{ case.party_2 }} — {{ case.court }}</p>
+
+    <div class="row gtr-uniform" style="margin: 1rem 0;">
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <strong>Entries</strong><br><span style="font-size: 1.5rem;">{{ total_entries }}</span>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; background: #e8f5e9; border-radius: 8px; text-align: center;">
+          <strong>Paid</strong><br><span style="font-size: 1.5rem; color: #2e7d32;">{{ paid_count }}</span>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; background: #fff5f5; border-radius: 8px; text-align: center;">
+          <strong>Unpaid</strong><br><span style="font-size: 1.5rem; color: #c62828;">{{ unpaid_count }}</span>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; background: #fff8e1; border-radius: 8px; text-align: center;">
+          <strong>Total Due</strong><br><span style="font-size: 1.5rem; color: #e65100;">{{ total_due|format_amount }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <ul class="actions">
+        <li><a href="{% url 'payments:case_entries' case.id %}" class="button small">View Entries</a></li>
+        <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
+        <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
+        <li><a href="{% url 'payments:reclassify_case' case.id %}" class="button small" onclick="return confirm('Re-run classifier on all entries?')">Re-classify All</a></li>
+        <li>
+          <form method="post" action="{% url 'payments:mark_full_paid' case.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="button small {% if pricing.fully_paid %}primary{% endif %}">
+              {% if pricing.fully_paid %}Mark Not Fully Paid{% else %}Mark Fully Paid{% endif %}
+            </button>
+          </form>
+        </li>
+      </ul>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <h2>Client Contact</h2>
+      <div class="row gtr-uniform">
+        <div class="col-4 col-12-xsmall">
+          <input type="text" name="client_name" placeholder="Client name" value="{{ pricing.client_name|default:'' }}">
+        </div>
+        <div class="col-4 col-12-xsmall">
+          <input type="text" name="client_phone" placeholder="Client phone" value="{{ pricing.client_phone|default:'' }}">
+        </div>
+      </div>
+
+      <h2 style="margin-top: 1.5rem;">Charges</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Charge Description</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            {% for ct in charge_types %}
+            <tr>
+              <td>{{ ct.name }}</td>
+              <td style="width: 200px;">
+                <input type="text" name="amount_{{ ct.id }}" value="{{ charge_amounts|dict_key:ct.id|default:'' }}" placeholder="NIL (0)">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Custom Charges</h2>
+      <div id="custom-charges">
+        {% for cc in custom_charges %}
+        <div class="row gtr-uniform custom-row" style="margin-bottom: 0.5rem;">
+          <div class="col-4 col-8-xsmall">
+            <input type="hidden" name="custom_id[]" value="{{ cc.id }}">
+            <input type="text" name="custom_name[]" placeholder="Charge name" value="{{ cc.name }}">
+          </div>
+          <div class="col-3 col-4-xsmall">
+            <input type="text" name="custom_amount[]" placeholder="Amount" value="{% if cc.amount %}{{ cc.amount }}{% endif %}">
+          </div>
+          <div class="col-1"><button type="button" class="button small" onclick="this.closest('.custom-row').remove()">x</button></div>
+        </div>
+        {% endfor %}
+      </div>
+      <ul class="actions">
+        <li><button type="button" class="button small" id="add-custom">+ Add Custom Charge</button></li>
+      </ul>
+
+      <h2>One-Time Payment</h2>
+      <div class="row gtr-uniform">
+        <div class="col-12">
+          <label><input type="checkbox" name="is_one_time" {% if pricing.is_one_time %}checked{% endif %}> This case is a one-time payment</label>
+        </div>
+        <div class="col-4 col-12-xsmall">
+          <input type="text" name="one_time_amount" placeholder="One-time amount" value="{% if pricing.one_time_amount %}{{ pricing.one_time_amount }}{% endif %}">
+        </div>
+        <div class="col-12">
+          <label><input type="checkbox" name="appearance_included" {% if pricing.appearance_included %}checked{% endif %}> Appearance included in one-time</label>
+        </div>
+        <div class="col-4 col-12-xsmall">
+          <input type="text" name="appearance_amount" placeholder="Per-appearance amount" value="{% if pricing.appearance_amount %}{{ pricing.appearance_amount }}{% endif %}">
+        </div>
+      </div>
+
+      <h2>One-Time Extras</h2>
+      <div id="ote-charges">
+        {% for ote in one_time_extras %}
+        <div class="row gtr-uniform ote-row" style="margin-bottom: 0.5rem;">
+          <div class="col-3 col-6-xsmall">
+            <input type="hidden" name="ote_id[]" value="{{ ote.id }}">
+            <input type="text" name="ote_name[]" placeholder="Name" value="{{ ote.name }}">
+          </div>
+          <div class="col-3 col-6-xsmall">
+            <label><input type="checkbox" name="ote_included[]" {% if ote.included_in_one_time %}checked{% endif %}> Included</label>
+          </div>
+          <div class="col-3 col-6-xsmall">
+            <input type="text" name="ote_amount[]" placeholder="Per-occurrence" value="{% if ote.per_occurrence_amount %}{{ ote.per_occurrence_amount }}{% endif %}">
+          </div>
+          <div class="col-1"><button type="button" class="button small" onclick="this.closest('.ote-row').remove()">x</button></div>
+        </div>
+        {% endfor %}
+      </div>
+      <ul class="actions">
+        <li><button type="button" class="button small" id="add-ote">+ Add Extra</button></li>
+      </ul>
+
+      <div style="margin-top: 1.5rem;">
+        <ul class="actions">
+          <li><input type="submit" value="Save Pricing" class="primary"></li>
+        </ul>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('add-custom')?.addEventListener('click', function() {
+  var div = document.createElement('div');
+  div.className = 'row gtr-uniform custom-row';
+  div.style.marginBottom = '0.5rem';
+  div.innerHTML = '<div class="col-4 col-8-xsmall"><input type="hidden" name="custom_id[]" value=""><input type="text" name="custom_name[]" placeholder="Charge name"></div><div class="col-3 col-4-xsmall"><input type="text" name="custom_amount[]" placeholder="Amount"></div><div class="col-1"><button type="button" class="button small" onclick="this.closest(\'.custom-row\').remove()">x</button></div>';
+  document.getElementById('custom-charges').appendChild(div);
+});
+document.getElementById('add-ote')?.addEventListener('click', function() {
+  var div = document.createElement('div');
+  div.className = 'row gtr-uniform ote-row';
+  div.style.marginBottom = '0.5rem';
+  div.innerHTML = '<div class="col-3 col-6-xsmall"><input type="hidden" name="ote_id[]" value=""><input type="text" name="ote_name[]" placeholder="Name"></div><div class="col-3 col-6-xsmall"><label><input type="checkbox" name="ote_included[]" checked> Included</label></div><div class="col-3 col-6-xsmall"><input type="text" name="ote_amount[]" placeholder="Per-occurrence"></div><div class="col-1"><button type="button" class="button small" onclick="this.closest(\'.ote-row\').remove()">x</button></div>';
+  document.getElementById('ote-charges').appendChild(div);
+});
+</script>
+{% endblock %}

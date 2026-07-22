@@ -46,6 +46,9 @@
 					{% if user_can_ecourts %}
 					<li><a href="{% url 'ecourts_update_list' %}">eCourts Update</a></li>
 					{% endif %}
+					{% if user_can_payments %}
+					<li><a href="{% url 'payments:dashboard' %}">Payments</a></li>
+					{% endif %}
 					<li><a href="{% url 'change_password' %}">Change Password</a></li>
 					{% if user.is_superuser %}
 					<li><a href="{% url 'super_dashboard' %}">Super Admin</a></li>
