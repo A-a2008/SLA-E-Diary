@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import datetime
 import logging
 
@@ -86,6 +87,66 @@ def mark_sent_batch(request):
         id__in=ids, sent=False
     ).update(sent=True, sent_at=now)
     return JsonResponse({'ok': True, 'sent': list(ids[:updated]), 'count': updated})
+
+
+@csrf_exempt
+@require_POST
+def process_message(request):
+    resp = _check_token(request)
+    if resp:
+        return resp
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    chat_id = str(data.get('chat_id', ''))
+    text = data.get('text', '').strip()
+    first_name = data.get('first_name', '')
+
+    if not chat_id or not text:
+        return JsonResponse({'error': 'chat_id and text required'}, status=400)
+
+    try:
+        chat_id_int = int(chat_id)
+    except ValueError:
+        return JsonResponse({'error': 'chat_id must be numeric string'}, status=400)
+
+    update = {
+        'message': {
+            'chat': {'id': chat_id_int, 'type': 'private', 'first_name': first_name},
+            'text': text,
+            'message_id': 0,
+            'date': int(time.time()),
+        },
+        'update_id': 0,
+    }
+
+    replies = []
+
+    def collector(cid, t, parse_mode='HTML'):
+        replies.append({'chat_id': str(cid), 'text': t})
+        return True
+
+    from main import telegram_handler as handler
+    orig_send = handler.send_message
+    orig_group = handler.send_group_message
+    handler.send_message = collector
+    handler.send_group_message = lambda t, parse_mode='HTML': collector(chat_id, t, parse_mode)
+
+    try:
+        handler.process_update(update)
+    except Exception as e:
+        logger.exception(f'process_message failed: {e}')
+        handler.send_message = orig_send
+        handler.send_group_message = orig_group
+        return JsonResponse({'error': 'Processing failed', 'detail': str(e)}, status=500)
+
+    handler.send_message = orig_send
+    handler.send_group_message = orig_group
+
+    return JsonResponse({'ok': True, 'replies': replies})
 
 
 @csrf_exempt
