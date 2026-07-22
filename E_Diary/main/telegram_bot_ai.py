@@ -104,7 +104,7 @@ Rules:
 - next_date: The next hearing date MUST be extracted in DD-MM-YYYY format. It's usually mentioned as "next date" or "next hearing".
   CRITICAL — If the user gives a date without a year (e.g. "31/7", "next date 15-07"), use the current year (2026).
   Only use a different year if the user explicitly mentions it (e.g. "15-07-2025").
-- business: Reformatted version of what happened in court. Keep ALL details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only. Preserve case numbers, dates, party names, order details, and any other specifics exactly as mentioned.
+ - business: Exactly what happened in court — the core proceedings and orders only. Do NOT repeat the case number, case type, case year, or party names (those are extracted separately). Keep ALL other details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
  - stage: Generate a SHORT, informative stage label (1-5 words) FOR THE NEXT HEARING — what is expected to happen next. This appears in the cause list.
