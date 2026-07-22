@@ -40,7 +40,7 @@ class DiaryEntryExtraction(BaseModel):
     next_date: Optional[str] = Field(description="Next hearing date (DD-MM-YYYY). This MUST be present. For advance messages, this is the NEW date the case is being advanced to.")
     mediation_next_date: Optional[str] = Field(description="If the message mentions a SEPARATE mediation date that is different from the court next_date, extract it here in DD-MM-YYYY format. For example: 'mediation date 6/7, before court 7/9' → next_date='09-07-2026', mediation_next_date='06-07-2026'. Only set this if a distinct mediation date is explicitly mentioned alongside a court next_date.")
     business: str = Field(description="What happened in court today — the proceedings/status/order description. Keep it concise but informative.")
-    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Arguments', 'Evidence', 'Judgment', 'Meditation')")
+    stage: Optional[str] = Field(description="Stage of the case if mentioned (e.g. 'Cross of PW1', 'Cross of DW1', 'Arguments', 'Evidence', 'Reissue Summons', 'Judgment', 'Mediation', 'Next Call'). Extract it from what happened in court today, NOT from the next hearing instruction.")
     mentions_reminder: Optional[bool] = Field(description="Whether the user mentioned anything about reminders at all (true/false/null if unclear)")
     wants_reminder: Optional[bool] = Field(description="If a reminder is mentioned, does the user want one? true/false. If not mentioned, leave null.")
     is_mediation: bool = Field(description="True ONLY if this entry is about an actual mediation/settlement conference session AT A MEDIATION CENTRE. False for a regular court hearing where mediation was merely mentioned or discussed (e.g. 'mediation report not received, next date given').")
@@ -107,11 +107,7 @@ Rules:
  - business: Exactly what happened in court — the core proceedings and orders only. Do NOT repeat the case number, case type, case year, or party names (those are extracted separately). Keep ALL other details from the original message — do not remove, summarize, or redact anything. Fix spelling, capitalization, and grammar only.
  - case_type: The case TYPE abbreviation (e.g. CC, OS, CMC, CrlP, WP). NOT the court name. Ignore court names like '52nd ACJM', 'CMM', 'City Civil', etc.
  - case_number: Just the numeric case number. If the user writes 'cc/6759/23', extract case_type='CC', case_number='6759', case_year=2023.
- - stage: Generate a SHORT, informative stage label (1-5 words) FOR THE NEXT HEARING — what is expected to happen next. This appears in the cause list.
-   CRITICAL: Stage must be FORWARD-LOOKING (next business), NOT what happened today.
-   If next action is unclear from the message, set stage to "Awaiting Next Step — Ask User".
-   Examples of good forward-looking stages: "Their Objection & Written Statement", "Our Replication", "Cross of PW1", "Arguments", "Judgment", "Order", "Defence Evidence", "Accused Statement", "Final Arguments", "Mediation".
-   Bad (today-focused): "Filed Vakalat & Time Request", "Mediation Report Not Received".
+ - stage: The CURRENT STAGE of the case — what the case is at right now (e.g. 'Cross of PW1', 'Cross of DW1', 'Arguments', 'Evidence', 'Reissue Summons', 'Judgment', 'Order', 'Defence Evidence', 'Accused Statement', 'Final Arguments', 'Mediation'). This describes where the case stands, NOT what the next hearing is for. If the user says "cross of PW1" or "PW1 cross", stage should be "Cross of PW1", not "Next Call" or the next hearing purpose.
 - mentions_reminder: Did the user say anything about reminders?
 - wants_reminder: Only set true/false if the user explicitly says they want or don't want a reminder.
 - mediation_next_date: ONLY set this when the message explicitly mentions a SEPARATE mediation date that is DIFFERENT from the court next_date. When the user says something like "mediation date 6/7, before court 7/9" or "mediation date 6/7. next date before court 7/9", set next_date='09-07-2026' (the court date) and mediation_next_date='06-07-2026' (the mediation date). If only a mediation date is mentioned with no separate court date, do NOT set this — just set next_date to the mediation date and is_mediation=True.
