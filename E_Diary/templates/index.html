@@ -121,6 +121,15 @@
 								<div class="content"><p>Manage notes for specific court halls.</p></div>
 							</a>
 						</article>
+						{% if user_can_payments %}
+						<article class="style6">
+							<span class="image"><img src="{% static 'images/pic09.jpg' %}" alt="" /></span>
+							<a href="{% url 'payments:dashboard' %}">
+								<h2>Payments</h2>
+								<div class="content"><p>Manage case pricing, invoices, and fee agreements.</p></div>
+							</a>
+						</article>
+						{% endif %}
 					</section>
 					{% if user.is_superuser or user.userprofile.role == 'admin' %}
 					<section style="margin-top: 2rem; text-align: center;">
