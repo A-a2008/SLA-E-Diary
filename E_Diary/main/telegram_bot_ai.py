@@ -344,33 +344,40 @@ def parse_date(date_str):
 
 
 def _upsert_entry(case, entry_type, previous_date, advocate, business_text, stage, next_date, **extra):
-    """Create or update a diary entry. Advocate text always becomes business_summary."""
+    """Create or update a diary entry. Always generates LLM summary."""
     from main.models import DiaryEntry
 
     existing = DiaryEntry.objects.filter(
         case=case, previous_date=previous_date, entry_type=entry_type
     ).first()
-    defaults = dict(
-        stage=stage,
-        business=business_text,
-        next_date=next_date,
-        advocate=advocate,
-        **extra,
-    )
+    from .ecourts_integration import summarize_business
+
     if existing:
-        for k, v in defaults.items():
+        existing.business = business_text
+        existing.stage = stage
+        existing.next_date = next_date
+        existing.advocate = advocate
+        for k, v in extra.items():
             setattr(existing, k, v)
-        existing.business_summary = business_text
-        existing._skip_summary_update = True
+        summary = summarize_business(
+            existing.business, existing.ecourts_business or '', case=case
+        )
+        if summary:
+            existing.business_summary = summary
         existing.save()
         return existing
 
     entry = DiaryEntry.objects.create(
         case=case, entry_type=entry_type, previous_date=previous_date,
-        **defaults,
+        stage=stage, business=business_text, next_date=next_date,
+        advocate=advocate, **extra,
     )
-    entry.business_summary = business_text
-    entry.save()
+    summary = summarize_business(
+        entry.business or '', entry.ecourts_business or '', case=case
+    )
+    if summary:
+        entry.business_summary = summary
+        entry.save(update_fields=['business_summary'])
     return entry
 
 
@@ -514,12 +521,16 @@ def update_last_entry_from_advance(extraction, case, advocate=None):
     last_entry.next_date = next_date
     if extraction.business and extraction.business.strip():
         last_entry.business = extraction.business.strip()
-        last_entry.business_summary = extraction.business.strip()
-        last_entry._skip_summary_update = True
     if extraction.stage and extraction.stage.strip():
         last_entry.stage = extraction.stage.strip()
     if advocate:
         last_entry.advocate = advocate
+    from .ecourts_integration import summarize_business
+    summary = summarize_business(
+        last_entry.business or '', last_entry.ecourts_business or '', case=case
+    )
+    if summary:
+        last_entry.business_summary = summary
     last_entry.save()
 
     if case.mediation_status in (MediationStatus.REFERRED, MediationStatus.ONGOING):

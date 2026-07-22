@@ -580,6 +580,14 @@ def add_business(request, case_id):
             advocate=request.user,
         )
 
+        from .ecourts_integration import summarize_business
+        summary = summarize_business(
+            business, entry.ecourts_business or '', case=case
+        )
+        if summary:
+            entry.business_summary = summary
+            entry.save(update_fields=['business_summary'])
+
         if request.POST.get('needs_reminder'):
             reminder_task = request.POST.get('reminder_task', '').strip()
             reminder_start_on = request.POST.get('reminder_start_on')

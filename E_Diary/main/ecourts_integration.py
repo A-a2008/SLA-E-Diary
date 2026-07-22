@@ -95,10 +95,6 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
 
     if not advocate_text and not ecourts_text:
         return ""
-    if not ecourts_text:
-        return advocate_text
-    if not advocate_text:
-        return ecourts_text
 
     # Build case-history context
     history_lines = []
@@ -113,17 +109,28 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
                 history_lines.append(f"[{d}] {src.strip()}")
     history_block = "\n".join(history_lines) if history_lines else "No prior entries available."
 
-    system = (
-        "You are a legal assistant for an Indian law firm. Your job is to merge two descriptions of the SAME court hearing into a single accurate, readable summary.\n\n"
-        "RULES — STRICTLY FOLLOW:\n"
-        "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content. Do not guess what abbreviations stand for. Keep acronyms as-is (e.g. 'DHR' stays 'DHR', 'IA' stays 'IA').\n"
-        "2. If both descriptions say the same thing, output either one — they agree.\n"
-        "3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.\n"
-        "4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.\n"
-        "5. Output 1-3 sentences. Be concise but complete.\n"
-        "6. NEVER invent explanations for abbreviations — just keep them as they appear.\n\n"
-        "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations like DHR, IA, KMC etc. mean in THIS case. Do not include past history in the output unless it's directly relevant to understanding today's entry."
-    )
+    if advocate_text and ecourts_text:
+        system = (
+            "You are a legal assistant for an Indian law firm. Your job is to merge two descriptions of the SAME court hearing into a single accurate, readable summary.\n\n"
+            "RULES — STRICTLY FOLLOW:\n"
+            "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content. Do not guess what abbreviations stand for. Keep acronyms as-is (e.g. 'DHR' stays 'DHR', 'IA' stays 'IA').\n"
+            "2. If both descriptions say the same thing, output either one — they agree.\n"
+            "3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.\n"
+            "4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.\n"
+            "5. Output 1-3 sentences. Be concise but complete.\n"
+            "6. NEVER invent explanations for abbreviations — just keep them as they appear.\n\n"
+            "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations like DHR, IA, KMC etc. mean in THIS case. Do not include past history in the output unless it's directly relevant to understanding today's entry."
+        )
+    else:
+        system = (
+            "You are a legal assistant for an Indian law firm. Your job is to clean up a court diary entry into a readable summary.\n\n"
+            "RULES — STRICTLY FOLLOW:\n"
+            "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content.\n"
+            "2. Fix capitalization, punctuation, and obvious typos while preserving all acronyms as-is.\n"
+            "3. If the text is in ALL CAPS, convert to sentence case while keeping proper nouns and acronyms.\n"
+            "4. Output 1-3 sentences. Be concise but complete.\n\n"
+            "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations mean in THIS case. Do not include past history in the output unless it's directly relevant."
+        )
     user_msg = (
         f"PAST CASE HISTORY (for context only):\n{history_block}\n\n"
         f"Advocate's Notes:\n{advocate_text}\n\n"
@@ -140,7 +147,9 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             return result.strip()
 
     logger.warning("NVIDIA summarise: all models failed, using fallback")
-    return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
+    if advocate_text and ecourts_text:
+        return f"{advocate_text}\n\n(From eCourts: {ecourts_text})"
+    return advocate_text or ecourts_text
 
 
 # ---- date helpers ----
@@ -306,14 +315,13 @@ def fetch_and_update_case(case: Case) -> dict:
 
         if existing:
             existing.ecourts_business = biz_text
-            existing.business_summary = existing.business or biz_text
             existing.stage = stage or existing.stage
             if next_hearing:
                 existing.next_date = next_hearing
-            existing._skip_summary_update = True
             existing.save()
             result["entries_updated"] += 1
         else:
+            summary = summarize_business('', biz_text, case=case)
             court_label = COURT_LABELS.get(case.court, case.court)
             DiaryEntry.objects.create(
                 case=case,
@@ -330,7 +338,7 @@ def fetch_and_update_case(case: Case) -> dict:
                 stage=stage,
                 business='',
                 ecourts_business=biz_text,
-                business_summary=biz_text,
+                business_summary=summary,
                 next_date=next_hearing or biz_date,
             )
             result["entries_created"] += 1
