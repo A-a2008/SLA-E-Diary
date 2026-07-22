@@ -104,7 +104,8 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             "3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.\n"
             "4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.\n"
             "5. Output 1-3 sentences. Be concise but complete.\n"
-            "6. NEVER invent explanations for abbreviations — just keep them as they appear."
+            "6. NEVER invent explanations for abbreviations — just keep them as they appear.\n"
+            "7. CRITICAL: Do NOT prefix the output with any label (e.g. 'Advocate's notes:', 'Summary:', 'Merged:'). Output only the summary text itself."
         )
     else:
         system = (
@@ -113,7 +114,8 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content.\n"
             "2. Fix capitalization, punctuation, and obvious typos while preserving all acronyms as-is.\n"
             "3. If the text is in ALL CAPS, convert to sentence case while keeping proper nouns and acronyms.\n"
-            "4. Output 1-3 sentences. Be concise but complete."
+            "4. Output 1-3 sentences. Be concise but complete.\n"
+            "5. CRITICAL: Do NOT prefix the output with any label (e.g. 'Advocate's notes:', 'Summary:', 'Cleaned:'). Output only the summary text itself."
         )
     user_msg = (
         f"Advocate's Notes:\n{advocate_text}\n\n"
