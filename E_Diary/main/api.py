@@ -196,6 +196,18 @@ def ecourts_pending(request):
         ).filter(
             has_missing_ecourts
         ).distinct()[:50]
+
+        latest_next_date = DiaryEntry.objects.filter(
+            case=OuterRef('pk'), entry_type='business',
+        ).order_by('-previous_date').values('next_date')[:1]
+
+        overdue = Case.objects.filter(
+            ecourts_status='done', cnr__isnull=False, disposed=False,
+        ).exclude(cnr='').annotate(
+            last_next_date=Subquery(latest_next_date),
+        ).filter(
+            last_next_date__lte=today,
+        ).distinct()
     else:
         pending = Case.objects.filter(
             ecourts_status='pending', cnr__isnull=False, disposed=False
@@ -237,11 +249,15 @@ def ecourts_pending(request):
             })
         return items
 
+    overdue_list = _serialize(overdue) if update_only else []
+
     return JsonResponse({
         'pending': _serialize(pending),
         'pending_total': pending.count(),
         'refresh': _serialize(refresh),
         'refresh_total': refresh.count(),
+        'overdue': overdue_list,
+        'overdue_total': len(overdue_list),
     })
 
 
