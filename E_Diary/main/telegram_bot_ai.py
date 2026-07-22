@@ -312,7 +312,6 @@ def parse_date(date_str):
     if cleaned in ('day before yesterday', '2 days ago'):
         return today - datetime.timedelta(days=2)
     if cleaned.startswith('last '):
-        # "last monday", "last friday" etc.
         try:
             weekday_name = cleaned.split(' ', 1)[1][:3].title()
             weekday_map = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
@@ -325,20 +324,33 @@ def parse_date(date_str):
         except (IndexError, KeyError):
             pass
 
-    today = datetime.date.today()
-    for fmt in ('%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'):
-        try:
-            return datetime.datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
+    # Strip trailing time and junk (e.g. "4/8/26 01:50" -> "4/8/26")
+    import re
+    cleaned = re.sub(r'\s+\d{1,2}:\d{2}.*$', '', cleaned)
+    cleaned = cleaned.strip().rstrip('/')
 
-    # Try formats without year — infer from context (current year)
-    for fmt in ('%d-%m', '%d/%m', '%d %m'):
-        try:
-            parsed = datetime.datetime.strptime(date_str.strip(), fmt).date()
-            return parsed.replace(year=today.year)
-        except ValueError:
-            continue
+    for try_str in (cleaned, cleaned.rstrip('/')):
+        # Full date formats (4-digit year)
+        for fmt in ('%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d'):
+            try:
+                return datetime.datetime.strptime(try_str, fmt).date()
+            except ValueError:
+                continue
+
+        # 2-digit year formats (e.g. "4/8/26")
+        for fmt in ('%d/%m/%y', '%d-%m-%y', '%m/%d/%y'):
+            try:
+                return datetime.datetime.strptime(try_str, fmt).date()
+            except ValueError:
+                continue
+
+        # Formats without year — infer current year
+        for fmt in ('%d-%m', '%d/%m', '%d %m'):
+            try:
+                parsed = datetime.datetime.strptime(try_str, fmt).date()
+                return parsed.replace(year=today.year)
+            except ValueError:
+                continue
 
     return None
 
