@@ -28,6 +28,12 @@ def _check_token(request):
 
 @csrf_exempt
 @require_GET
+def ping(request):
+    return JsonResponse({'pong': True, 'ts': timezone.now().isoformat()})
+
+
+@csrf_exempt
+@require_GET
 def pending_messages(request):
     resp = _check_token(request)
     if resp:
