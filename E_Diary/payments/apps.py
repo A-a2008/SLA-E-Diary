@@ -39,5 +39,5 @@ class PaymentsConfig(AppConfig):
                             requires_cc_criminal=req_cc,
                             position=pos,
                         )
-        except OperationalError:
-            pass  # table doesn't exist yet (first migration)
+        except Exception:
+            pass  # table doesn't exist yet (first migration) or other issues
