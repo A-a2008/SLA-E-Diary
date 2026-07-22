@@ -254,15 +254,33 @@ class EcourtSession:
 
         cino_input = self.page.locator("#cino, input[name='cino'], input[id*='cino']")
         cino_input.wait_for(state="visible", timeout=30000)
+
+        # Store initial captcha src (typing CNR may trigger a captcha refresh)
+        self.page.evaluate("""() => {
+            const img = document.getElementById('captcha_image');
+            window._capSrc = img ? img.getAttribute('src') : '';
+        }""")
         
         for char in cnr:
             cino_input.type(char, delay=150)
         self.page.wait_for_timeout(800)
 
         self.page.wait_for_selector("#captcha_image", timeout=10000)
+
+        # Wait up to 10s for captcha src to change (CNR triggers refresh)
+        for _ in range(20):
+            changed = self.page.evaluate("""() => {
+                const img = document.getElementById('captcha_image');
+                return img && img.getAttribute('src') !== window._capSrc;
+            }""")
+            if changed:
+                logger.info("  Captcha refreshed after CNR")
+                break
+            self.page.wait_for_timeout(500)
+
         self.page.wait_for_function(
             "() => document.getElementById('captcha_image').naturalWidth > 0",
-            timeout=5000,
+            timeout=10000,
         )
         self.page.wait_for_timeout(1500)
 
