@@ -87,27 +87,13 @@ def _nvidia_chat(model: str, messages: list, temperature: float = 0, max_tokens:
 def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
     """Use NVIDIA LLM to merge advocate notes + eCourts data into one accurate summary.
 
-    Pass the Case object so past diary entries are included as context,
-    helping the AI understand abbreviations and the case history.
+    Only the provided advocate_text and ecourts_text are used — no past history.
     """
     advocate_text = (advocate_text or "").strip()
     ecourts_text = (ecourts_text or "").strip()
 
     if not advocate_text and not ecourts_text:
         return ""
-
-    # Build case-history context
-    history_lines = []
-    if case:
-        past = case.diary_entries.filter(entry_type='business').exclude(
-            business=None
-        ).exclude(business='').order_by('-previous_date')[:10]
-        for e in past:
-            src = e.business or e.ecourts_business or ""
-            if src.strip():
-                d = e.previous_date.strftime('%d-%m-%Y') if e.previous_date else '?'
-                history_lines.append(f"[{d}] {src.strip()}")
-    history_block = "\n".join(history_lines) if history_lines else "No prior entries available."
 
     if advocate_text and ecourts_text:
         system = (
@@ -118,8 +104,7 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             "3. If the advocate's notes are more detailed, use them as the base and weave in any extra detail from the eCourts record.\n"
             "4. If the eCourts record has extra detail the advocate omitted, incorporate it naturally.\n"
             "5. Output 1-3 sentences. Be concise but complete.\n"
-            "6. NEVER invent explanations for abbreviations — just keep them as they appear.\n\n"
-            "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations like DHR, IA, KMC etc. mean in THIS case. Do not include past history in the output unless it's directly relevant to understanding today's entry."
+            "6. NEVER invent explanations for abbreviations — just keep them as they appear."
         )
     else:
         system = (
@@ -128,11 +113,9 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
             "1. PRESERVE ALL FACTS — do not add, remove, reword, or 'improve' any factual content.\n"
             "2. Fix capitalization, punctuation, and obvious typos while preserving all acronyms as-is.\n"
             "3. If the text is in ALL CAPS, convert to sentence case while keeping proper nouns and acronyms.\n"
-            "4. Output 1-3 sentences. Be concise but complete.\n\n"
-            "PAST CASE HISTORY is provided for context only — it shows how this case has progressed, so you understand what abbreviations mean in THIS case. Do not include past history in the output unless it's directly relevant."
+            "4. Output 1-3 sentences. Be concise but complete."
         )
     user_msg = (
-        f"PAST CASE HISTORY (for context only):\n{history_block}\n\n"
         f"Advocate's Notes:\n{advocate_text}\n\n"
         f"eCourts Record:\n{ecourts_text}"
     )
