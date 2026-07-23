@@ -1,7 +1,6 @@
 import logging
 import json
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
 from .services import _nvidia_chat, NVIDIA_CLASSIFIER_MODELS, is_cc_criminal
 from .models import ChargeType
@@ -182,32 +181,19 @@ def classify_business_entry(entry):
         f"Entry details:\n{combined}"
     )
 
-    def _call(model):
-        return model, _nvidia_chat(model, [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ], temperature=0, timeout=35, rate_limit=False)
-
-    models = NVIDIA_CLASSIFIER_MODELS
-    with ThreadPoolExecutor(max_workers=len(models)) as pool:
-        fut_map = {pool.submit(_call, m): m for m in models}
+    model = NVIDIA_CLASSIFIER_MODELS[0]
+    result = _nvidia_chat(model, [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user_msg},
+    ], temperature=0, timeout=45, rate_limit=False)
+    if result:
         try:
-            for future in as_completed(fut_map, timeout=55):
-                model, result = future.result()
-                if result is None:
-                    continue
-                try:
-                    parsed = json.loads(_repair_json(result))
-                    codes = parsed.get('charge_codes', [])
-                    logger.info(f"Classifier ({model}) → {codes}")
-                    pool.shutdown(wait=False)
-                    return codes
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.warning(f"Classifier ({model}) parse error: {e}")
-                    continue
-        except TimeoutError:
-            logger.warning("Classifier timed out on all parallel models")
-            pool.shutdown(wait=False)
+            parsed = json.loads(_repair_json(result))
+            codes = parsed.get('charge_codes', [])
+            logger.info(f"Classifier ({model}) → {codes}")
+            return codes
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Classifier ({model}) parse error: {e}")
 
-    logger.warning("All classifier models failed, returning empty list")
+    logger.warning("Classifier failed, returning empty list")
     return []

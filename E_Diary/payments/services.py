@@ -103,8 +103,6 @@ def classify_and_setup(entry):
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 NVIDIA_CLASSIFIER_MODELS = [
-    "openai/gpt-oss-120b",
-    "mistralai/mistral-large-3-675b-instruct-2512",
     "openai/gpt-oss-20b",
 ]
 _nvidia_lock = threading.Lock()
