@@ -191,15 +191,14 @@
                 </div>
                 {% endif %}
                 {% if show_payments_ui and entry.entry_type == 'business' %}
-                {% with selected_ids=payments_entry_classifications|default:'' %}
                 <div class="payments-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #ce93d8;">
-                  <div id="charges-display-{{ entry.id }}" style="display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.85rem;">
+                  <div id="charges-display-{{ entry.id }}" style="display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin: 0.5rem 0;">
                     {% for ct in payments_charge_types %}
-                    <label style="display: inline-flex; align-items: center; gap: 0.3rem; cursor: default;
-                      {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}color: #7b1fa2; font-weight: 700;{% endif %}">
+                    <label style="display: inline-flex; align-items: center; gap: 0.3rem; cursor: default; font-size: 0.85rem; padding: 0; margin: 0; font-weight: {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}700{% else %}300{% endif %}; color: {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}#7b1fa2{% else %}#585858{% endif %};">
                       <input type="checkbox" value="{{ ct.id }}" disabled
+                             id="pay_{{ entry.id }}_{{ ct.id }}"
                              {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}checked{% endif %}
-                             style="opacity: 0.7;">
+                             style="-moz-appearance: auto; -webkit-appearance: auto; appearance: auto; opacity: 1; position: static; float: none; width: auto; height: auto; margin: 0; z-index: auto;">
                       {{ ct.name }}
                     </label>
                     {% endfor %}
@@ -219,7 +218,6 @@
                     </div>
                   </div>
                 </div>
-                {% endwith %}
                 {% endif %}
             </div>
             {% endfor %}
