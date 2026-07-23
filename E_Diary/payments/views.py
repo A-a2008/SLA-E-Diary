@@ -8,7 +8,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User, Group
 from django.contrib import messages
 from django.db import transaction
-from django.http import HttpResponse, Http404
+from django.db.models import OuterRef, Subquery, F, Q
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import HttpResponse, Http404, JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 
@@ -48,22 +50,39 @@ def dashboard(request):
     })
 
 
-# ── CASE LIST ──
+# ── CASE LIST (paginated, ordered by most recent entry) ──
 
 @payments_access_required
 def case_list(request):
     q = request.GET.get('q', '').strip()
-    cases = Case.objects.all().select_related('pricing').order_by('-id')
+
+    latest_entry = DiaryEntry.objects.filter(
+        case=OuterRef('pk'), entry_type='business'
+    ).order_by('-previous_date').values('previous_date')[:1]
+
+    cases = Case.objects.annotate(
+        latest_entry_date=Subquery(latest_entry)
+    ).select_related('pricing').order_by(
+        F('latest_entry_date').desc(nulls_last=True), '-id'
+    )
+
     if q:
-        from django.db.models import Q
         cases = cases.filter(
             Q(case_type__icontains=q) |
             Q(case_number__icontains=q) |
             Q(party_1__icontains=q) |
             Q(party_2__icontains=q)
         )
+
+    paginator = Paginator(cases, 10)
+    page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.get_page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.get_page(1)
+
     case_data = []
-    for case in cases:
+    for case in page_obj:
         pricing = get_or_create_pricing(case)
         entries = case.diary_entries.filter(entry_type='business')
         total_unpaid = 0
@@ -87,7 +106,7 @@ def case_list(request):
             'total_unpaid': f'\u20b9{int(total_unpaid):,}' if total_unpaid else '--',
         })
     return render(request, 'payments/case_list.html', {
-        'cases': case_data, 'q': q,
+        'page_obj': page_obj, 'cases': case_data, 'q': q,
     })
 
 
@@ -460,11 +479,36 @@ def reclassify_case(request, case_id):
     return redirect(request.META.get('HTTP_REFERER', '/payments/cases/'))
 
 
+# ── QUICK CLASSIFY (AJAX from diary entry case page) ──
+
+@require_http_methods(['POST'])
+@payments_access_required
+def quick_classify(request, entry_id):
+    entry = get_object_or_404(DiaryEntry, id=entry_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+    charge_type_ids = data.get('charge_types', [])
+    pricing = get_or_create_pricing(entry.case)
+    classification, _ = EntryClassification.objects.get_or_create(diary_entry=entry)
+    classification.auto_classified = False
+    classification.classified_by = request.user
+    classification.save()
+    classification.charge_items.all().delete()
+    for ct_id in charge_type_ids:
+        ct = get_object_or_404(ChargeType, id=int(ct_id))
+        cca = CaseChargeAmount.objects.filter(case_pricing=pricing, charge_type=ct).first()
+        amount = cca.amount if cca and cca.amount else Decimal('0')
+        EntryChargeItem.objects.create(
+            entry_classification=classification, charge_type=ct, amount=amount
+        )
+    return JsonResponse({'ok': True})
+
+
 # ── INVOICE ──
 
-@payments_access_required
-def invoice_pdf(request, entry_id):
-    entry = get_object_or_404(DiaryEntry, id=entry_id)
+def _invoice_context(entry, request=None):
     case = entry.case
     pricing = get_or_create_pricing(case)
     try:
@@ -477,16 +521,27 @@ def invoice_pdf(request, entry_id):
     except DiaryEntryPayment.DoesNotExist:
         payment = None
     total = sum(float(i.amount or 0) for i in items)
-    html = render_to_string('payments/invoice_pdf.html', {
+    custom_message = None
+    if request:
+        custom_message = request.GET.get('message', None) or None
+    return {
         'case': case,
         'entry': entry,
         'pricing': pricing,
         'items': items,
         'payment': payment,
         'total': total,
-    })
+        'custom_message': custom_message,
+    }
+
+
+@payments_access_required
+def invoice_pdf(request, entry_id):
+    entry = get_object_or_404(DiaryEntry, id=entry_id)
+    ctx = _invoice_context(entry, request)
+    html = render_to_string('payments/invoice_pdf.html', ctx)
     pdf = generate_pdf(html)
-    filename = f'invoice_{case.case_type}_{case.case_number}_{case.case_year}_{entry.id}.pdf'.replace('/', '_')
+    filename = f'invoice_{ctx["case"].case_type}_{ctx["case"].case_number}_{ctx["case"].case_year}_{entry.id}.pdf'.replace('/', '_')
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
@@ -495,33 +550,15 @@ def invoice_pdf(request, entry_id):
 @payments_access_required
 def invoice_image(request, entry_id):
     entry = get_object_or_404(DiaryEntry, id=entry_id)
-    case = entry.case
-    pricing = get_or_create_pricing(case)
-    try:
-        classification = entry.classification
-        items = classification.charge_items.all()
-    except EntryClassification.DoesNotExist:
-        items = []
-    try:
-        payment = entry.payment_info
-    except DiaryEntryPayment.DoesNotExist:
-        payment = None
-    total = sum(float(i.amount or 0) for i in items)
-    html = render_to_string('payments/invoice_pdf.html', {
-        'case': case,
-        'entry': entry,
-        'pricing': pricing,
-        'items': items,
-        'payment': payment,
-        'total': total,
-    })
+    ctx = _invoice_context(entry, request)
+    html = render_to_string('payments/invoice_pdf.html', ctx)
     pdf_bytes = generate_pdf(html).read()
     try:
         png_bytes = generate_png_from_pdf(pdf_bytes)
     except Exception as e:
         logger.error(f"PNG generation failed: {e}")
         return HttpResponse("Image generation failed. PDF is available instead.", status=500)
-    filename = f'invoice_{case.case_type}_{case.case_number}_{case.case_year}_{entry.id}.png'.replace('/', '_')
+    filename = f'invoice_{ctx["case"].case_type}_{ctx["case"].case_number}_{ctx["case"].case_year}_{entry.id}.png'.replace('/', '_')
     return HttpResponse(png_bytes, content_type='image/png',
                         headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 

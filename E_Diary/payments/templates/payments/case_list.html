@@ -49,6 +49,21 @@
         </tbody>
       </table>
     </div>
+    {% if page_obj.has_other_pages %}
+    <div style="margin-top: 1rem; text-align: center;">
+      <ul class="actions">
+        {% if page_obj.has_previous %}
+        <li><a href="?page=1{% if q %}&q={{ q }}{% endif %}" class="button small">&laquo;</a></li>
+        <li><a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="button small">&lsaquo;</a></li>
+        {% endif %}
+        <li><span class="button small disabled">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li><a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="button small">&rsaquo;</a></li>
+        <li><a href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}" class="button small">&raquo;</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -359,12 +359,44 @@ def diary_entry_case(request, case_id):
         court=case.court, court_hall=case.court_hall
     )
 
-    return render(request, 'main/diary_entry_case.html', {
+    ctx = {
         'case': case, 'entries': entries, 'court_labels': COURT_LABELS,
         'latest_data': latest_data, 'court_display': COURT_LABELS.get(case.court, case.court),
         'court_hall_notes': court_hall_notes,
         'mediation_statuses': MediationStatus,
-    })
+    }
+
+    if request.user.is_superuser or request.user.groups.filter(name='payments').exists():
+        try:
+            from payments.models import (
+                ChargeType, CaseChargeAmount, EntryClassification,
+                CasePricing
+            )
+            from payments.services import get_applicable_charge_types
+            pricing = CasePricing.objects.filter(case=case).first()
+            charge_types = get_applicable_charge_types(case) if pricing else []
+            charge_amounts = dict(
+                CaseChargeAmount.objects.filter(case_pricing=pricing)
+                .values_list('charge_type_id', 'amount')
+            ) if pricing else {}
+            classifications = {}
+            for entry in entries:
+                try:
+                    cls = entry.classification
+                    selected = set(cls.charge_items.filter(
+                        charge_type__isnull=False
+                    ).values_list('charge_type_id', flat=True))
+                    classifications[entry.id] = selected
+                except EntryClassification.DoesNotExist:
+                    classifications[entry.id] = set()
+            ctx['show_payments_ui'] = True
+            ctx['payments_charge_types'] = charge_types
+            ctx['payments_charge_amounts'] = charge_amounts
+            ctx['payments_entry_classifications'] = classifications
+        except Exception:
+            pass
+
+    return render(request, 'main/diary_entry_case.html', ctx)
 
 
 @login_required

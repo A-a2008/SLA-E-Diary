@@ -42,7 +42,12 @@
       <tr><td><strong>Client:</strong> {{ pricing.client_name|default:case.party_1 }}{% if pricing.client_phone %} — {{ pricing.client_phone }}{% endif %}</td><td></td></tr>
     </table>
   </div>
-  {% if entry.business or entry.ecourts_business %}
+  {% if custom_message %}
+  <div class="business-text">
+    <strong>Business:</strong><br>
+    {{ custom_message|linebreaksbr }}
+  </div>
+  {% elif entry.business or entry.ecourts_business %}
   <div class="business-text">
     <strong>Business:</strong><br>
     {{ entry.business|linebreaksbr }}

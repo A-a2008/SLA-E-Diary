@@ -20,7 +20,12 @@
           <tbody>
             {% for ct in charge_types %}
             <tr>
-              <td><input type="checkbox" name="charge_types" value="{{ ct.id }}" {% if ct.id in selected %}checked{% endif %}></td>
+              <td>
+                <input type="checkbox" name="charge_types" value="{{ ct.id }}"
+                       id="ct_{{ ct.id }}"
+                       {% if ct.id in selected %}checked{% endif %}>
+                <label for="ct_{{ ct.id }}"></label>
+              </td>
               <td>{{ ct.name }}</td>
               <td>{{ charge_amounts|dict_key:ct.id|default:'NIL' }}</td>
             </tr>

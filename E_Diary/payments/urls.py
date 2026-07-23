@@ -14,6 +14,7 @@ urlpatterns = [
     path('cases/<int:case_id>/fee-agreement/image/', views.fee_agreement_image, name='fee_agreement_image'),
     path('entries/<int:entry_id>/classify/', views.edit_classification, name='edit_classification'),
     path('entries/<int:entry_id>/payment/', views.toggle_payment, name='toggle_payment'),
+    path('entries/<int:entry_id>/quick-classify/', views.quick_classify, name='quick_classify'),
     path('entries/<int:entry_id>/invoice/pdf/', views.invoice_pdf, name='invoice_pdf'),
     path('entries/<int:entry_id>/invoice/image/', views.invoice_image, name='invoice_image'),
     path('entries/batch-pay/', views.batch_pay, name='batch_pay'),

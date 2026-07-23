@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load payments_extras %}
 
 {% block content %}
 <div id="main">
@@ -61,6 +62,9 @@
                 <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
+                {% if user_can_payments %}
+                <a href="{% url 'payments:case_pricing' case.id %}" class="button small" style="background: #9b59b6; color: #fff;">Payments</a>
+                {% endif %}
                 {% if case.mediation_status == mediation_statuses.REFERRED or case.mediation_status == mediation_statuses.ONGOING %}
                 <a href="{% url 'add_mediation_business' case.id %}" class="button small" style="background: #81c784;">+ Add Mediation Business</a>
                 <a href="{% url 'close_mediation' case.id %}" class="button small">Close Mediation</a>
@@ -186,6 +190,37 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                {% if show_payments_ui and entry.entry_type == 'business' %}
+                {% with selected_ids=payments_entry_classifications|default:'' %}
+                <div class="payments-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #ce93d8;">
+                  <div id="charges-display-{{ entry.id }}" style="display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.85rem;">
+                    {% for ct in payments_charge_types %}
+                    <label style="display: inline-flex; align-items: center; gap: 0.3rem; cursor: default;
+                      {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}color: #7b1fa2; font-weight: 700;{% endif %}">
+                      <input type="checkbox" value="{{ ct.id }}" disabled
+                             {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}checked{% endif %}
+                             style="opacity: 0.7;">
+                      {{ ct.name }}
+                    </label>
+                    {% endfor %}
+                  </div>
+                  <div style="margin-top: 0.4rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="button small" onclick="toggleEdit({{ entry.id }})" id="edit-btn-{{ entry.id }}">Edit</button>
+                    <button class="button small primary" id="save-btn-{{ entry.id }}" style="display:none;" onclick="saveCharges({{ entry.id }})">Save</button>
+                    <button class="button small" onclick="toggleInvoice({{ entry.id }})">Generate Invoice</button>
+                  </div>
+                  <div id="invoice-box-{{ entry.id }}" style="display:none; margin-top: 0.5rem;">
+                    <textarea id="invoice-msg-{{ entry.id }}" rows="3" style="width: 100%; font-size: 0.85rem;">{{ entry.business }}</textarea>
+                    <div style="margin-top: 0.3rem; display: flex; gap: 0.5rem;">
+                      <a class="button small" id="inv-pdf-{{ entry.id }}"
+                         href="{% url 'payments:invoice_pdf' entry.id %}" target="_blank">Download PDF</a>
+                      <a class="button small" id="inv-img-{{ entry.id }}"
+                         href="{% url 'payments:invoice_image' entry.id %}" target="_blank">Download Image</a>
+                    </div>
+                  </div>
+                </div>
+                {% endwith %}
+                {% endif %}
             </div>
             {% endfor %}
             {% else %}
@@ -198,4 +233,56 @@
 
     </div>
 </div>
+
+{% if show_payments_ui %}
+<script>
+function toggleEdit(entryId) {
+  document.querySelectorAll('#charges-display-' + entryId + ' input[type=checkbox]')
+    .forEach(function(cb) { cb.disabled = !cb.disabled; });
+  document.getElementById('edit-btn-' + entryId).style.display = 'none';
+  document.getElementById('save-btn-' + entryId).style.display = 'inline-block';
+}
+function saveCharges(entryId) {
+  var checked = Array.from(
+    document.querySelectorAll('#charges-display-' + entryId + ' input[type=checkbox]:checked')
+  ).map(function(cb) { return cb.value; });
+  fetch('/payments/entries/' + entryId + '/quick-classify/', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({charge_types: checked})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) window.location.reload();
+  });
+}
+function toggleInvoice(entryId) {
+  var box = document.getElementById('invoice-box-' + entryId);
+  var msg = document.getElementById('invoice-msg-' + entryId);
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  var pdfLink = document.getElementById('inv-pdf-' + entryId);
+  var imgLink = document.getElementById('inv-img-' + entryId);
+  var basePdf = "{% url 'payments:invoice_pdf' 0 %}".replace('0', entryId);
+  var baseImg = "{% url 'payments:invoice_image' 0 %}".replace('0', entryId);
+  pdfLink.href = basePdf;
+  imgLink.href = baseImg;
+}
+function updateInvoiceLinks(entryId) {
+  var msg = encodeURIComponent(document.getElementById('invoice-msg-' + entryId).value);
+  var pdfLink = document.getElementById('inv-pdf-' + entryId);
+  var imgLink = document.getElementById('inv-img-' + entryId);
+  var basePdf = "{% url 'payments:invoice_pdf' 0 %}".replace('0', entryId);
+  var baseImg = "{% url 'payments:invoice_image' 0 %}".replace('0', entryId);
+  pdfLink.href = basePdf + (msg ? '?message=' + msg : '');
+  imgLink.href = baseImg + (msg ? '?message=' + msg : '');
+}
+document.addEventListener('change', function(e) {
+  if (e.target.id && e.target.id.startsWith('invoice-msg-')) {
+    var entryId = e.target.id.replace('invoice-msg-', '');
+    updateInvoiceLinks(parseInt(entryId));
+  }
+});
+</script>
+{% endif %}
 {% endblock %}
