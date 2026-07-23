@@ -1,6 +1,7 @@
 import logging
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
 from .services import _nvidia_chat, NVIDIA_CLASSIFIER_MODELS, is_cc_criminal
 from .models import ChargeType
@@ -181,21 +182,32 @@ def classify_business_entry(entry):
         f"Entry details:\n{combined}"
     )
 
-    for model in NVIDIA_CLASSIFIER_MODELS:
-        result = _nvidia_chat(model, [
+    def _call(model):
+        return model, _nvidia_chat(model, [
             {"role": "system", "content": system},
             {"role": "user", "content": user_msg},
-        ], temperature=0, timeout=25)
-        if result is None:
-            continue
+        ], temperature=0, timeout=25, rate_limit=False)
+
+    top_models = NVIDIA_CLASSIFIER_MODELS[:3]
+    with ThreadPoolExecutor(max_workers=len(top_models)) as pool:
+        fut_map = {pool.submit(_call, m): m for m in top_models}
         try:
-            parsed = json.loads(_repair_json(result))
-            codes = parsed.get('charge_codes', [])
-            logger.info(f"Classifier ({model}) → {codes}")
-            return codes
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.warning(f"Classifier ({model}) parse error: {e}, raw: {result[:200]}")
-            continue
+            for future in as_completed(fut_map, timeout=50):
+                model, result = future.result()
+                if result is None:
+                    continue
+                try:
+                    parsed = json.loads(_repair_json(result))
+                    codes = parsed.get('charge_codes', [])
+                    logger.info(f"Classifier ({model}) → {codes}")
+                    pool.shutdown(wait=False)
+                    return codes
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Classifier ({model}) parse error: {e}")
+                    continue
+        except TimeoutError:
+            logger.warning("Classifier timed out on all parallel models")
+            pool.shutdown(wait=False)
 
     logger.warning("All classifier models failed, returning empty list")
     return []

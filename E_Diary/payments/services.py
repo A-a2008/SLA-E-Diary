@@ -124,14 +124,15 @@ def _wait_nvidia():
         _nvidia_last_call = time.monotonic()
 
 
-def _nvidia_chat(model, messages_list, temperature=0, max_tokens=4096, timeout=60):
+def _nvidia_chat(model, messages_list, temperature=0, max_tokens=4096, timeout=60, rate_limit=True):
     from openai import OpenAI
     api_key = os.getenv('NVIDIA_API_KEY')
     if not api_key:
         logger.warning("NVIDIA_API_KEY not set")
         return None
     client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key, timeout=timeout)
-    _wait_nvidia()
+    if rate_limit:
+        _wait_nvidia()
     try:
         resp = client.chat.completions.create(
             model=model,
