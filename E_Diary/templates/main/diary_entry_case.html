@@ -78,7 +78,7 @@
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
                 {% if user_can_payments %}
-                <a href="{% url 'payments:case_pricing' case.id %}" class="button small" style="background: #9b59b6; color: #fff;">Payments</a>
+                <a href="{% url 'payments:case_pricing' case.id %}" class="button small" style="background: #af7ac5;">Payments</a>
                 {% endif %}
                 {% if case.mediation_status == mediation_statuses.REFERRED or case.mediation_status == mediation_statuses.ONGOING %}
                 <a href="{% url 'add_mediation_business' case.id %}" class="button small" style="background: #81c784;">+ Add Mediation Business</a>
@@ -223,6 +223,7 @@
                   <div style="margin-top: 0.4rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button class="button small" onclick="toggleEdit({{ entry.id }})" id="edit-btn-{{ entry.id }}">Edit</button>
                     <button class="button small primary" id="save-btn-{{ entry.id }}" style="display:none;" onclick="saveCharges({{ entry.id }})">Save</button>
+                    <button class="button small" id="ai-btn-{{ entry.id }}" style="display:none;" onclick="aiReclassify({{ entry.id }})">AI Re-classify</button>
                     <button class="button small" onclick="toggleInvoice({{ entry.id }})">Generate Invoice</button>
                   </div>
                   <div id="invoice-box-{{ entry.id }}" style="display:none; margin-top: 0.5rem;">
@@ -253,9 +254,18 @@
 <script>
 function toggleEdit(entryId) {
   document.querySelectorAll('#charges-display-' + entryId + ' input[type=checkbox]')
-    .forEach(function(cb) { cb.disabled = !cb.disabled; });
+    .forEach(function(cb) { cb.disabled = false; });
   document.getElementById('edit-btn-' + entryId).style.display = 'none';
   document.getElementById('save-btn-' + entryId).style.display = 'inline-block';
+  document.getElementById('ai-btn-' + entryId).style.display = 'inline-block';
+}
+function aiReclassify(entryId) {
+  fetch('/payments/reclassify/' + entryId + '/', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+    }
+  }).then(function() { window.location.reload(); });
 }
 function saveCharges(entryId) {
   var checked = Array.from(
