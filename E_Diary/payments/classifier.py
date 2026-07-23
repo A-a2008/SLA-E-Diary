@@ -122,8 +122,10 @@ def classify_business_entry(entry):
         "describes US filing BOTH an IA AND filing objections to their IA.\n\n"
 
         "6. IA HEARING: Include if WE appeared before the judge specifically "
-        "for an IA hearing / made submissions on an IA. Not just any regular "
-        "hearing — there must be specific IA-related argument.\n\n"
+        "for an IA hearing / made submissions on an IA on THIS DATE. "
+        "If the text says 'for hearing on IA' as a future scheduled event "
+        "(after 'next date', 'extended till', 'adjourned to'), "
+        "it is NOT today's work — DO NOT include IA Hearing.\n\n"
 
         "7. " + ep_rule + "\n\n"
 
@@ -133,6 +135,28 @@ def classify_business_entry(entry):
         "11. mediation: Only if mediation session occurred.\n"
         "12. filing_vakalat: Only if WE filed vakalatnama (respondent side).\n"
         "13. filing_objections: Only if WE filed objections (respondent side).\n\n"
+
+        "TEMPORAL SCOPE (CRITICAL — MOST COMMON MISTAKE):\n"
+        "Only bill for work that happened ON THIS DATE's proceedings. "
+        "The business text often MIXES three timeframes:\n"
+        "- TODAY's proceedings → BILLABLE\n"
+        "- What is scheduled for NEXT DATE → NOT BILLABLE (future event)\n"
+        "- What happened on PREVIOUS dates → NOT BILLABLE (past, context only)\n\n"
+        "TEMPORAL INDICATORS:\n"
+        "  FUTURE (DO NOT bill): 'for next date', 'adjourned to', "
+        "'extended till', 'listed on', 'posted to', 'next date for', "
+        "'for hearing on', 'for further chief', 'for arguments on'\n"
+        "  TODAY (bill): 'present', 'files', 'argued', 'submitted', "
+        "'appeared', 'prayed for', 'filed', 'allowed', 'dismissed'\n\n"
+        "EXAMPLES:\n"
+        "- 'Filed extension IA. Extended till next date, for hearing on IA 1'\n"
+        "  → Today: present (hearing/appearance) + filed IA (IA)\n"
+        "  → NOT today: 'for hearing on IA 1' is NEXT DATE → DO NOT include IA Hearing\n"
+        "- 'Parties appeared. Arguments heard. Judgment reserved.'\n"
+        "  → Today: present (hearing/appearance) + arguments (arguments)\n"
+        "- 'Cross examination of PW1 done. Next date for further chief'\n"
+        "  → Today: present (hearing/appearance) + cross done (evidence_cross)\n"
+        "  → NOT today: 'for further chief' is NEXT DATE → DO NOT include evidence_chief\n\n"
 
         "SUBJECT-VERB ANALYSIS:\n"
         "- Who did the action? 'We filed' = our work. 'They filed' = NOT ours.\n"
@@ -152,14 +176,16 @@ def classify_business_entry(entry):
         f"Case: {case.case_type} {case.case_number}/{case.case_year}\n"
         f"Court: {case.court} ({case.court_hall})\n"
         f"Representing: {side}\n"
-        f"Opposite: {opposite}\n\nEntry details:\n{combined}"
+        f"Opposite: {opposite}\n"
+        f"Entry date: {entry.previous_date}\n\n"
+        f"Entry details:\n{combined}"
     )
 
     for model in NVIDIA_CLASSIFIER_MODELS:
         result = _nvidia_chat(model, [
             {"role": "system", "content": system},
             {"role": "user", "content": user_msg},
-        ], temperature=0)
+        ], temperature=0, timeout=25)
         if result is None:
             continue
         try:

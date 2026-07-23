@@ -124,13 +124,13 @@ def _wait_nvidia():
         _nvidia_last_call = time.monotonic()
 
 
-def _nvidia_chat(model, messages_list, temperature=0, max_tokens=4096):
+def _nvidia_chat(model, messages_list, temperature=0, max_tokens=4096, timeout=60):
     from openai import OpenAI
     api_key = os.getenv('NVIDIA_API_KEY')
     if not api_key:
         logger.warning("NVIDIA_API_KEY not set")
         return None
-    client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
+    client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key, timeout=timeout)
     _wait_nvidia()
     try:
         resp = client.chat.completions.create(
@@ -141,7 +141,7 @@ def _nvidia_chat(model, messages_list, temperature=0, max_tokens=4096):
         )
         return resp.choices[0].message.content or ""
     except Exception as e:
-        logger.warning(f"NVIDIA API error (model={model}): {e}")
+        logger.warning(f"NVIDIA API error (model={model}, timeout={timeout}s): {e}")
         return None
 
 
