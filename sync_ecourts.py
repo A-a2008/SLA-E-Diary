@@ -17,6 +17,7 @@ import os
 import sys
 import time
 import json
+import uuid
 import argparse
 import logging
 
@@ -41,6 +42,55 @@ PA_URL = os.getenv('PA_URL') or os.getenv('API_BASE_URL', 'http://localhost:8099
 
 ECOURTS_CALL_LIMIT = 200
 HEADERS = {'Authorization': f'Bearer {API_TOKEN}'} if API_TOKEN else {}
+
+QUEUE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.ecourts_queue')
+
+
+def _ensure_queue_dir():
+    os.makedirs(QUEUE_DIR, exist_ok=True)
+
+
+def _save_to_queue(payload: dict) -> str:
+    _ensure_queue_dir()
+    filename = f"{uuid.uuid4().hex}.json"
+    with open(os.path.join(QUEUE_DIR, filename), 'w') as f:
+        json.dump(payload, f)
+    return filename
+
+
+def _push_from_queue():
+    _ensure_queue_dir()
+    files = sorted(os.listdir(QUEUE_DIR))
+    if not files:
+        return
+    logger.info(f"Draining {len(files)} queued items...")
+    for filename in files:
+        filepath = os.path.join(QUEUE_DIR, filename)
+        try:
+            with open(filepath) as f:
+                payload = json.load(f)
+            api_post('/api/ecourts/upsert/', payload)
+            os.unlink(filepath)
+            case_id = payload.get('case_id', '?')
+            logger.info(f"  Queued case {case_id} pushed successfully")
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            logger.warning(f"  Queued item {filename} still failing: {e}")
+        except Exception as e:
+            logger.warning(f"  Queued item {filename} error: {e}, removing")
+            try:
+                os.unlink(filepath)
+            except OSError:
+                pass
+
+
+def _push_or_queue(payload: dict, label: str = ""):
+    try:
+        result = api_post('/api/ecourts/upsert/', payload)
+        return result
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        filename = _save_to_queue(payload)
+        logger.warning(f"{label} Push failed ({e}) — saved to local queue: {filename}")
+        return None
 
 
 # ============================================================
@@ -261,6 +311,7 @@ def main():
         sys.exit(1)
 
     logger.info(f"Starting eCourts sync against {PA_URL}")
+    _push_from_queue()
 
     if args.single:
         payload = {'case_id': args.single}
@@ -283,13 +334,16 @@ def main():
             if items:
                 items = cleanup_texts(items, f"  [SINGLE][{args.single}]")
             status = 'done' if items or scraped.get('ecourts_available') else 'no_data'
-            push = api_post('/api/ecourts/upsert/', {
+            result = _push_or_queue({
                 'case_id': args.single,
                 'status': status,
                 'entries': items,
                 'ecourts_available': scraped.get('ecourts_available', True),
-            })
-            logger.info(f"Done — created {push.get('created', 0)}, updated {push.get('updated', 0)}")
+            }, f"  [SINGLE][{args.single}]")
+            if result:
+                logger.info(f"Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
+            else:
+                logger.info(f"Saved to local queue for retry")
         return
 
     total_processed = 0
@@ -316,13 +370,12 @@ def main():
 
                     if scraped.get('error'):
                         logger.error(f"  [{label_phase}][{case_id}] Scraper error: {scraped['error']}")
-                        payload = {
+                        _push_or_queue({
                             'case_id': case_id,
                             'status': 'pending' if label_phase == 'PENDING' else 'done',
                             'entries': [],
                             'ecourts_available': scraped.get('ecourts_available', True),
-                        }
-                        api_post('/api/ecourts/upsert/', payload)
+                        }, f"  [{label_phase}][{case_id}]")
                         continue
 
                     ecourts_available = scraped.get('ecourts_available', True)
@@ -334,12 +387,15 @@ def main():
                     status = 'done' if items or ecourts_available else 'no_data'
 
                     logger.info(f"  [{label_phase}][{case_id}] Pushing {len(items)} entries (status={status})...")
-                    result = api_post('/api/ecourts/upsert/', {
+                    result = _push_or_queue({
                         'case_id': case_id,
                         'status': status,
                         'entries': items,
                         'ecourts_available': ecourts_available,
-                    })
+                    }, f"  [{label_phase}][{case_id}]")
+                    if result is None:
+                        logger.warning(f"  [{label_phase}][{case_id}] Queued for retry")
+                        continue
                     logger.info(f"  [{label_phase}][{case_id}] Done — created {result.get('created', 0)}, updated {result.get('updated', 0)}")
                     total_processed += 1
 
@@ -385,6 +441,7 @@ def main():
         time.sleep(1)
 
     logger.info(f"Sync complete. Processed {total_processed} cases.")
+    _push_from_queue()
 
 
 if __name__ == '__main__':
