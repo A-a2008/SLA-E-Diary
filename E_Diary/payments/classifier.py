@@ -186,13 +186,13 @@ def classify_business_entry(entry):
         return model, _nvidia_chat(model, [
             {"role": "system", "content": system},
             {"role": "user", "content": user_msg},
-        ], temperature=0, timeout=25, rate_limit=False)
+        ], temperature=0, timeout=35, rate_limit=False)
 
-    top_models = NVIDIA_CLASSIFIER_MODELS[:3]
-    with ThreadPoolExecutor(max_workers=len(top_models)) as pool:
-        fut_map = {pool.submit(_call, m): m for m in top_models}
+    models = NVIDIA_CLASSIFIER_MODELS
+    with ThreadPoolExecutor(max_workers=len(models)) as pool:
+        fut_map = {pool.submit(_call, m): m for m in models}
         try:
-            for future in as_completed(fut_map, timeout=50):
+            for future in as_completed(fut_map, timeout=55):
                 model, result = future.result()
                 if result is None:
                     continue

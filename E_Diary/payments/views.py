@@ -457,6 +457,9 @@ def reclassify_single(request, entry_id):
     try:
         classify_and_setup(entry)
         messages.success(request, 'Re-classified successfully.')
+    except TimeoutError:
+        logger.error(f"Reclassification timed out for entry {entry_id}")
+        messages.error(request, 'Classification timed out. Try again later.')
     except Exception as e:
         logger.error(f"Reclassification failed: {e}", exc_info=True)
         messages.error(request, f'Classification failed: {e}')
