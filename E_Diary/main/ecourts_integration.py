@@ -30,6 +30,7 @@ if _project_root not in sys.path:
 ECOURTS_CALL_LIMIT = 200  # enough for the full history of any case
 
 import json
+import re
 import threading
 import time
 
@@ -139,6 +140,33 @@ def summarize_business(advocate_text: str, ecourts_text: str, case=None) -> str:
 
 # ---- date helpers ----
 
+def _repair_json(raw: str) -> str:
+    """Fix common LLM JSON issues: unescaped newlines inside string values."""
+    raw = re.sub(r'^```(?:json)?\s*\n?', '', raw.strip())
+    raw = re.sub(r'\n?```\s*$', '', raw)
+    result = []
+    in_string = False
+    escape = False
+    for ch in raw:
+        if escape:
+            result.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            escape = True
+            result.append(ch)
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string and ch in '\n\r':
+            result.append('\\n')
+            continue
+        result.append(ch)
+    return ''.join(result)
+
+
 def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
     """Use NVIDIA LLM to fix capitalization, punctuation, and obvious typos in eCourts text.
 
@@ -169,7 +197,7 @@ def cleanup_ecourts_text(business_text: str, stage_text: str = "") -> tuple:
         if result is None:
             continue
         try:
-            parsed = json.loads(result)
+            parsed = json.loads(_repair_json(result))
             cleaned_biz = (parsed.get("business") or business_text).strip()
             cleaned_stage = (parsed.get("stage") or stage_text).strip()
             logger.info(f"NVIDIA cleanup used model: {model}")

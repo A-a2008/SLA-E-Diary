@@ -1,10 +1,38 @@
 import logging
 import json
+import re
 
 from .services import _nvidia_chat, NVIDIA_CLASSIFIER_MODELS, is_cc_criminal
 from .models import ChargeType
 
 logger = logging.getLogger(__name__)
+
+
+def _repair_json(raw: str) -> str:
+    """Fix common LLM JSON issues: unescaped newlines inside string values."""
+    raw = re.sub(r'^```(?:json)?\s*\n?', '', raw.strip())
+    raw = re.sub(r'\n?```\s*$', '', raw)
+    result = []
+    in_string = False
+    escape = False
+    for ch in raw:
+        if escape:
+            result.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            escape = True
+            result.append(ch)
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string and ch in '\n\r':
+            result.append('\\n')
+            continue
+        result.append(ch)
+    return ''.join(result)
 
 
 def classify_business_entry(entry):
@@ -61,13 +89,7 @@ def classify_business_entry(entry):
         if result is None:
             continue
         try:
-            cleaned = result.strip()
-            if cleaned.startswith('```'):
-                cleaned = cleaned.split('\n', 1)[-1] if '\n' in cleaned else cleaned[3:]
-                cleaned = cleaned.strip()
-                if cleaned.endswith('```'):
-                    cleaned = cleaned[:-3].strip()
-            parsed = json.loads(cleaned)
+            parsed = json.loads(_repair_json(result))
             codes = parsed.get('charge_codes', [])
             logger.info(f"Classifier ({model}) → {codes}")
             return codes
