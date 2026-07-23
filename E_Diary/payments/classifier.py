@@ -1,7 +1,6 @@
 import logging
 import json
 import re
-from decimal import Decimal
 
 from .services import _nvidia_chat, NVIDIA_CLASSIFIER_MODELS, is_cc_criminal
 from .models import ChargeType
@@ -66,42 +65,6 @@ def _get_previous_entries(entry, limit=5):
     return "\n".join(lines)
 
 
-def _build_legal_rules(side, opposite, cc_criminal, stage, is_accused):
-    if cc_criminal:
-        ep_rule = (
-            "filing_ep: ONLY if WE filed EP for OUR client. "
-            "Under CrPC s.317, EP (Exemption Petition) is filed by the accused "
-            "to seek exemption from personal appearance. "
-        )
-        if not is_accused:
-            ep_rule += (
-                f"We represent the {side} (not the accused). "
-                "If the text says 'Accused filed EP' or 'they filed EP', "
-                "that is the opposite party's work — DO NOT include filing_ep."
-            )
-        else:
-            ep_rule += (
-                f"We represent the {side} (the accused). "
-                "If we filed EP for our client, include filing_ep."
-            )
-        procedure = "CrPC 1973 (Criminal Procedure Code)"
-        extra_rules = (
-            "- In criminal cases under CrPC, the accused can file EP for exemption.\n"
-            "- The complainant/petitioner does NOT file EP.\n"
-            "- IA under CrPC can be filed by either party for various reliefs.\n"
-        )
-    else:
-        ep_rule = "filing_ep: Only applicable to CC criminal cases. Skip."
-        procedure = "CPC 1908 (Civil Procedure Code)"
-        extra_rules = (
-            "- In civil cases under CPC, either party can file IAs.\n"
-            "- CPC Order IX deals with ex-parte proceedings.\n"
-            "- CPC Order XXXIX deals with interim injunctions.\n"
-        )
-
-    return procedure, ep_rule, extra_rules
-
-
 def classify_business_entry(entry):
     case = entry.case
     advocate_text = (entry.business or '').strip()
@@ -118,51 +81,71 @@ def classify_business_entry(entry):
     cc_criminal = is_cc_criminal(case)
     side, opposite = _get_sides(case)
     is_accused = _is_accused_side(case)
-    procedure, ep_rule, extra_rules = _build_legal_rules(side, opposite, cc_criminal, stage, is_accused)
     prev_context = _get_previous_entries(entry, 5)
     charge_types_all = ChargeType.objects.all()
     charge_list = "\n".join([f"- {ct.code}: {ct.name}" for ct in charge_types_all])
 
+    ep_rule = (
+        "filing_ep: ONLY if WE are the accused/respondent AND we filed EP for our client. "
+        "Under CrPC s.317, EP is filed by the accused to seek exemption from appearance. "
+        + ("We represent the accused — check if we filed EP." if is_accused else
+           "We do NOT represent the accused — accused filing EP is THEIR work, NOT ours.")
+    )
+
     system = (
         "You are a legal billing classifier for SHAILAJA LAW ASSOCIATES, an Indian law firm.\n\n"
-        "IDENTITY: We represent the **" + side + "** in this case. "
-        "The opposite party is the **" + opposite + "**.\n"
-        "Procedure: " + procedure + "\n\n"
-        "CORE RULE: Only bill for work OUR FIRM performed. "
-        "If the opposite party did the work, DO NOT bill it.\n\n"
-        "LEGAL RULES:\n"
-        "- hearing: Include if our advocate appeared in court (any reason). "
-        "'Parties appeared' means we appeared too — include.\n"
-        "- evidence_chief: Include only if WE conducted examination-in-chief of OUR witness.\n"
-        "- evidence_cross: Include only if WE cross-examined the opposite party's witness.\n"
-        "- arguments: Include if WE argued before the court.\n"
-        "- " + ep_rule + "\n"
-        "- ia: Include if WE filed an IA.\n"
-        "- ia_objections: Include if WE filed objections to an IA.\n"
-        "- ia_hearing: Include if WE appeared for IA hearing.\n"
-        "- preparation: Include if WE prepared documents (when we represent "
-        "the petitioner/plaintiff side).\n"
-        "- filing: Include if WE filed documents (petitioner side).\n"
-        "- filing_vakalat: Include if WE filed vakalatnama (respondent side).\n"
-        "- filing_objections: Include if WE filed objections (respondent side).\n"
-        "- mediation: Include if mediation/hearing at mediation centre.\n\n"
-        + extra_rules +
-        "SUBJECT-VERB ANALYSIS (MOST IMPORTANT):\n"
-        "Identify who performed EACH action in the business text:\n"
-        "- If \"Accused filed EP\" → subject = Accused → THEY did it → NOT us.\n"
-        "- If \"We filed EP\" → subject = Our firm → WE did it → billable.\n"
-        "- If \"Advocate filed\" → subject = Advocate (us) → billable.\n"
-        "- If \"they filed objections\" → 'they' = opposite party → NOT us.\n"
-        "- If \"Parties appeared\" → both sides → WE appeared → bill hearing.\n"
-        "- If passive voice like \"EP was filed\" → check stage & context "
-        "to determine who.\n"
-        "- Ambiguous? Look at the stage and case type for clues.\n\n"
-        "PREVIOUS ENTRIES for context:\n" + prev_context + "\n\n"
+        "IDENTITY: We represent the **" + side + "**. "
+        "Opposite party: **" + opposite + "**.\n\n"
+
+        "CARDINAL RULES (strictly follow):\n\n"
+
+        "1. HEARING/APPEARANCE: ALWAYS include this if we appeared in court "
+        "that day. It is the DEFAULT charge for any court attendance. "
+        "If we were present, bill hearing/appearance. This applies regardless "
+        "of what else was done.\n\n"
+
+        "2. PREPARATION: ONLY when the case was FIRST filed / initially instituted. "
+        "NEVER include for subsequent steps like filing an IA, filing a memo, "
+        "filing objections, etc. Preparation is a ONE-TIME charge at case commencement.\n\n"
+
+        "3. FILING: ONLY when the case was FIRST filed / initially instituted. "
+        "NEVER include for filing an IA, filing extension application, filing "
+        "withdrawal memo, filing vakalat, etc. Filing is a ONE-TIME charge at "
+        "case commencement.\n\n"
+
+        "4. IA: Include ONLY if WE filed an Interlocutory Application. "
+        "Examples: extension IA, stay IA, exemption IA. NOT for filing main case.\n\n"
+
+        "5. IA OBJECTIONS: Include ONLY if WE filed objections to an IA "
+        "filed by the OPPOSITE party. This is MUTUALLY EXCLUSIVE with IA — "
+        "do NOT include both IA and IA Objections unless the entry clearly "
+        "describes US filing BOTH an IA AND filing objections to their IA.\n\n"
+
+        "6. IA HEARING: Include if WE appeared before the judge specifically "
+        "for an IA hearing / made submissions on an IA. Not just any regular "
+        "hearing — there must be specific IA-related argument.\n\n"
+
+        "7. " + ep_rule + "\n\n"
+
+        "8. evidence_chief: Only if WE conducted examination-in-chief of OUR witness.\n"
+        "9. evidence_cross: Only if WE cross-examined THEIR witness.\n"
+        "10. arguments: Only if WE made final arguments/submissions.\n"
+        "11. mediation: Only if mediation session occurred.\n"
+        "12. filing_vakalat: Only if WE filed vakalatnama (respondent side).\n"
+        "13. filing_objections: Only if WE filed objections (respondent side).\n\n"
+
+        "SUBJECT-VERB ANALYSIS:\n"
+        "- Who did the action? 'We filed' = our work. 'They filed' = NOT ours.\n"
+        "- 'Filed extension IA' → implies WE filed it (advocate notation) → IA.\n"
+        "- 'Accused filed EP' → opposite party → NOT our work.\n"
+        "- 'Parties appeared' → WE appeared → bill hearing/appearance.\n\n"
+
+        "PREVIOUS ENTRIES CONTEXT:\n" + prev_context + "\n\n"
+
         "AVAILABLE CHARGES:\n" + charge_list + "\n\n"
-        "Return ONLY a JSON object: {\"charge_codes\": [\"code1\", \"code2\"], "
-        "\"reasoning\": \"brief reasoning\"}\n"
-        "Over-classifying (including uncertain charges) is better than "
-        "under-classifying — leave it to human review."
+
+        "Return ONLY JSON: {\"charge_codes\": [\"code1\", ...], \"reasoning\": \"...\"}\n"
+        "If unsure, INCLUDE rather than exclude (human review will correct)."
     )
 
     user_msg = (

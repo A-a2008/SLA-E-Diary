@@ -3,6 +3,20 @@
 {% load payments_extras %}
 
 {% block content %}
+<style>
+.pay-cb-wrap { white-space: nowrap; display: inline-flex; align-items: center; margin: 0.1rem 0; }
+.pay-cb-wrap input[type="checkbox"] {
+  -moz-appearance: auto; -webkit-appearance: auto; appearance: auto;
+  opacity: 1; position: static; float: none; width: auto; height: auto;
+  margin: 0; z-index: auto; cursor: default;
+}
+.pay-cb-wrap input[type="checkbox"]:disabled { cursor: default; }
+.pay-cb-label {
+  display: inline-block; padding-left: 0.4em; margin: 0;
+  font-size: 0.85em; font-weight: 400; color: #555; cursor: default;
+}
+.pay-cb-checked { font-weight: 700; color: #7b1fa2; }
+</style>
 <div id="main">
     <div class="inner">
 
@@ -194,13 +208,15 @@
                 <div class="payments-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #ce93d8;">
                   <div id="charges-display-{{ entry.id }}" style="display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin: 0.5rem 0;">
                     {% for ct in payments_charge_types %}
-                    <label style="display: inline-flex; align-items: center; gap: 0.3rem; cursor: default; font-size: 0.85rem; padding: 0; margin: 0; font-weight: {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}700{% else %}300{% endif %}; color: {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}#7b1fa2{% else %}#585858{% endif %};">
+                    <span class="pay-cb-wrap">
                       <input type="checkbox" value="{{ ct.id }}" disabled
                              id="pay_{{ entry.id }}_{{ ct.id }}"
-                             {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}checked{% endif %}
-                             style="-moz-appearance: auto; -webkit-appearance: auto; appearance: auto; opacity: 1; position: static; float: none; width: auto; height: auto; margin: 0; z-index: auto;">
-                      {{ ct.name }}
-                    </label>
+                             {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}checked{% endif %}>
+                      <label for="pay_{{ entry.id }}_{{ ct.id }}" class="pay-cb-label
+                        {% if entry.id in payments_entry_classifications and ct.id in payments_entry_classifications|dict_key:entry.id %}pay-cb-checked{% endif %}">
+                        {{ ct.name }}
+                      </label>
+                    </span>
                     {% endfor %}
                   </div>
                   <div style="margin-top: 0.4rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
