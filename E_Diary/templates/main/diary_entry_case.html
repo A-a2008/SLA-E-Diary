@@ -4,19 +4,30 @@
 
 {% block content %}
 <style>
-.pay-cb-wrap { white-space: nowrap; display: inline-flex; align-items: center; margin: 0.1rem 0; }
+.pay-cb-wrap {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  margin: 0.15rem 0; position: relative;
+}
 .pay-cb-wrap input[type="checkbox"] {
-  -moz-appearance: auto; -webkit-appearance: auto; appearance: auto;
-  opacity: 1; position: static; float: none; width: auto; height: auto;
-  margin: 0; z-index: auto; cursor: default;
+  position: absolute; opacity: 0; width: 0; height: 0; margin: 0; padding: 0;
+  z-index: -1;
 }
-.pay-cb-wrap input[type="checkbox"]:disabled { cursor: default; }
-.pay-cb-wrap input[type="checkbox"] + label:before { display: none !important; }
 .pay-cb-label {
-  display: inline-block; padding-left: 0.4em; margin: 0;
-  font-size: 0.85em; font-weight: 400; color: #555; cursor: default;
+  position: relative; padding-left: 1.8em; cursor: default;
+  font-size: 0.85em; font-weight: 400; color: #585858; line-height: 1.6;
 }
-.pay-cb-checked { font-weight: 700; color: #7b1fa2; }
+.pay-cb-label:before {
+  content: ''; display: inline-block;
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1.2em; height: 1.2em;
+  border: 1px solid #c9c9c9; border-radius: 3px; background: #fff;
+  text-align: center; line-height: 1.2em; font-size: 0.9em;
+}
+.pay-cb-wrap input[type="checkbox"]:checked + .pay-cb-label { font-weight: 700; color: #7b1fa2; }
+.pay-cb-wrap input[type="checkbox"]:checked + .pay-cb-label:before {
+  background: #585858; border-color: #585858;
+  color: #fff; content: '✓';
+}
 </style>
 <div id="main">
     <div class="inner">
@@ -223,7 +234,10 @@
                   <div style="margin-top: 0.4rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button class="button small" onclick="toggleEdit({{ entry.id }})" id="edit-btn-{{ entry.id }}">Edit</button>
                     <button class="button small primary" id="save-btn-{{ entry.id }}" style="display:none;" onclick="saveCharges({{ entry.id }})">Save</button>
-                    <button class="button small" id="ai-btn-{{ entry.id }}" style="display:none;" onclick="aiReclassify({{ entry.id }})">AI Re-classify</button>
+                    <form method="post" action="{% url 'payments:reclassify_single' entry.id %}" style="display:none;" id="ai-form-{{ entry.id }}">
+                      {% csrf_token %}
+                      <button type="submit" class="button small">AI Re-classify</button>
+                    </form>
                     <button class="button small" onclick="toggleInvoice({{ entry.id }})">Generate Invoice</button>
                   </div>
                   <div id="invoice-box-{{ entry.id }}" style="display:none; margin-top: 0.5rem;">
@@ -257,16 +271,9 @@ function toggleEdit(entryId) {
     .forEach(function(cb) { cb.disabled = false; });
   document.getElementById('edit-btn-' + entryId).style.display = 'none';
   document.getElementById('save-btn-' + entryId).style.display = 'inline-block';
-  document.getElementById('ai-btn-' + entryId).style.display = 'inline-block';
+  document.getElementById('ai-form-' + entryId).style.display = 'inline-block';
 }
-function aiReclassify(entryId) {
-  fetch('/payments/reclassify/' + entryId + '/', {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-    }
-  }).then(function() { window.location.reload(); });
-}
+
 function saveCharges(entryId) {
   var checked = Array.from(
     document.querySelectorAll('#charges-display-' + entryId + ' input[type=checkbox]:checked')
