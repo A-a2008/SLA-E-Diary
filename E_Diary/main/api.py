@@ -237,11 +237,10 @@ def ecourts_upsert(request):
                 existing.next_date = next_hearing
             if stage:
                 existing.stage = stage
+            existing._skip_summary_update = True
             existing.save()
             updated += 1
         else:
-            from .ecourts_integration import summarize_business
-            summary = summarize_business('', biz_text, case=case)
             court_label = COURT_LABELS.get(case.court, case.court)
             DiaryEntry.objects.create(
                 case=case,
@@ -258,7 +257,7 @@ def ecourts_upsert(request):
                 stage=stage,
                 business='',
                 ecourts_business=biz_text,
-                business_summary=summary,
+                business_summary=biz_text,
                 next_date=next_hearing or biz_date,
             )
             created += 1

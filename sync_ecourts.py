@@ -109,7 +109,7 @@ def api_get(endpoint: str) -> dict:
 def api_post(endpoint: str, data: dict) -> dict:
     url = f'{PA_URL}{endpoint}'
     resp = requests.post(url, headers={**HEADERS, 'Content-Type': 'application/json'},
-                         json=data, timeout=60)
+                         json=data, timeout=180)
     resp.raise_for_status()
     return resp.json()
 

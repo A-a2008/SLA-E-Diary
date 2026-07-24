@@ -331,10 +331,10 @@ def fetch_and_update_case(case: Case) -> dict:
             existing.stage = stage or existing.stage
             if next_hearing:
                 existing.next_date = next_hearing
+            existing._skip_summary_update = True
             existing.save()
             result["entries_updated"] += 1
         else:
-            summary = summarize_business('', biz_text, case=case)
             court_label = COURT_LABELS.get(case.court, case.court)
             DiaryEntry.objects.create(
                 case=case,
@@ -351,7 +351,9 @@ def fetch_and_update_case(case: Case) -> dict:
                 stage=stage,
                 business='',
                 ecourts_business=biz_text,
-                business_summary=summary,
+                business_summary=biz_text,
+                next_date=next_hearing or biz_date,
+            )
                 next_date=next_hearing or biz_date,
             )
             result["entries_created"] += 1

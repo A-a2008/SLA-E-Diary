@@ -31,3 +31,4 @@ logs/
 *.sqlite3-shm
 *.sqlite3-wal
 *.sqlite3-journal
+.ecourts_queue/

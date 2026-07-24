@@ -191,6 +191,9 @@ class DiaryEntry(models.Model):
 
     class Meta:
         ordering = ['-previous_date']
+        indexes = [
+            models.Index(fields=['case', 'previous_date', 'entry_type']),
+        ]
 
 
 class CauseListEntry(models.Model):
