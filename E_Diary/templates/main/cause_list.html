@@ -66,7 +66,7 @@
             <h2 style="margin-top: 2rem; color: #f2849e;">{{ bldg_code|building_label }}</h2>
 
             <div class="table-wrapper" style="overflow-x: auto;">
-<table class="alt cause-list-table" style="width: 100%; word-break: break-word;">
+<table class="alt cause-list-table" style="width: 100%;">
                     <colgroup>
                         <col style="width: 5%;">
                         <col style="width: 6%;">
@@ -239,6 +239,10 @@
         color: #f2849e;
     }
 
+    .cause-list-table {
+        word-break: break-word;
+    }
+
     @media (min-width: 769px) {
         .cause-list-table {
             table-layout: fixed;
@@ -246,14 +250,16 @@
     }
 
     @media (max-width: 768px) {
-        .table-wrapper {
-            -webkit-overflow-scrolling: touch;
-        }
         .cause-list-table {
             table-layout: auto;
             width: max-content;
             min-width: 100%;
             word-break: normal;
+        }
+        .cause-list-table td:nth-child(1),
+        .cause-list-table td:nth-child(2),
+        .cause-list-table td:nth-child(6) {
+            white-space: nowrap;
         }
         .cause-list-table col {
             width: auto !important;
