@@ -66,7 +66,7 @@
             <h2 style="margin-top: 2rem; color: #f2849e;">{{ bldg_code|building_label }}</h2>
 
             <div class="table-wrapper" style="overflow-x: auto;">
-<table class="alt" style="width: 100%; table-layout: fixed; word-break: break-word;">
+<table class="alt cause-list-table" style="width: 100%; word-break: break-word;">
                     <colgroup>
                         <col style="width: 5%;">
                         <col style="width: 6%;">
@@ -237,6 +237,23 @@
     }
     .cause-list-row:hover td strong {
         color: #f2849e;
+    }
+
+    @media (min-width: 769px) {
+        .cause-list-table {
+            table-layout: fixed;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .table-wrapper {
+            -webkit-overflow-scrolling: touch;
+        }
+        .cause-list-table {
+            table-layout: auto;
+            width: max-content;
+            min-width: 100%;
+        }
     }
 </style>
 {% endblock %}
