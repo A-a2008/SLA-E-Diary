@@ -7,6 +7,7 @@ services.ecourts.gov.in, plus HTML parsing utilities.
 import json
 import logging
 import os
+import random
 import re
 import time
 
@@ -95,6 +96,83 @@ def _clean(val: str) -> str:
 
 def _strip_html(val: str) -> str:
     return _clean(re.sub(r"<[^>]+>", "", val))
+
+
+# ---------- human-like browsing utilities ----------
+
+def _rand(min_ms: int, max_ms: int) -> float:
+    return random.uniform(min_ms / 1000, max_ms / 1000)
+
+
+def _human_type(page, selector: str, text: str, fast: bool = False):
+    """Type text with human-like delays between characters."""
+    el = page.locator(selector)
+    el.wait_for(state="visible", timeout=10000)
+    el.click()
+    time.sleep(_rand(100, 300))
+    el.fill("")
+    for char in text:
+        delay = _rand(30, 80) if fast else _rand(60, 200)
+        el.type(char, delay=delay)
+        if not fast and random.random() < 0.03:
+            time.sleep(_rand(200, 600))
+
+
+def _human_click(page, selector_or_el):
+    """Move mouse to element with human-like jitter and click."""
+    el = page.query_selector(selector_or_el) if isinstance(selector_or_el, str) else selector_or_el
+    if not el:
+        return el
+    box = el.bounding_box()
+    if not box:
+        el.click()
+        return el
+
+    target_x = box["x"] + box["width"] * random.uniform(0.3, 0.7)
+    target_y = box["y"] + box["height"] * random.uniform(0.3, 0.7)
+
+    from_x = random.uniform(100, 400)
+    from_y = random.uniform(100, 400)
+    steps = random.randint(10, 18)
+
+    for i in range(steps):
+        t = (i + 1) / steps
+        eased = 1 - (1 - t) ** 2
+        x = from_x + (target_x - from_x) * eased + random.uniform(-4, 4)
+        y = from_y + (target_y - from_y) * eased + random.uniform(-4, 4)
+        page.mouse.move(x, y)
+        time.sleep(_rand(8, 25))
+
+    time.sleep(_rand(80, 200))
+    page.mouse.click(target_x, target_y)
+    return el
+
+
+def _create_stealth_page(browser):
+    """Create a browser context with stealth settings to avoid detection."""
+    context = browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/125.0.0.0 Safari/537.36"
+        ),
+        locale="en-IN",
+        timezone_id="Asia/Kolkata",
+    )
+    page = context.new_page()
+    page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        window.chrome = { runtime: {} };
+    """)
+    return page
+
+
+def _check_rate_limited(page) -> bool:
+    """Check if the page shows a rate-limit / block message."""
+    text = page.inner_text("body")
+    return "Welcome User" in text or "Search Page not Found" in text or "not Found here" in text
 
 
 # ---------- HTML parsers ----------
@@ -236,9 +314,11 @@ class EcourtSession:
 
     def __init__(self):
         self.pw = sync_playwright().start()
-        self.browser = self.pw.chromium.launch(headless=True)
-        self.page = self.browser.new_page()
-        self.page.set_viewport_size({"width": 1280, "height": 900})
+        self.browser = self.pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        )
+        self.page = _create_stealth_page(self.browser)
         self._casetype_list = None
         self._ecourts_available = True
         self._case_history = []
@@ -251,23 +331,25 @@ class EcourtSession:
         """Load homepage, type CNR like human, wait for captcha, solve, click search. Returns API JSON."""
         _wait_for_ecourts_slot()
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
+        time.sleep(_rand(2000, 3500))
+
+        if _check_rate_limited(self.page):
+            raise RuntimeError("Rate limited by eCourts — IP banned")
 
         cino_input = self.page.locator("#cino, input[name='cino'], input[id*='cino']")
         cino_input.wait_for(state="visible", timeout=30000)
 
-        # Store initial captcha src (typing CNR may trigger a captcha refresh)
         self.page.evaluate("""() => {
             const img = document.getElementById('captcha_image');
             window._capSrc = img ? img.getAttribute('src') : '';
         }""")
-        
+
         for char in cnr:
-            cino_input.type(char, delay=150)
-        self.page.wait_for_timeout(800)
+            cino_input.type(char, delay=random.randint(80, 220))
+        time.sleep(_rand(800, 1500))
 
         self.page.wait_for_selector("#captcha_image", timeout=10000)
 
-        # Wait up to 10s for captcha src to change (CNR triggers refresh)
         for _ in range(20):
             changed = self.page.evaluate("""() => {
                 const img = document.getElementById('captcha_image');
@@ -282,7 +364,7 @@ class EcourtSession:
             "() => document.getElementById('captcha_image').naturalWidth > 0",
             timeout=10000,
         )
-        self.page.wait_for_timeout(1500)
+        time.sleep(_rand(1500, 2500))
 
         from .ocr import solve_captcha
 
@@ -298,7 +380,7 @@ class EcourtSession:
                 logger.info(f"  OCR too short ({len(captcha_text)} chars), retaking screenshot...")
             else:
                 logger.info(f"  OCR empty, retaking screenshot...")
-            self.page.wait_for_timeout(1000)
+            time.sleep(_rand(800, 1500))
 
         if not captcha_text or len(captcha_text.strip()) < 5:
             return None
@@ -307,15 +389,15 @@ class EcourtSession:
         captcha_input = self.page.locator("#fcaptcha_code")
         captcha_input.wait_for(state="visible", timeout=5000)
         for char in captcha_text:
-            captcha_input.type(char, delay=100)
-        self.page.wait_for_timeout(500)
+            captcha_input.type(char, delay=random.randint(60, 180))
+        time.sleep(_rand(400, 800))
 
         if not can_call():
             raise RuntimeError("eCourts API call limit reached")
         with self.page.expect_response(
-            lambda r: "cnr_status/searchByCNR" in r.url, timeout=20000
+            lambda r: "cnr_status/searchByCNR" in r.url, timeout=30000
         ) as resp_info:
-            self.page.locator("#searchbtn").click()
+            _human_click(self.page, "#searchbtn")
             response = resp_info.value
         _LAST_ECOURTS_REQUEST = _time.monotonic()
 
@@ -332,11 +414,17 @@ class EcourtSession:
                 data = self._solve_and_search(cnr, attempt)
             except (TimeoutError, PlaywrightTimeoutError) as e:
                 logger.info(f"  Page load timeout: {e}, retrying...")
-                time.sleep(2)
+                time.sleep(_rand(3000, 5000))
                 continue
             except _json.JSONDecodeError as e:
                 logger.info(f"  Empty API response: {e}, retrying...")
-                time.sleep(2)
+                time.sleep(_rand(3000, 5000))
+                continue
+            except RuntimeError as e:
+                if "Rate limited" in str(e):
+                    raise
+                logger.info(f"  Error: {e}, retrying...")
+                time.sleep(_rand(3000, 5000))
                 continue
 
             if data is None:
@@ -398,6 +486,7 @@ class EcourtSession:
         ) as resp_info:
             self.page.evaluate(f"viewBusiness({args})")
             response = resp_info.value
+        time.sleep(_rand(300, 600))
 
         raw = json.loads(response.text())
         html = raw.get("data_list", "")
@@ -406,7 +495,7 @@ class EcourtSession:
     def back_to_history(self):
         """Go back from business details to case history."""
         self.page.evaluate("back_fun('cnr')")
-        time.sleep(1)
+        time.sleep(_rand(1000, 2000))
 
     def close(self):
         self.browser.close()

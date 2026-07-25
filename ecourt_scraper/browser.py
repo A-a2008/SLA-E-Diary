@@ -1,5 +1,8 @@
-import re
 import json
+import random
+import re
+import time
+
 from playwright.sync_api import sync_playwright, Page, Browser
 
 from .config import BASE_URL
@@ -14,6 +17,35 @@ SELECTORS = {
 }
 
 
+def _rand(min_ms: int, max_ms: int) -> float:
+    return random.uniform(min_ms / 1000, max_ms / 1000)
+
+
+def _human_click(page, selector_or_el):
+    el = page.query_selector(selector_or_el) if isinstance(selector_or_el, str) else selector_or_el
+    if not el:
+        return el
+    box = el.bounding_box()
+    if not box:
+        el.click()
+        return el
+    target_x = box["x"] + box["width"] * random.uniform(0.3, 0.7)
+    target_y = box["y"] + box["height"] * random.uniform(0.3, 0.7)
+    from_x = random.uniform(100, 400)
+    from_y = random.uniform(100, 400)
+    steps = random.randint(10, 18)
+    for i in range(steps):
+        t = (i + 1) / steps
+        eased = 1 - (1 - t) ** 2
+        x = from_x + (target_x - from_x) * eased + random.uniform(-4, 4)
+        y = from_y + (target_y - from_y) * eased + random.uniform(-4, 4)
+        page.mouse.move(x, y)
+        time.sleep(_rand(8, 25))
+    time.sleep(_rand(80, 200))
+    page.mouse.click(target_x, target_y)
+    return el
+
+
 class EcourtBrowser:
     """Manages a headless Chromium session for the eCourts portal."""
 
@@ -25,23 +57,45 @@ class EcourtBrowser:
 
     def start(self):
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=True)
-        self.page = self.browser.new_page()
-        self.page.set_viewport_size({"width": 1280, "height": 900})
+        self.browser = self.playwright.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        )
+        context = self.browser.new_context(
+            viewport={"width": 1366, "height": 768},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+            locale="en-IN",
+            timezone_id="Asia/Kolkata",
+        )
+        self.page = context.new_page()
+        self.page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            window.chrome = { runtime: {} };
+        """)
 
     def navigate_to_homepage(self):
         print("  🌐 Navigating to eCourts homepage ...")
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
-        self.page.wait_for_timeout(3000)
+        time.sleep(_rand(2500, 4000))
+        text = self.page.inner_text("body")
+        if "Welcome User" in text or "Search Page not Found" in text:
+            print("  ⚠️  Rate limited by eCourts (Welcome User page)")
+            raise RuntimeError("Rate limited by eCourts — IP banned")
 
     def enter_cnr(self, cnr_text: str):
         locator = self.page.locator(SELECTORS["cnr_input"]).first
         locator.wait_for(state="attached", timeout=10000)
-        try:
-            locator.fill(cnr_text)
-        except Exception:
-            self.page.evaluate(f"document.getElementById('cino').value = '{cnr_text}'")
+        locator.click()
+        time.sleep(_rand(100, 300))
+        for char in cnr_text:
+            locator.type(char, delay=random.randint(80, 220))
         print(f"  ✅ CNR entered: {cnr_text}")
+        time.sleep(_rand(800, 1500))
 
     def fetch_captcha_image(self) -> bytes:
         """Screenshot the captcha image element to read exactly what the browser displays."""
@@ -52,19 +106,19 @@ class EcourtBrowser:
     def enter_captcha(self, captcha_text: str):
         locator = self.page.locator(SELECTORS["captcha_input"]).first
         locator.wait_for(state="attached", timeout=5000)
-        try:
-            locator.fill(captcha_text)
-        except Exception:
-            # Fallback: use JS to set value directly
-            self.page.evaluate(f"document.getElementById('fcaptcha_code').value = '{captcha_text}'")
+        locator.click()
+        time.sleep(_rand(100, 250))
+        for char in captcha_text:
+            locator.type(char, delay=random.randint(60, 180))
         print(f"  🔤 Captcha entered: {captcha_text}")
+        time.sleep(_rand(400, 800))
 
     def click_search(self):
         with self.page.expect_response(
             lambda r: "cnr_status/searchByCNR" in r.url,
-            timeout=20000,
+            timeout=30000,
         ) as resp_info:
-            self.page.evaluate("document.getElementById('searchbtn').click()")
+            _human_click(self.page, "#searchbtn")
             print("  🔍 Search button clicked, waiting for API response ...")
             response = resp_info.value
 
