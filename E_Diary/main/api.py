@@ -129,6 +129,12 @@ def ecourts_pending(request):
         ).filter(
             has_missing_ecourts
         ).distinct()[:50]
+
+        overdue = Case.objects.filter(
+            ecourts_status='done', cnr__isnull=False, disposed=False,
+        ).exclude(cnr='').filter(
+            Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
+        ).distinct()
     else:
         pending = Case.objects.filter(
             ecourts_status='pending', cnr__isnull=False, disposed=False
@@ -170,11 +176,15 @@ def ecourts_pending(request):
             })
         return items
 
+    overdue_list = _serialize(overdue) if update_only else []
+
     return JsonResponse({
         'pending': _serialize(pending),
         'pending_total': pending.count(),
         'refresh': _serialize(refresh),
         'refresh_total': refresh.count(),
+        'overdue': overdue_list,
+        'overdue_total': len(overdue_list),
     })
 
 
