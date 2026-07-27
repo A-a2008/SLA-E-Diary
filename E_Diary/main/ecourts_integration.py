@@ -354,8 +354,6 @@ def fetch_and_update_case(case: Case) -> dict:
                 business_summary=biz_text,
                 next_date=next_hearing or biz_date,
             )
-                next_date=next_hearing or biz_date,
-            )
             result["entries_created"] += 1
 
     if scraped_data.get("limit_reached"):
