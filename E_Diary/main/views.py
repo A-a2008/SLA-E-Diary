@@ -1226,7 +1226,7 @@ def cause_list_docx(request):
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
         if bldg_code == 'mediation_centre':
-            mediation_val = entry.mediation_time.strftime('%H:%M') if entry.mediation_time else '—'
+            mediation_val = entry.mediation_time.strftime('%I:%M %p') if entry.mediation_time else '—'
             data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', mediation_val]
         else:
             cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"

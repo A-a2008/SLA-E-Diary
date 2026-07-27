@@ -115,7 +115,7 @@
                             <td>
                                 {% if bldg_code == 'mediation_centre' %}
                                 <span id="display-list-{{ entry.case.id }}">
-                                    {{ entry.mediation_time|time:'H:i'|default:'—' }}
+                                    {{ entry.mediation_time|time:'h:i A'|default:'—' }}
                                 </span>
                                 <span id="edit-list-{{ entry.case.id }}" style="display:none;">
                                     <input type="time" name="mediation_time_{{ entry.case.id }}" value="{{ entry.mediation_time|time:'H:i' }}" style="width: 7rem;" data-original="{{ entry.mediation_time|time:'H:i' }}">
