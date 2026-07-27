@@ -971,7 +971,7 @@ def cause_list(request):
                     getattr(e, 'mediation_court', None) or e.case.court, 'other'))
                     if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
                 court_order.index(e.case.court) if e.case.court in court_order else 999,
-                (e.list_i or 0) + (e.list_ii or 0),
+                e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
             ))
             for sl, e in enumerate(entries, 1):
                 e.sl_no = sl
@@ -1087,7 +1087,7 @@ def cause_list_docx(request):
             getattr(e, 'mediation_court', None) or e.case.court, 'other'))
             if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
-        (e.list_i or 0) + (e.list_ii or 0),
+        e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
     ))
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
@@ -1321,7 +1321,7 @@ def cause_list_pdf(request):
             getattr(e, 'mediation_court', None) or e.case.court, 'other'))
             if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
-        (e.list_i or 0) + (e.list_ii or 0),
+        e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
     ))
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
