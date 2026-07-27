@@ -103,58 +103,36 @@ def ecourts_pending(request):
 
     from django.db.models import OuterRef, Subquery, Exists, Q
 
-    has_missing_ecourts = Exists(
-        DiaryEntry.objects.filter(
-            case=OuterRef('pk'),
-            entry_type='business',
-            ecourts_business='',
-        )
+    pending = Case.objects.filter(
+        ecourts_status='pending', cnr__isnull=False, disposed=False
+    ).exclude(cnr='')
+
+    cutoff = timezone.now() - datetime.timedelta(hours=6)
+
+    latest_next_date = DiaryEntry.objects.filter(
+        case=OuterRef('pk'), entry_type='business',
+    ).order_by('-previous_date').values('next_date')[:1]
+
+    has_no_entries = ~Exists(
+        DiaryEntry.objects.filter(case=OuterRef('pk'), entry_type='business')
     )
 
+    refresh_limit = 50 if force or update_only else 15
+
+    refresh = Case.objects.exclude(
+        ecourts_status='pending'
+    ).filter(
+        cnr__isnull=False, disposed=False,
+    ).exclude(cnr='').annotate(
+        last_next_date=Subquery(latest_next_date),
+    ).filter(
+        Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
+    ).filter(
+        Q(last_next_date__lte=today) | Q(has_no_entries)
+    ).distinct()[:refresh_limit]
+
     if force:
-        all_cases = Case.objects.filter(cnr__isnull=False).exclude(cnr='').filter(disposed=False)
-        pending = all_cases.filter(ecourts_status='pending')
-        refresh = all_cases
-    elif update_only:
-        pending = Case.objects.filter(
-            ecourts_status='pending', cnr__isnull=False, disposed=False
-        ).exclude(cnr='')
-
-        cutoff = timezone.now() - datetime.timedelta(hours=6)
-
-        latest_next_date = DiaryEntry.objects.filter(
-            case=OuterRef('pk'), entry_type='business',
-        ).order_by('-previous_date').values('next_date')[:1]
-
-        has_no_entries = ~Exists(
-            DiaryEntry.objects.filter(case=OuterRef('pk'), entry_type='business')
-        )
-
-        refresh = Case.objects.exclude(
-            ecourts_status='pending'
-        ).filter(
-            cnr__isnull=False, disposed=False,
-        ).exclude(cnr='').annotate(
-            last_next_date=Subquery(latest_next_date),
-        ).filter(
-            Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
-        ).filter(
-            Q(last_next_date__lte=today) | Q(has_no_entries)
-        ).distinct()[:50]
-    else:
-        pending = Case.objects.filter(
-            ecourts_status='pending', cnr__isnull=False, disposed=False
-        ).exclude(cnr='')
-
-        cutoff = timezone.now() - datetime.timedelta(hours=6)
-
-        refresh = Case.objects.filter(
-            cnr__isnull=False, disposed=False
-        ).exclude(cnr='').filter(
-            Q(ecourts_last_checked__isnull=True) | Q(ecourts_last_checked__lt=cutoff)
-        ).filter(
-            has_missing_ecourts
-        ).distinct()[:15]
+        refresh = Case.objects.filter(cnr__isnull=False, disposed=False).exclude(cnr='')
 
     def _serialize(case_qs):
         items = []
