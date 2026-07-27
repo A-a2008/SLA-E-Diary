@@ -415,17 +415,15 @@ def main():
         data = api_get(endpoint)
         pending = data.get('pending', [])
         refresh = data.get('refresh', [])
-        overdue = data.get('overdue', [])
         pending_total = data.get('pending_total', 0)
         refresh_total = data.get('refresh_total', 0)
-        overdue_total = data.get('overdue_total', 0)
 
         if args.update:
-            logger.info(f"Update mode: Pending: {len(pending)} | Refresh: {len(refresh)} | Overdue: {len(overdue)} (queue totals — pending: {pending_total}, refresh: {refresh_total}, overdue: {overdue_total})")
+            logger.info(f"Update mode: Pending: {len(pending)} | Today: {len(refresh)} (queue totals — pending: {pending_total}, today: {refresh_total})")
         else:
             logger.info(f"Pending: {len(pending)} | Refresh: {len(refresh)} (queue totals — pending: {pending_total}, refresh: {refresh_total})")
 
-        if not pending and not refresh and not overdue:
+        if not pending and not refresh:
             logger.info(f"Nothing to process. Done.")
             break
 
@@ -433,10 +431,8 @@ def main():
             _process_phase('PENDING', pending)
 
         if refresh:
-            _process_phase('REFRESH', refresh)
-
-        if overdue:
-            _process_phase('OVERDUE', overdue)
+            log_label = 'TODAY' if args.update else 'REFRESH'
+            _process_phase(log_label, refresh)
 
         time.sleep(1)
 
