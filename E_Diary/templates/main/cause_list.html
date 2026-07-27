@@ -157,6 +157,8 @@
             </div>
 
             <script>
+                var editing = false;
+
                 document.querySelectorAll('.incharge-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         var cb = this.querySelector('input[type=checkbox]');
@@ -167,55 +169,62 @@
                         this.querySelector('.incharge-indicator').textContent = cb.checked ? '★' : '☆';
                     });
                 });
+
                 document.querySelectorAll('tr[data-case-id]').forEach(function(row) {
                     row.addEventListener('click', function(e) {
+                        if (editing) return;
                         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'LABEL' || e.target.tagName === 'A') return;
                         var caseId = this.getAttribute('data-case-id');
                         window.location.href = "{% url 'diary_entry_case' 0 %}".replace('0', caseId);
                     });
                 });
-            </script>
-        </form>
 
-        <script>
-            var editing = false;
-            var originalValues = {};
-
-            function toggleEdit() {
-                editing = !editing;
-                var btn = document.getElementById('edit-toggle');
-                var saveSection = document.getElementById('save-section');
-                var allSpans = document.querySelectorAll('[id^="display-list-"], [id^="edit-list-"]');
-
-                if (editing) {
-                    btn.textContent = 'Cancel Editing';
-                    btn.className = 'button';
-                    allSpans.forEach(function(el) {
-                        if (el.id.startsWith('display-list-')) {
-                            el.style.display = 'none';
-                        } else if (el.id.startsWith('edit-list-')) {
-                            el.style.display = 'inline';
-                        }
-                    });
-                    saveSection.style.display = 'block';
-                } else {
-                    btn.textContent = 'Edit Cause List Numbers';
-                    btn.className = 'button primary';
-                    allSpans.forEach(function(el) {
-                        if (el.id.startsWith('display-list-')) {
-                            el.style.display = 'inline';
-                        } else if (el.id.startsWith('edit-list-')) {
-                            el.style.display = 'none';
-                        }
-                    });
-                    saveSection.style.display = 'none';
-                    // revert all inputs to originals
-                    document.querySelectorAll('[id^="edit-list-"] input').forEach(function(inp) {
-                        inp.value = inp.getAttribute('data-original');
-                    });
+                function beforeUnloadHandler(e) {
+                    e.preventDefault();
+                    e.returnValue = '';
                 }
-            }
-        </script>
+
+                document.getElementById('cause-list-form').addEventListener('submit', function() {
+                    window.removeEventListener('beforeunload', beforeUnloadHandler);
+                });
+
+                function toggleEdit() {
+                    editing = !editing;
+                    var btn = document.getElementById('edit-toggle');
+                    var saveSection = document.getElementById('save-section');
+                    var allSpans = document.querySelectorAll('[id^="display-list-"], [id^="edit-list-"]');
+
+                    if (editing) {
+                        btn.textContent = 'Cancel Editing';
+                        btn.className = 'button';
+                        allSpans.forEach(function(el) {
+                            if (el.id.startsWith('display-list-')) {
+                                el.style.display = 'none';
+                            } else if (el.id.startsWith('edit-list-')) {
+                                el.style.display = 'inline';
+                            }
+                        });
+                        saveSection.style.display = 'block';
+                        window.addEventListener('beforeunload', beforeUnloadHandler);
+                    } else {
+                        btn.textContent = 'Edit Cause List Numbers';
+                        btn.className = 'button primary';
+                        allSpans.forEach(function(el) {
+                            if (el.id.startsWith('display-list-')) {
+                                el.style.display = 'inline';
+                            } else if (el.id.startsWith('edit-list-')) {
+                                el.style.display = 'none';
+                            }
+                        });
+                        saveSection.style.display = 'none';
+                        window.removeEventListener('beforeunload', beforeUnloadHandler);
+                        // revert all inputs to originals
+                        document.querySelectorAll('[id^="edit-list-"] input').forEach(function(inp) {
+                            inp.value = inp.getAttribute('data-original');
+                        });
+                    }
+                }
+            </script>
 
         {% elif date_str %}
         <div style="text-align: center; padding: 3rem; color: #585858;">
