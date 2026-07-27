@@ -84,7 +84,11 @@
                             <th>Case &amp; Parties</th>
                             <th>Representing</th>
                             <th>Stage</th>
+                            {% if bldg_code == 'mediation_centre' %}
+                            <th>Time</th>
+                            {% else %}
                             <th>Cause List</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -109,6 +113,14 @@
                             <td>{{ entry.case.representing }}</td>
                             <td>{{ entry.stage|default:'—' }}</td>
                             <td>
+                                {% if bldg_code == 'mediation_centre' %}
+                                <span id="display-list-{{ entry.case.id }}">
+                                    {{ entry.mediation_time|time:'H:i'|default:'—' }}
+                                </span>
+                                <span id="edit-list-{{ entry.case.id }}" style="display:none;">
+                                    <input type="time" name="mediation_time_{{ entry.case.id }}" value="{{ entry.mediation_time|time:'H:i' }}" style="width: 7rem;" data-original="{{ entry.mediation_time|time:'H:i' }}">
+                                </span>
+                                {% else %}
                                 <span id="display-list-{{ entry.case.id }}">
                                     List I: {{ entry.list_i|default:'—' }}<br>
                                     List II: {{ entry.list_ii|default:'—' }}
@@ -117,6 +129,7 @@
                                     List I: <input type="text" name="list_i_{{ entry.case.id }}" value="{{ entry.list_i|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_i|default:'' }}"><br>
                                     List II: <input type="text" name="list_ii_{{ entry.case.id }}" value="{{ entry.list_ii|default:'' }}" style="width: 5rem;" data-original="{{ entry.list_ii|default:'' }}">
                                 </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

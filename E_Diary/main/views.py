@@ -842,10 +842,13 @@ def cause_list(request):
                 entry_ids.add(key.replace('list_i_', ''))
             elif key.startswith('list_ii_'):
                 entry_ids.add(key.replace('list_ii_', ''))
+            elif key.startswith('mediation_time_'):
+                entry_ids.add(key.replace('mediation_time_', ''))
 
         for eid in sorted(entry_ids):
             list_i_val = request.POST.get(f'list_i_{eid}', '').strip()
             list_ii_val = request.POST.get(f'list_ii_{eid}', '').strip()
+            mediation_time_val = request.POST.get(f'mediation_time_{eid}', '').strip()
 
             if list_ii_val and not list_i_val:
                 errors.append(f'Case #{eid}: List II cannot be entered without List I.')
@@ -861,18 +864,29 @@ def cause_list(request):
                 case=case,
             )
 
-            if list_i_val:
+            if mediation_time_val:
+                try:
+                    cl_entry.mediation_time = datetime.datetime.strptime(mediation_time_val, '%H:%M').time()
+                    cl_entry.list_i = None
+                    cl_entry.list_ii = None
+                    cl_entry.save()
+                    updated += 1
+                except ValueError:
+                    errors.append(f'Case #{eid}: Invalid time format (use HH:MM).')
+            elif list_i_val:
                 try:
                     cl_entry.list_i = int(list_i_val)
                     cl_entry.list_ii = int(list_ii_val) if list_ii_val else 0
+                    cl_entry.mediation_time = None
                     cl_entry.save()
                     updated += 1
                 except ValueError:
                     errors.append(f'Case #{eid}: Invalid number.')
             else:
-                if cl_entry.list_i is not None or cl_entry.list_ii is not None:
+                if cl_entry.list_i is not None or cl_entry.list_ii is not None or cl_entry.mediation_time is not None:
                     cl_entry.list_i = None
                     cl_entry.list_ii = None
+                    cl_entry.mediation_time = None
                     cl_entry.save()
                     updated += 1
 
@@ -1191,8 +1205,9 @@ def cause_list_docx(request):
                 f'</w:tblBorders>'
             ))
 
+            is_mediation = (bldg_code == 'mediation_centre')
             hdr = table.rows[0].cells
-            headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
+            headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Time' if is_mediation else 'Cause List']
             col_widths = [Cm(1.5), Cm(1.0), Cm(3.0), Cm(5.0), Cm(2.5), Cm(2.0), Cm(3.2)]
             for i, h in enumerate(headers):
                 set_cell_width(hdr[i], col_widths[i])
@@ -1207,11 +1222,15 @@ def cause_list_docx(request):
         row = table.add_row().cells
         case_num = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
         parties = f"{entry.case.party_1} vs {entry.case.party_2}"
-        cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
         effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
-        data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', cause_list_nos]
+        if bldg_code == 'mediation_centre':
+            mediation_val = entry.mediation_time.strftime('%H:%M') if entry.mediation_time else '—'
+            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', mediation_val]
+        else:
+            cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
+            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
             cell = row[i]
             set_cell_width(cell, col_widths[i])

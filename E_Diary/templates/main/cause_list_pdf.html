@@ -42,7 +42,11 @@
                 <th style="width: 5.0cm;">Case &amp; Parties</th>
                 <th style="width: 2.5cm;">Representing</th>
                 <th style="width: 2.0cm;">Stage</th>
+                {% if bldg_code == 'mediation_centre' %}
+                <th style="width: 3.2cm;">Time</th>
+                {% else %}
                 <th style="width: 3.2cm;">Cause List</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -68,10 +72,16 @@
                 </td>
                 <td class="rep-col" style="width: 2.5cm;">{{ entry.case.representing }}</td>
                 <td class="stage-col" style="width: 2.0cm;">{{ entry.stage|default:'—' }}</td>
+                {% if bldg_code == 'mediation_centre' %}
+                <td class="cl" style="width: 3.2cm;">
+                    {{ entry.mediation_time|time:'H:i'|default:'—' }}
+                </td>
+                {% else %}
                 <td class="cl" style="width: 3.2cm;">
                     List I: {{ entry.list_i|default:'—' }}<br>
                     List II: {{ entry.list_ii|default:'—' }}
                 </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>

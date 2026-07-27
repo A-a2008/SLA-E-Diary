@@ -201,6 +201,7 @@ class CauseListEntry(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='cause_list_entries')
     list_i = models.IntegerField(blank=True, null=True)
     list_ii = models.IntegerField(blank=True, null=True)
+    mediation_time = models.TimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
