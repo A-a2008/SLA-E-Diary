@@ -1342,7 +1342,7 @@ def cause_list_docx(request):
         run_label = p.add_run('Further dates: ')
         run_label.bold = True
         set_run_font(run_label)
-        dates_text = ', '.join(dates) if dates else '—'
+        dates_text = ', '.join(dates) if dates else 'No further dates available'
         run_val = p.add_run(dates_text)
         set_run_font(run_val)
 

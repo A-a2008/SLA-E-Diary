@@ -91,9 +91,11 @@
             {% endfor %}
             <tr><td colspan="7" style="padding: 0.15cm 0.3cm; background: #f9f9f9; font-size: 10pt; color: #666; border-bottom: 2px solid #ccc;">
                 <strong>Further dates:</strong>
-                {% with dates=family_further_dates|dict_key:group.grouper %}
-                {% if dates %}{{ dates|join:", " }}{% else %}—{% endif %}
-                {% endwith %}
+                {% if group.grouper in family_further_dates %}
+                {{ family_further_dates|dict_key:group.grouper|join:", " }}
+                {% else %}
+                No further dates available
+                {% endif %}
             </td></tr>
             {% endfor %}
             {% else %}
