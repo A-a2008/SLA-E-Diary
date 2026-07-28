@@ -1,18 +1,33 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+<style>
+.link-cb-wrap { display: inline-flex; align-items: center; white-space: nowrap; margin: 0; }
+.link-cb-wrap input[type="checkbox"] {
+  -moz-appearance: auto; -webkit-appearance: auto; appearance: auto;
+  opacity: 1; position: static; float: none; width: auto; height: auto;
+  margin: 0; z-index: auto; cursor: pointer;
+}
+</style>
 <div id="main">
   <div class="inner">
     <h1>Manage Clients for {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <input type="text" id="client-search" placeholder="Search clients by name or phone..." style="margin-bottom: 1rem; width: 100%;">
     <form method="post">
       {% csrf_token %}
       <div class="table-wrapper">
         <table>
           <thead><tr><th>Select</th><th>Name</th><th>Phone</th></tr></thead>
-          <tbody>
+          <tbody id="client-table-body">
             {% for client in all_clients %}
-            <tr>
-              <td><input type="checkbox" name="clients" value="{{ client.id }}" {% if client.id in linked %}checked{% endif %}></td>
+            <tr class="client-row" data-search="{{ client.name|lower }} {{ client.phone }}">
+              <td>
+                <span class="link-cb-wrap">
+                  <input type="checkbox" name="clients" value="{{ client.id }}" id="cl_{{ client.id }}"
+                         {% if client.id in linked %}checked{% endif %}>
+                  <label for="cl_{{ client.id }}"></label>
+                </span>
+              </td>
               <td>{{ client.name }}</td>
               <td>{{ client.phone }}</td>
             </tr>
@@ -27,4 +42,12 @@
     </form>
   </div>
 </div>
+<script>
+document.getElementById('client-search')?.addEventListener('keyup', function() {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll('.client-row').forEach(function(row) {
+    row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+  });
+});
+</script>
 {% endblock %}

@@ -15,7 +15,7 @@
           <select name="client_id" id="client_id" required>
             <option value="">— Select client —</option>
             {% for c in clients %}
-            <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+            <option value="{{ c.id }}" {% if preselected_client and preselected_client.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.phone }})</option>
             {% endfor %}
           </select>
         </div>

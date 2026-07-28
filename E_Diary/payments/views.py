@@ -420,7 +420,16 @@ def add_transaction(request, case_id=None):
 @payments_access_required
 def client_add_transaction(request, client_id):
     client = get_object_or_404(Client, id=client_id)
-    return add_transaction(request, client_id=client.id)
+    if request.method == 'POST':
+        return add_transaction(request)
+    clients = Client.objects.filter(id=client.id)
+    cases = Case.objects.all().order_by('-id')[:100]
+    now = timezone.localtime(timezone.now()).strftime('%Y-%m-%dT%H:%M')
+    return render(request, 'payments/transaction_form.html', {
+        'clients': clients, 'cases': cases,
+        'preselected_client': client, 'preselected_case': None,
+        'now': now,
+    })
 
 
 # ── STATEMENTS ──
