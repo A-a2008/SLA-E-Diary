@@ -507,6 +507,7 @@ def edit_classification(request, entry_id):
             selected_ids = request.POST.getlist('charge_types')
             classification.auto_classified = False
             classification.classified_by = request.user
+            classification.invoice_message = request.POST.get('invoice_message', '')
             classification.save()
             classification.charge_items.all().delete()
             for ct_id in selected_ids:
@@ -551,6 +552,7 @@ def edit_classification(request, entry_id):
             cca.charge_type_id: cca
             for cca in CaseChargeAmount.objects.filter(case_pricing=pricing)
         },
+        'invoice_message': classification.invoice_message,
     })
 
 
@@ -703,12 +705,14 @@ def _invoice_context(entry, request=None):
     try:
         classification = entry.classification
         items = classification.charge_items.all()
+        saved_message = classification.invoice_message
     except EntryClassification.DoesNotExist:
         items = []
+        saved_message = ''
     total = sum(float(i.amount or 0) for i in items)
-    custom_message = None
-    if request:
-        custom_message = request.GET.get('message', None) or None
+    custom_message = request.GET.get('message', None) or None if request else None
+    if not custom_message and saved_message:
+        custom_message = saved_message
     try:
         invoice = entry.invoice
         invoice_no = invoice.invoice_no

@@ -103,6 +103,8 @@ class EntryClassification(models.Model):
     classified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     classified_at = models.DateTimeField(auto_now_add=True)
     auto_classified = models.BooleanField(default=True)
+    invoice_message = models.TextField(blank=True, default='',
+        help_text='Custom message for the invoice (overrides business text)')
 
     def __str__(self):
         return f"Classification for entry #{self.diary_entry_id}"

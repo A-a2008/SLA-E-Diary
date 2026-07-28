@@ -14,6 +14,10 @@
     </div>
     <form method="post">
       {% csrf_token %}
+      <div style="margin-bottom: 1rem;">
+        <label for="invoice_message" style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Invoice Message <small>(what to show on the invoice — leave blank to use business text):</small></label>
+        <textarea name="invoice_message" id="invoice_message" rows="3" style="width: 100%;">{{ invoice_message }}</textarea>
+      </div>
       <div class="table-wrapper">
         <table>
           <thead><tr><th>Include</th><th>Charge</th><th>Amount</th></tr></thead>
