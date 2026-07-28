@@ -16,6 +16,7 @@ urlpatterns = [
     path('cases/<int:case_id>/statement/', views.case_statement, name='case_statement'),
     path('cases/<int:case_id>/transactions/add/', views.add_transaction, name='add_transaction'),
     path('cases/<int:case_id>/refresh-amounts/', views.refresh_amounts, name='refresh_amounts'),
+    path('cases/<int:case_id>/generate-invoices/', views.generate_invoices_for_case, name='generate_invoices_for_case'),
     path('clients/', views.client_list, name='client_list'),
     path('clients/add/', views.client_add, name='client_add'),
     path('clients/<int:client_id>/edit/', views.client_edit, name='client_edit'),

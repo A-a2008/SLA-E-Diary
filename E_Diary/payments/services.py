@@ -134,13 +134,15 @@ def sync_invoice(classification):
     items = classification.charge_items.all()
     if not items:
         return None
+    first_client = CaseClient.objects.filter(case=case).first()
+    if not first_client:
+        return None
+    client = first_client.client
     total = sum((i.amount or Decimal('0')) for i in items)
     particulars = ', '.join(
         i.charge_type.name if i.charge_type else i.custom_charge_name
         for i in items
     )
-    first_client = CaseClient.objects.filter(case=case).first()
-    client = first_client.client if first_client else None
     invoice, created = Invoice.objects.get_or_create(
         diary_entry=entry,
         defaults={
@@ -152,7 +154,7 @@ def sync_invoice(classification):
         }
     )
     if not created:
-        invoice.client = client or invoice.client
+        invoice.client = client
         invoice.particulars = particulars
         invoice.amount = total
         invoice.save()

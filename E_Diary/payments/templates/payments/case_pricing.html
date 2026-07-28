@@ -37,6 +37,12 @@
         <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
         <li><a href="{% url 'payments:case_statement' case.id %}" class="button small">Statement</a></li>
         <li>
+          <form method="post" action="{% url 'payments:generate_invoices_for_case' case.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="button small">Generate Invoices</button>
+          </form>
+        </li>
+        <li>
           <form method="post" action="{% url 'payments:reclassify_case' case.id %}" style="display:inline;">
             {% csrf_token %}
             <button type="submit" class="button small" onclick="return confirm('Re-run AI classifier on all entries?')">Re-classify All</button>

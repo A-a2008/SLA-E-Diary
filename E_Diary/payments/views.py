@@ -798,6 +798,35 @@ def fee_agreement_image(request, case_id):
                         headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
+# ── GENERATE MISSING INVOICES ──
+
+@require_http_methods(['POST'])
+@payments_access_required
+def generate_invoices_for_case(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+    if not CaseClient.objects.filter(case=case).exists():
+        messages.error(request, 'Please link at least one client to this case before generating invoices.')
+        return redirect('payments:case_pricing', case_id=case.id)
+    entries = case.diary_entries.filter(entry_type='business')
+    generated = 0
+    for entry in entries:
+        try:
+            if Invoice.objects.filter(diary_entry=entry).exists():
+                continue
+            classification = entry.classification
+            items = classification.charge_items.all()
+            if not items:
+                continue
+            sync_invoice(classification)
+            generated += 1
+        except EntryClassification.DoesNotExist:
+            pass
+        except Exception as e:
+            logger.error(f"Invoice generation failed for entry {entry.id}: {e}")
+    messages.success(request, f'Generated {generated} new invoices for {case}.')
+    return redirect('payments:case_pricing', case_id=case.id)
+
+
 # ── USER MANAGEMENT ──
 
 @superuser_required
