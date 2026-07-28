@@ -1190,7 +1190,7 @@ def cause_list_docx(request):
             tcW.set(qn('w:w'), str(int(width.emu / 635)))
             tcW.set(qn('w:type'), 'dxa')
 
-    def set_run_font(run, size=Pt(10)):
+    def set_run_font(run, size=Pt(11)):
         run.font.name = 'Helvetica'
         run.font.size = size
 
