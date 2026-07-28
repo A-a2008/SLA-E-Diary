@@ -33,7 +33,7 @@
         <tbody>
           {% for item in cases %}
           <tr>
-            <td><strong>{{ item.case.case_type }}/{{ item.case.case_number }}/{{ item.case.case_year }}</strong></td>
+            <td><strong><a href="{% url 'payments:case_pricing' item.case.id %}" style="text-decoration: none; color: inherit;">{{ item.case.case_type }}/{{ item.case.case_number }}/{{ item.case.case_year }}</a></strong></td>
             <td>{{ item.case.party_1 }} vs {{ item.case.party_2 }}</td>
             <td>{% with cc=item.case.case_clients.first %}{% if cc %}{{ cc.client.name }}{% else %}{{ item.case.party_1 }}{% endif %}{% endwith %}</td>
             <td>{% with cc=item.case.case_clients.first %}{% if cc %}{{ cc.client.phone }}{% else %}--{% endif %}{% endwith %}</td>
