@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+<style>
+.case-cb-wrap { display: block; margin: 0.3rem 0; cursor: pointer; }
+.case-cb-wrap input[type="checkbox"] { margin-right: 0.5rem; cursor: pointer; }
+.case-cb-wrap:hover { background: #f5f5f5; border-radius: 3px; }
+</style>
 <div id="main">
   <div class="inner">
     <h1>Record Payment Received</h1>
@@ -12,10 +17,11 @@
       <div class="row gtr-uniform">
         <div class="col-6 col-12-xsmall">
           <label for="client_id">Client *</label>
-          <select name="client_id" id="client_id" required>
+          <select name="client_id" id="client_id" required onchange="filterCasesByClient()">
             <option value="">— Select client —</option>
             {% for c in clients %}
-            <option value="{{ c.id }}" {% if preselected_client and preselected_client.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.phone }})</option>
+            <option value="{{ c.id }}" data-name="{{ c.name }}" data-p1="{{ c.name }}" data-p2=""
+              {% if preselected_client and preselected_client.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.phone }})</option>
             {% endfor %}
           </select>
         </div>
@@ -49,13 +55,15 @@
         </div>
         <div class="col-12">
           <label>Link to Case(s) <small>(optional — select cases this payment covers)</small></label>
-          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 0.5rem;">
+          <div id="case-list-container" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 0.5rem;">
             {% for c in cases %}
-            <label style="display: block; margin: 0.2rem 0;">
+            <label class="case-cb-wrap" data-party1="{{ c.party_1|lower }}" data-party2="{{ c.party_2|lower }}">
               <input type="checkbox" name="cases" value="{{ c.id }}"
                 {% if preselected_case and preselected_case.id == c.id %}checked{% endif %}>
               {{ c.case_type }}/{{ c.case_number }}/{{ c.case_year }} — {{ c.party_1 }} vs {{ c.party_2 }}
             </label>
+            {% empty %}
+            <p style="color: #888;" id="no-cases-msg">No cases found.</p>
             {% endfor %}
           </div>
         </div>
@@ -73,5 +81,33 @@
 function toggleOther(val) {
   document.getElementById('other-method-div').style.display = val === 'other' ? 'block' : 'none';
 }
+function filterCasesByClient() {
+  var sel = document.getElementById('client_id');
+  var name = sel.options[sel.selectedIndex]?.getAttribute('data-name') || '';
+  name = name.toLowerCase();
+  var labels = document.querySelectorAll('.case-cb-wrap');
+  var visible = 0;
+  labels.forEach(function(lbl) {
+    var p1 = lbl.getAttribute('data-party1') || '';
+    var p2 = lbl.getAttribute('data-party2') || '';
+    if (!name || p1.includes(name) || p2.includes(name)) {
+      lbl.style.display = '';
+      visible++;
+    } else {
+      lbl.style.display = 'none';
+    }
+  });
+  var msg = document.getElementById('no-cases-msg');
+  if (!msg) {
+    msg = document.createElement('p');
+    msg.id = 'no-cases-msg';
+    msg.style.cssText = 'color: #888;';
+    document.getElementById('case-list-container').appendChild(msg);
+  }
+  msg.textContent = visible === 0 ? 'No related cases found for this client.' : '';
+}
+{% if preselected_client %}
+document.addEventListener('DOMContentLoaded', filterCasesByClient);
+{% endif %}
 </script>
 {% endblock %}
