@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Invoices</h1>
+    <form method="get" style="margin: 1rem 0;">
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <input type="text" name="q" placeholder="Search by invoice no, client, case..." value="{{ q }}">
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions"><li><input type="submit" value="Search" class="primary"></li></ul>
+        </div>
+      </div>
+    </form>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Invoice #</th><th>Date</th><th>Client</th><th>Case</th><th>Particulars</th><th>Amount</th></tr></thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td><strong>{{ inv.invoice_no }}</strong></td>
+            <td>{{ inv.created_at|date:"d-m-Y H:i" }}</td>
+            <td>{{ inv.client.name|default:'—' }}</td>
+            <td>{{ inv.case.case_type }}/{{ inv.case.case_number }}/{{ inv.case.case_year }}</td>
+            <td>{{ inv.particulars|default:'—' }}</td>
+            <td>{{ inv.amount|format_amount }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">No invoices yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

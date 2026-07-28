@@ -4,7 +4,7 @@
 {% block content %}
 <div id="main">
   <div class="inner">
-    <h1>Pricing: {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <h1>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
     <p>{{ case.party_1 }} vs {{ case.party_2 }} — {{ case.court }}</p>
 
     <div class="row gtr-uniform" style="margin: 1rem 0;">
@@ -14,18 +14,18 @@
         </div>
       </div>
       <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; background: #fff8e1; border-radius: 8px; text-align: center;">
+          <strong>Total Billed</strong><br><span style="font-size: 1.3rem; color: #e65100;">{{ total_billed|format_amount }}</span>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
         <div style="padding: 1rem; background: #e8f5e9; border-radius: 8px; text-align: center;">
-          <strong>Paid</strong><br><span style="font-size: 1.5rem; color: #2e7d32;">{{ paid_count }}</span>
+          <strong>Total Paid</strong><br><span style="font-size: 1.3rem; color: #2e7d32;">{{ total_collected|format_amount }}</span>
         </div>
       </div>
       <div class="col-3 col-6-medium col-12-small">
         <div style="padding: 1rem; background: #fff5f5; border-radius: 8px; text-align: center;">
-          <strong>Unpaid</strong><br><span style="font-size: 1.5rem; color: #c62828;">{{ unpaid_count }}</span>
-        </div>
-      </div>
-      <div class="col-3 col-6-medium col-12-small">
-        <div style="padding: 1rem; background: #fff8e1; border-radius: 8px; text-align: center;">
-          <strong>Total Due</strong><br><span style="font-size: 1.5rem; color: #e65100;">{{ total_due|format_amount }}</span>
+          <strong>Balance Due</strong><br><span style="font-size: 1.5rem; color: #c62828;">{{ total_due|format_amount }}</span>
         </div>
       </div>
     </div>
@@ -35,6 +35,7 @@
         <li><a href="{% url 'payments:case_entries' case.id %}" class="button small">View Entries</a></li>
         <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
         <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
+        <li><a href="{% url 'payments:case_statement' case.id %}" class="button small">Statement</a></li>
         <li>
           <form method="post" action="{% url 'payments:reclassify_case' case.id %}" style="display:inline;">
             {% csrf_token %}
@@ -47,16 +48,24 @@
             <button type="submit" class="button small">Refresh Amounts</button>
           </form>
         </li>
-        <li>
-          <form method="post" action="{% url 'payments:mark_full_paid' case.id %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="button small {% if pricing.fully_paid %}primary{% endif %}">
-              {% if pricing.fully_paid %}Mark Not Fully Paid{% else %}Mark Fully Paid{% endif %}
-            </button>
-          </form>
-        </li>
       </ul>
     </div>
+
+    <h2>Clients</h2>
+    <div style="margin-bottom: 1rem;">
+      {% if case_clients %}
+      {% for cc in case_clients %}
+      <span style="display: inline-block; background: #e8eaf6; padding: 0.3rem 0.8rem; border-radius: 4px; margin: 0.2rem;">{{ cc.client.name }} — {{ cc.client.phone }}</span>
+      {% endfor %}
+      {% else %}
+      <p style="color: #888;">No clients linked. <a href="{% url 'payments:case_clients' case.id %}">Link clients</a></p>
+      {% endif %}
+      <br><a href="{% url 'payments:case_clients' case.id %}" class="button small" style="margin-top: 0.3rem;">Manage Clients</a>
+      <a href="{% url 'payments:add_transaction' case.id %}" class="button small" style="margin-top: 0.3rem;">Record Payment</a>
+      <a href="{% url 'payments:case_statement' case.id %}" class="button small" style="margin-top: 0.3rem;">Full Statement</a>
+    </div>
+
+    <hr>
 
     <form method="post">
       {% csrf_token %}
@@ -73,16 +82,12 @@
       <h2 style="margin-top: 1.5rem;">Charges</h2>
       <div class="table-wrapper">
         <table>
-          <thead>
-            <tr><th>Charge Description</th><th>Amount</th></tr>
-          </thead>
+          <thead><tr><th>Charge Description</th><th>Amount</th></tr></thead>
           <tbody>
             {% for ct in charge_types %}
             <tr>
               <td>{{ ct.name }}</td>
-              <td style="width: 200px;">
-                <input type="text" name="amount_{{ ct.id }}" value="{{ charge_amounts|dict_key:ct.id|default:'' }}" placeholder="NIL (0)">
-              </td>
+              <td style="width: 200px;"><input type="text" name="amount_{{ ct.id }}" value="{{ charge_amounts|dict_key:ct.id|default:'' }}" placeholder="NIL (0)"></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -93,65 +98,79 @@
       <div id="custom-charges">
         {% for cc in custom_charges %}
         <div class="row gtr-uniform custom-row" style="margin-bottom: 0.5rem;">
-          <div class="col-4 col-8-xsmall">
-            <input type="hidden" name="custom_id[]" value="{{ cc.id }}">
-            <input type="text" name="custom_name[]" placeholder="Charge name" value="{{ cc.name }}">
-          </div>
-          <div class="col-3 col-4-xsmall">
-            <input type="text" name="custom_amount[]" placeholder="Amount" value="{% if cc.amount %}{{ cc.amount }}{% endif %}">
-          </div>
+          <div class="col-4 col-8-xsmall"><input type="hidden" name="custom_id[]" value="{{ cc.id }}"><input type="text" name="custom_name[]" placeholder="Charge name" value="{{ cc.name }}"></div>
+          <div class="col-3 col-4-xsmall"><input type="text" name="custom_amount[]" placeholder="Amount" value="{% if cc.amount %}{{ cc.amount }}{% endif %}"></div>
           <div class="col-1"><button type="button" class="button small" onclick="this.closest('.custom-row').remove()">x</button></div>
         </div>
         {% endfor %}
       </div>
-      <ul class="actions">
-        <li><button type="button" class="button small" id="add-custom">+ Add Custom Charge</button></li>
-      </ul>
+      <ul class="actions"><li><button type="button" class="button small" id="add-custom">+ Add Custom Charge</button></li></ul>
 
       <h2>One-Time Payment</h2>
       <div class="row gtr-uniform">
-        <div class="col-12">
-          <label><input type="checkbox" name="is_one_time" {% if pricing.is_one_time %}checked{% endif %}> This case is a one-time payment</label>
-        </div>
-        <div class="col-4 col-12-xsmall">
-          <input type="text" name="one_time_amount" placeholder="One-time amount" value="{% if pricing.one_time_amount %}{{ pricing.one_time_amount }}{% endif %}">
-        </div>
-        <div class="col-12">
-          <label><input type="checkbox" name="appearance_included" {% if pricing.appearance_included %}checked{% endif %}> Appearance included in one-time</label>
-        </div>
-        <div class="col-4 col-12-xsmall">
-          <input type="text" name="appearance_amount" placeholder="Per-appearance amount" value="{% if pricing.appearance_amount %}{{ pricing.appearance_amount }}{% endif %}">
-        </div>
+        <div class="col-12"><label><input type="checkbox" name="is_one_time" {% if pricing.is_one_time %}checked{% endif %}> This case is a one-time payment</label></div>
+        <div class="col-4 col-12-xsmall"><input type="text" name="one_time_amount" placeholder="One-time amount" value="{% if pricing.one_time_amount %}{{ pricing.one_time_amount }}{% endif %}"></div>
+        <div class="col-12"><label><input type="checkbox" name="appearance_included" {% if pricing.appearance_included %}checked{% endif %}> Appearance included in one-time</label></div>
+        <div class="col-4 col-12-xsmall"><input type="text" name="appearance_amount" placeholder="Per-appearance amount" value="{% if pricing.appearance_amount %}{{ pricing.appearance_amount }}{% endif %}"></div>
       </div>
 
       <h2>One-Time Extras</h2>
       <div id="ote-charges">
         {% for ote in one_time_extras %}
         <div class="row gtr-uniform ote-row" style="margin-bottom: 0.5rem;">
-          <div class="col-3 col-6-xsmall">
-            <input type="hidden" name="ote_id[]" value="{{ ote.id }}">
-            <input type="text" name="ote_name[]" placeholder="Name" value="{{ ote.name }}">
-          </div>
-          <div class="col-3 col-6-xsmall">
-            <label><input type="checkbox" name="ote_included[]" {% if ote.included_in_one_time %}checked{% endif %}> Included</label>
-          </div>
-          <div class="col-3 col-6-xsmall">
-            <input type="text" name="ote_amount[]" placeholder="Per-occurrence" value="{% if ote.per_occurrence_amount %}{{ ote.per_occurrence_amount }}{% endif %}">
-          </div>
+          <div class="col-3 col-6-xsmall"><input type="hidden" name="ote_id[]" value="{{ ote.id }}"><input type="text" name="ote_name[]" placeholder="Name" value="{{ ote.name }}"></div>
+          <div class="col-3 col-6-xsmall"><label><input type="checkbox" name="ote_included[]" {% if ote.included_in_one_time %}checked{% endif %}> Included</label></div>
+          <div class="col-3 col-6-xsmall"><input type="text" name="ote_amount[]" placeholder="Per-occurrence" value="{% if ote.per_occurrence_amount %}{{ ote.per_occurrence_amount }}{% endif %}"></div>
           <div class="col-1"><button type="button" class="button small" onclick="this.closest('.ote-row').remove()">x</button></div>
         </div>
         {% endfor %}
       </div>
-      <ul class="actions">
-        <li><button type="button" class="button small" id="add-ote">+ Add Extra</button></li>
-      </ul>
+      <ul class="actions"><li><button type="button" class="button small" id="add-ote">+ Add Extra</button></li></ul>
 
-      <div style="margin-top: 1.5rem;">
-        <ul class="actions">
-          <li><input type="submit" value="Save Pricing" class="primary"></li>
-        </ul>
-      </div>
+      <div style="margin-top: 1.5rem;"><ul class="actions"><li><input type="submit" value="Save Pricing" class="primary"></li></ul></div>
     </form>
+
+    <hr>
+
+    <h2>Invoices (last 20)</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Invoice #</th><th>Date</th><th>Client</th><th>Particulars</th><th>Amount</th></tr></thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td><strong>{{ inv.invoice_no }}</strong></td>
+            <td>{{ inv.created_at|date:"d-m-Y" }}</td>
+            <td>{{ inv.client.name|default:'—' }}</td>
+            <td>{{ inv.particulars|default:'—' }}</td>
+            <td>{{ inv.amount|format_amount }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">No invoices yet. Invoices are auto-created when entries are classified.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Payments Received (last 20)</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Client</th><th>Method</th><th>Amount</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for txn in case_transactions %}
+          <tr>
+            <td>{{ txn.transaction_date|date:"d-m-Y" }}</td>
+            <td><a href="{% url 'payments:client_statement' txn.client.id %}">{{ txn.client.name }}</a></td>
+            <td>{{ txn.get_payment_method_display }}{% if txn.other_method_detail %} ({{ txn.other_method_detail }}){% endif %}</td>
+            <td style="color: #2e7d32;">{{ txn.amount|format_amount }}</td>
+            <td>{{ txn.notes|default:'—' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">No payments recorded. <a href="{% url 'payments:add_transaction' case.id %}">Record a payment</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 <script>

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Transactions</h1>
+    <form method="get" style="margin: 1rem 0;">
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <input type="text" name="q" placeholder="Search by client..." value="{{ q }}">
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions"><li><input type="submit" value="Search" class="primary"></li></ul>
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <a href="{% url 'payments:transaction_list' %}" class="button primary" onclick="alert('Use the Record Payment button on a specific case page, or go to Clients section.'); return false;">+ Record Payment</a>
+        </div>
+      </div>
+    </form>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Client</th><th>Method</th><th>Amount</th><th>Cases</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for txn in transactions %}
+          <tr>
+            <td>{{ txn.transaction_date|date:"d-m-Y H:i" }}</td>
+            <td><a href="{% url 'payments:client_statement' txn.client.id %}">{{ txn.client.name }}</a></td>
+            <td>{{ txn.get_payment_method_display }}{% if txn.other_method_detail %} ({{ txn.other_method_detail }}){% endif %}</td>
+            <td style="color: #2e7d32;">{{ txn.amount|format_amount }}</td>
+            <td>{% for tc in txn.cases.all %}{{ tc.case.case_type }}/{{ tc.case.case_number }}/{{ tc.case.case_year }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+            <td>{{ txn.notes|default:'—' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">No transactions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

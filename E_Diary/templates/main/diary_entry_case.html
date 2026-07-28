@@ -224,7 +224,10 @@
                     </form>
                     <button class="button small" onclick="toggleInvoice({{ entry.id }})">Generate Invoice</button>
                   </div>
-                  <div id="invoice-box-{{ entry.id }}" style="display:none; margin-top: 0.5rem;">
+                   <div id="invoice-box-{{ entry.id }}" style="display:none; margin-top: 0.5rem;">
+                    <label for="invoice-msg-{{ entry.id }}" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem;">
+                      Invoice Message <small>(edit if needed — this will appear on the invoice):</small>
+                    </label>
                     <textarea id="invoice-msg-{{ entry.id }}" rows="3" style="width: 100%; font-size: 0.85rem;">{{ entry.business }}</textarea>
                     <div style="margin-top: 0.3rem; display: flex; gap: 0.5rem;">
                       <a class="button small" id="inv-pdf-{{ entry.id }}"

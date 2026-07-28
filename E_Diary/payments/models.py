@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -26,6 +26,30 @@ class ChargeType(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Client(models.Model):
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    address = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.phone})"
+
+
+class CaseClient(models.Model):
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='case_clients')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='case_clients')
+
+    class Meta:
+        unique_together = ('case', 'client')
+
+    def __str__(self):
+        return f"{self.client.name} → {self.case}"
 
 
 class CasePricing(models.Model):
@@ -108,3 +132,63 @@ class DiaryEntryPayment(models.Model):
 
     def __str__(self):
         return f"Payment for entry #{self.diary_entry_id}: {'PAID' if self.is_paid else 'UNPAID'}"
+
+
+class Invoice(models.Model):
+    invoice_no = models.CharField(max_length=50, unique=True)
+    diary_entry = models.OneToOneField(DiaryEntry, on_delete=models.CASCADE, related_name='invoice')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, null=True, blank=True)
+    case = models.ForeignKey(Case, on_delete=models.CASCADE)
+    particulars = models.TextField(blank=True, default='')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Invoice {self.invoice_no} – {self.amount}"
+
+
+class Transaction(models.Model):
+    PAYMENT_CASH = 'cash'
+    PAYMENT_UPI = 'upi'
+    PAYMENT_BANK = 'bank'
+    PAYMENT_CHEQUE = 'cheque'
+    PAYMENT_CARD = 'card'
+    PAYMENT_DD = 'dd'
+    PAYMENT_OTHER = 'other'
+    PAYMENT_METHOD_CHOICES = [
+        (PAYMENT_CASH, 'Cash'),
+        (PAYMENT_UPI, 'UPI'),
+        (PAYMENT_BANK, 'Bank Transfer'),
+        (PAYMENT_CHEQUE, 'Cheque'),
+        (PAYMENT_CARD, 'Card'),
+        (PAYMENT_DD, 'DD'),
+        (PAYMENT_OTHER, 'Other'),
+    ]
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='transactions')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    other_method_detail = models.CharField(max_length=100, blank=True, default='')
+    transaction_date = models.DateTimeField()
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-transaction_date']
+
+    def __str__(self):
+        return f"{self.get_payment_method_display()} {self.amount} – {self.client.name}"
+
+
+class TransactionCase(models.Model):
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='cases')
+    case = models.ForeignKey(Case, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('transaction', 'case')
+
+    def __str__(self):
+        return f"{self.transaction} → {self.case}"

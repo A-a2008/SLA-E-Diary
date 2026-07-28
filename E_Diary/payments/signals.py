@@ -5,8 +5,8 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User, Group
 
 from main.models import DiaryEntry
-from .models import CasePricing, DiaryEntryPayment
-from .services import classify_and_setup
+from .models import EntryClassification
+from .services import classify_and_setup, sync_invoice
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,14 @@ def auto_classify_entry(sender, instance, created, **kwargs):
         classify_and_setup(instance)
     except Exception as e:
         logger.error(f"Auto-classify failed for entry {instance.pk}: {e}", exc_info=True)
+
+
+@receiver(post_save, sender=EntryClassification)
+def sync_invoice_on_classify(sender, instance, **kwargs):
+    try:
+        sync_invoice(instance)
+    except Exception as e:
+        logger.error(f"Sync invoice failed for classification {instance.pk}: {e}", exc_info=True)
 
 
 @receiver(post_save, sender=User)

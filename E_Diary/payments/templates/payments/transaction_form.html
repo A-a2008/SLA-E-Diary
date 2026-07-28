@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Record Payment Received</h1>
+    {% if preselected_case %}
+    <p>Case: {{ preselected_case.case_type }}/{{ preselected_case.case_number }}/{{ preselected_case.case_year }}</p>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <label for="client_id">Client *</label>
+          <select name="client_id" id="client_id" required>
+            <option value="">— Select client —</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-12-xsmall">
+          <label for="amount">Amount *</label>
+          <input type="text" name="amount" id="amount" required placeholder="e.g. 5000">
+        </div>
+        <div class="col-6 col-12-xsmall">
+          <label for="payment_method">Payment Method</label>
+          <select name="payment_method" id="payment_method" onchange="toggleOther(this.value)">
+            <option value="cash">Cash</option>
+            <option value="upi">UPI</option>
+            <option value="bank">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="card">Card</option>
+            <option value="dd">DD</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="col-6 col-12-xsmall" id="other-method-div" style="display:none;">
+          <label for="other_method_detail">Specify method</label>
+          <input type="text" name="other_method_detail" id="other_method_detail" placeholder="Enter payment method">
+        </div>
+        <div class="col-6 col-12-xsmall">
+          <label for="transaction_date">Date & Time *</label>
+          <input type="datetime-local" name="transaction_date" id="transaction_date" value="{{ now }}">
+        </div>
+        <div class="col-12">
+          <label for="notes">Notes</label>
+          <textarea name="notes" id="notes" rows="2" placeholder="Optional notes about this payment"></textarea>
+        </div>
+        <div class="col-12">
+          <label>Link to Case(s) <small>(optional — select cases this payment covers)</small></label>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 0.5rem;">
+            {% for c in cases %}
+            <label style="display: block; margin: 0.2rem 0;">
+              <input type="checkbox" name="cases" value="{{ c.id }}"
+                {% if preselected_case and preselected_case.id == c.id %}checked{% endif %}>
+              {{ c.case_type }}/{{ c.case_number }}/{{ c.case_year }} — {{ c.party_1 }} vs {{ c.party_2 }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-12">
+          <ul class="actions">
+            <li><input type="submit" value="Record Payment" class="primary"></li>
+            <li><a href="{% if preselected_case %}{% url 'payments:case_pricing' preselected_case.id %}{% else %}{% url 'payments:transaction_list' %}{% endif %}" class="button">Cancel</a></li>
+          </ul>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function toggleOther(val) {
+  document.getElementById('other-method-div').style.display = val === 'other' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

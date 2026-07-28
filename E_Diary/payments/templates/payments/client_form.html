@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>{% if client %}Edit Client{% else %}Add Client{% endif %}</h1>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <label for="name">Name *</label>
+          <input type="text" name="name" id="name" required value="{{ client.name|default:'' }}">
+        </div>
+        <div class="col-6 col-12-xsmall">
+          <label for="phone">Phone *</label>
+          <input type="text" name="phone" id="phone" required value="{{ client.phone|default:'' }}">
+        </div>
+        <div class="col-12">
+          <label for="address">Address</label>
+          <textarea name="address" id="address" rows="3">{{ client.address|default:'' }}</textarea>
+        </div>
+        <div class="col-12">
+          <ul class="actions">
+            <li><input type="submit" value="{% if client %}Update{% else %}Create{% endif %} Client" class="primary"></li>
+            <li><a href="{% url 'payments:client_list' %}" class="button">Cancel</a></li>
+          </ul>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

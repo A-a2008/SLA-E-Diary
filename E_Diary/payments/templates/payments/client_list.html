@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Clients</h1>
+    <form method="get" style="margin: 1rem 0;">
+      <div class="row gtr-uniform">
+        <div class="col-6 col-12-xsmall">
+          <input type="text" name="q" placeholder="Search by name or phone..." value="{{ q }}">
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <ul class="actions"><li><input type="submit" value="Search" class="primary"></li></ul>
+        </div>
+        <div class="col-3 col-12-xsmall">
+          <a href="{% url 'payments:client_add' %}" class="button primary">+ Add Client</a>
+        </div>
+      </div>
+    </form>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Balance</th><th></th></tr></thead>
+        <tbody>
+          {% for client in clients %}
+          {% with bal=client|client_balance %}
+          <tr>
+            <td><strong>{{ client.name }}</strong></td>
+            <td>{{ client.phone }}</td>
+            <td>{{ client.address|default:'—' }}</td>
+            <td style="color: {% if bal < 0 %}#c62828{% else %}#2e7d32{% endif %};">{{ bal|format_amount }}</td>
+            <td>
+              <a href="{% url 'payments:client_statement' client.id %}" class="button small">Statement</a>
+              <a href="{% url 'payments:client_edit' client.id %}" class="button small">Edit</a>
+              <a href="{% url 'payments:client_add_transaction' client.id %}" class="button small">Record Payment</a>
+            </td>
+          </tr>
+          {% endwith %}
+          {% empty %}
+          <tr><td colspan="5">No clients yet. <a href="{% url 'payments:client_add' %}">Add one</a>.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

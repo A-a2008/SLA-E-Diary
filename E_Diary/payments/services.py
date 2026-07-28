@@ -5,17 +5,161 @@ import time
 import threading
 from decimal import Decimal
 from io import BytesIO
+from datetime import datetime
 
-from django.template.loader import render_to_string
-from django.contrib.auth.models import User
+from django.db import transaction as db_transaction
 from django.db import models as db_models
+from django.utils import timezone
 
+from main.models import Case, DiaryEntry
 from .models import (
     ChargeType, CasePricing, CaseChargeAmount, CustomCharge,
-    EntryClassification, EntryChargeItem, DiaryEntryPayment
+    EntryClassification, EntryChargeItem, DiaryEntryPayment,
+    Client, CaseClient, Invoice, Transaction, TransactionCase
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Client Balance & Ledger ──
+
+def get_client_balance(client):
+    invoices = Invoice.objects.filter(client=client).aggregate(
+        total=db_models.Sum('amount'))['total'] or Decimal('0')
+    payments = Transaction.objects.filter(client=client).aggregate(
+        total=db_models.Sum('amount'))['total'] or Decimal('0')
+    return payments - invoices
+
+
+def get_client_ledger(client):
+    rows = []
+    invoices = Invoice.objects.filter(client=client).order_by('created_at')
+    for inv in invoices:
+        rows.append({
+            'date': inv.created_at,
+            'type': 'Invoice',
+            'ref': inv.invoice_no,
+            'case': str(inv.case),
+            'particulars': inv.particulars,
+            'debit': inv.amount,
+            'credit': Decimal('0'),
+        })
+    payments = Transaction.objects.filter(client=client).order_by('transaction_date')
+    for txn in payments:
+        case_str = ', '.join(str(tc.case) for tc in txn.cases.all()) if txn.cases.exists() else '—'
+        rows.append({
+            'date': txn.transaction_date,
+            'type': 'Payment',
+            'ref': f"TXN-{txn.id}",
+            'case': case_str,
+            'particulars': f"{txn.get_payment_method_display()}{' (' + txn.other_method_detail + ')' if txn.other_method_detail else ''} {txn.notes}",
+            'debit': Decimal('0'),
+            'credit': txn.amount,
+        })
+    rows.sort(key=lambda r: r['date'])
+    balance = Decimal('0')
+    for r in rows:
+        balance += r['credit'] - r['debit']
+        r['balance'] = balance
+    return rows
+
+
+def get_case_ledger(case):
+    rows = []
+    invoices = Invoice.objects.filter(case=case).order_by('created_at')
+    for inv in invoices:
+        client_name = inv.client.name if inv.client else '—'
+        rows.append({
+            'date': inv.created_at,
+            'type': 'Invoice',
+            'ref': inv.invoice_no,
+            'client': client_name,
+            'particulars': inv.particulars,
+            'debit': inv.amount,
+            'credit': Decimal('0'),
+        })
+    txn_ids = TransactionCase.objects.filter(case=case).values_list('transaction_id', flat=True)
+    payments = Transaction.objects.filter(id__in=list(txn_ids)).order_by('transaction_date')
+    for txn in payments:
+        rows.append({
+            'date': txn.transaction_date,
+            'type': 'Payment',
+            'ref': f"TXN-{txn.id}",
+            'client': txn.client.name,
+            'particulars': f"{txn.get_payment_method_display()}{' (' + txn.other_method_detail + ')' if txn.other_method_detail else ''} {txn.notes}",
+            'debit': Decimal('0'),
+            'credit': txn.amount,
+        })
+    rows.sort(key=lambda r: r['date'])
+    balance = Decimal('0')
+    for r in rows:
+        balance += r['credit'] - r['debit']
+        r['balance'] = balance
+    return rows
+
+
+def get_all_outstanding():
+    clients = Client.objects.annotate(
+        total_invoiced=db_models.Sum('invoice_set__amount'),
+        total_paid=db_models.Sum('transactions__amount'),
+    )
+    result = []
+    for c in clients:
+        invoiced = c.total_invoiced or Decimal('0')
+        paid = c.total_paid or Decimal('0')
+        balance = paid - invoiced
+        if balance < 0:
+            result.append({'client': c, 'balance': balance, 'invoiced': invoiced, 'paid': paid})
+    result.sort(key=lambda r: r['balance'])
+    return result
+
+
+# ── Invoice Number Generation ──
+
+@db_transaction.atomic
+def generate_invoice_no(case):
+    year = datetime.now().year
+    prefix = f"{case.id}-{year}-"
+    last = Invoice.objects.filter(invoice_no__startswith=prefix
+    ).order_by('invoice_no').values_list('invoice_no', flat=True).last()
+    if last:
+        num = int(last.split('-')[-1]) + 1
+    else:
+        num = 1
+    return f"{prefix}{num:04d}"
+
+
+def sync_invoice(classification):
+    entry = classification.diary_entry
+    case = entry.case
+    items = classification.charge_items.all()
+    if not items:
+        return None
+    total = sum((i.amount or Decimal('0')) for i in items)
+    particulars = ', '.join(
+        i.charge_type.name if i.charge_type else i.custom_charge_name
+        for i in items
+    )
+    first_client = CaseClient.objects.filter(case=case).first()
+    client = first_client.client if first_client else None
+    invoice, created = Invoice.objects.get_or_create(
+        diary_entry=entry,
+        defaults={
+            'invoice_no': generate_invoice_no(case),
+            'client': client,
+            'case': case,
+            'particulars': particulars,
+            'amount': total,
+        }
+    )
+    if not created:
+        invoice.client = client or invoice.client
+        invoice.particulars = particulars
+        invoice.amount = total
+        invoice.save()
+    return invoice
+
+
+# ── Existing helpers ──
 
 CONSUMER_COURT_CODES = {'consumer', 'urban_consumer', 'state_consumer_basava'}
 
@@ -98,6 +242,7 @@ def classify_and_setup(entry):
         diary_entry=entry,
         defaults={'is_paid': False}
     )
+    sync_invoice(classification)
     return classification
 
 

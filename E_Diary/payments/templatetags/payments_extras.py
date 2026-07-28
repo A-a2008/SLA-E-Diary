@@ -29,6 +29,12 @@ def is_cc_criminal(case):
 
 
 @register.filter
+def client_balance(client):
+    from payments.services import get_client_balance
+    return get_client_balance(client)
+
+
+@register.filter
 def filter_charges(charge_types, entry_type):
     if entry_type == 'mediation':
         return [ct for ct in charge_types if ct.code == 'mediation_attended']
@@ -42,8 +48,8 @@ def dict_key(d, key):
     val = d.get(key)
     if val is None:
         return ''
-    if hasattr(val, 'amount') and val.amount is None:
-        return ''
     if hasattr(val, 'amount'):
-        return val.amount
+        if val.amount is None:
+            return ''
+        return str(val.amount)
     return val

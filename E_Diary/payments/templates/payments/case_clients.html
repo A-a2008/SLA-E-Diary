@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <h1>Manage Clients for {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <form method="post">
+      {% csrf_token %}
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Select</th><th>Name</th><th>Phone</th></tr></thead>
+          <tbody>
+            {% for client in all_clients %}
+            <tr>
+              <td><input type="checkbox" name="clients" value="{{ client.id }}" {% if client.id in linked %}checked{% endif %}></td>
+              <td>{{ client.name }}</td>
+              <td>{{ client.phone }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <ul class="actions">
+        <li><input type="submit" value="Save Clients" class="primary"></li>
+        <li><a href="{% url 'payments:case_pricing' case.id %}" class="button">Back</a></li>
+      </ul>
+    </form>
+  </div>
+</div>
+{% endblock %}
