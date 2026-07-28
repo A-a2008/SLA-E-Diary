@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import re
 import time
 import threading
 from decimal import Decimal
@@ -118,14 +119,45 @@ def get_all_outstanding():
 @db_transaction.atomic
 def generate_invoice_no(case):
     year = datetime.now().year
-    prefix = f"{case.id}-{year}-"
-    last = Invoice.objects.filter(invoice_no__startswith=prefix
-    ).order_by('invoice_no').values_list('invoice_no', flat=True).last()
-    if last:
-        num = int(last.split('-')[-1]) + 1
-    else:
-        num = 1
-    return f"{prefix}{num:04d}"
+    year_str = str(year)
+
+    # Global counter — 6 digits, resets yearly
+    year_prefix = f"INV-{year_str}"
+    global_prefix = f"INV-{year_str}-"
+    # Find max global counter for this year by scanning invoice_no that start with INV-{year}-
+    all_this_year = Invoice.objects.filter(
+        invoice_no__startswith=year_prefix
+    ).values_list('invoice_no', flat=True)
+    max_global = 0
+    for inv_no in all_this_year:
+        parts = inv_no.split('-')
+        if len(parts) >= 2:
+            try:
+                g = int(parts[1])
+                if g > max_global:
+                    max_global = g
+            except ValueError:
+                continue
+    new_global = max_global + 1
+
+    # Per-case counter for this year
+    case_prefix = f"INV-*-{case.case_number}-{year_str}-"
+    case_invs = Invoice.objects.filter(
+        invoice_no__regex=rf"^INV-\d+-{re.escape(case.case_number)}-{year_str}-"
+    ).values_list('invoice_no', flat=True)
+    max_case = 0
+    for inv_no in case_invs:
+        parts = inv_no.split('-')
+        if len(parts) >= 4:
+            try:
+                c = int(parts[3])
+                if c > max_case:
+                    max_case = c
+            except ValueError:
+                continue
+    new_case = max_case + 1
+
+    return f"INV-{new_global:06d}-{case.case_number}-{year_str}-{new_case:04d}"
 
 
 def sync_invoice(classification):
