@@ -13,6 +13,12 @@
       <li><a href="{% url 'payments:case_pricing' case.id %}" class="button small">Pricing</a></li>
       <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
       <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
+      <li>
+        <form method="post" action="{% url 'payments:refresh_amounts' case.id %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="button small">Refresh Amounts</button>
+        </form>
+      </li>
     </ul>
     <div class="table-wrapper">
       <table>

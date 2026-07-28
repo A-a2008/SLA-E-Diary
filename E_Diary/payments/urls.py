@@ -20,6 +20,7 @@ urlpatterns = [
     path('entries/batch-pay/', views.batch_pay, name='batch_pay'),
     path('reclassify/<int:entry_id>/', views.reclassify_single, name='reclassify_single'),
     path('reclassify-case/<int:case_id>/', views.reclassify_case, name='reclassify_case'),
+    path('cases/<int:case_id>/refresh-amounts/', views.refresh_amounts, name='refresh_amounts'),
     path('users/', views.manage_payments_users, name='manage_payments_users'),
     path('users/add/', views.add_payments_user, name='add_payments_user'),
     path('users/<int:user_id>/remove/', views.remove_payments_user, name='remove_payments_user'),

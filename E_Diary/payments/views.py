@@ -482,6 +482,34 @@ def reclassify_case(request, case_id):
     return redirect(request.META.get('HTTP_REFERER', '/payments/cases/'))
 
 
+@require_http_methods(['POST'])
+@payments_access_required
+def refresh_amounts(request, case_id):
+    case = get_object_or_404(Case, id=case_id)
+    pricing = get_or_create_pricing(case)
+    charge_amounts = {
+        cca.charge_type_id: cca.amount
+        for cca in CaseChargeAmount.objects.filter(case_pricing=pricing)
+    }
+    entries = case.diary_entries.filter(entry_type='business')
+    updated = 0
+    for entry in entries:
+        try:
+            classification = entry.classification
+            for item in classification.charge_items.filter(charge_type__isnull=False):
+                current = charge_amounts.get(item.charge_type_id)
+                if current is None:
+                    current = Decimal('0')
+                if item.amount != current:
+                    item.amount = current
+                    item.save()
+                    updated += 1
+        except EntryClassification.DoesNotExist:
+            pass
+    messages.success(request, f'Updated amounts for {updated} charge items across {entries.count()} entries.')
+    return redirect(request.META.get('HTTP_REFERER', '/payments/cases/'))
+
+
 # ── QUICK CLASSIFY (AJAX from diary entry case page) ──
 
 @require_http_methods(['POST'])

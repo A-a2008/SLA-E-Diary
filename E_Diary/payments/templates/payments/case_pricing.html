@@ -35,7 +35,18 @@
         <li><a href="{% url 'payments:case_entries' case.id %}" class="button small">View Entries</a></li>
         <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
         <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
-        <li><a href="{% url 'payments:reclassify_case' case.id %}" class="button small" onclick="return confirm('Re-run classifier on all entries?')">Re-classify All</a></li>
+        <li>
+          <form method="post" action="{% url 'payments:reclassify_case' case.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="button small" onclick="return confirm('Re-run AI classifier on all entries?')">Re-classify All</button>
+          </form>
+        </li>
+        <li>
+          <form method="post" action="{% url 'payments:refresh_amounts' case.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="button small">Refresh Amounts</button>
+          </form>
+        </li>
         <li>
           <form method="post" action="{% url 'payments:mark_full_paid' case.id %}" style="display:inline;">
             {% csrf_token %}
