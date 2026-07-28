@@ -134,7 +134,7 @@
                             </td>
                         </tr>
                         {% endfor %}
-                        <tr><td colspan="7" style="padding: 0.3rem 0.75rem; background: #f9f9f9; font-size: 0.85rem; color: #666; border-bottom: 2px solid #ddd;">
+                        <tr><td colspan="7" style="padding: 0.3rem 0.75rem; background: #f9f9f9; font-size: 1.1rem; color: #666; border-bottom: 2px solid #ddd;">
                             <strong>Further dates:</strong>
                             {% with dates=family_further_dates|dict_key:group.grouper %}
                             {% if dates %}{{ dates|join:", " }}{% else %}—{% endif %}
@@ -314,10 +314,6 @@
 
     .cause-list-table {
         word-break: break-word;
-    }
-    .cause-list-table td,
-    .cause-list-table th {
-        font-size: 1.2em;
     }
 
     @media (min-width: 769px) {
