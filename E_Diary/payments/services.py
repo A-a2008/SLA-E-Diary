@@ -209,7 +209,18 @@ def sync_invoice(classification):
     if not first_client:
         return None
     client = first_client.client
-    total = sum((i.amount or Decimal('0')) for i in items)
+    # Compute total from current pricing, not snapshot
+    pricing = get_or_create_pricing(case)
+    charge_amounts = {
+        cca.charge_type_id: cca.amount or Decimal('0')
+        for cca in CaseChargeAmount.objects.filter(case_pricing=pricing)
+    }
+    total = Decimal('0')
+    for i in items:
+        if i.charge_type_id:
+            total += charge_amounts.get(i.charge_type_id, Decimal('0'))
+        else:
+            total += i.amount or Decimal('0')
     particulars = ', '.join(
         i.charge_type.name if i.charge_type else i.custom_charge_name
         for i in items

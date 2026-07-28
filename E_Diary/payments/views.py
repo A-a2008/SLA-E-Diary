@@ -823,6 +823,11 @@ def generate_invoices_for_case(request, case_id):
     if not CaseClient.objects.filter(case=case).exists():
         messages.error(request, 'Please link at least one client to this case before generating invoices.')
         return redirect('payments:case_pricing', case_id=case.id)
+    pricing = get_or_create_pricing(case)
+    charge_amounts = {
+        cca.charge_type_id: cca.amount
+        for cca in CaseChargeAmount.objects.filter(case_pricing=pricing)
+    }
     entries = case.diary_entries.filter(entry_type='business')
     generated = 0
     for entry in entries:
@@ -833,13 +838,24 @@ def generate_invoices_for_case(request, case_id):
             items = classification.charge_items.all()
             if not items:
                 continue
+            # Refresh amounts from current pricing first
+            refreshed = 0
+            for item in items.filter(charge_type__isnull=False):
+                current = charge_amounts.get(item.charge_type_id)
+                if current is None:
+                    current = Decimal('0')
+                if item.amount != current:
+                    item.amount = current
+                    item.save()
+                    refreshed += 1
             sync_invoice(classification)
             generated += 1
         except EntryClassification.DoesNotExist:
             pass
         except Exception as e:
             logger.error(f"Invoice generation failed for entry {entry.id}: {e}")
-    messages.success(request, f'Generated {generated} new invoices for {case}.')
+    msg = f'Generated {generated} new invoices'
+    messages.success(request, msg + '.')
     return redirect('payments:case_pricing', case_id=case.id)
 
 
