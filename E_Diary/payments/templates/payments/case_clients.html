@@ -1,17 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<style>
-.link-cb-wrap { display: inline-flex; align-items: center; white-space: nowrap; margin: 0; }
-.link-cb-wrap input[type="checkbox"] {
-  -moz-appearance: auto; -webkit-appearance: auto; appearance: auto;
-  opacity: 1; position: static; float: none; width: auto; height: auto;
-  margin: 0; z-index: auto; cursor: pointer;
-}
-</style>
 <div id="main">
   <div class="inner">
     <h1>Manage Clients for {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <p>{{ case.party_1 }} vs {{ case.party_2 }}</p>
     <input type="text" id="client-search" placeholder="Search clients by name or phone..." style="margin-bottom: 1rem; width: 100%;">
     <form method="post">
       {% csrf_token %}
@@ -22,11 +15,10 @@
             {% for client in all_clients %}
             <tr class="client-row" data-search="{{ client.name|lower }} {{ client.phone }}">
               <td>
-                <span class="link-cb-wrap">
-                  <input type="checkbox" name="clients" value="{{ client.id }}" id="cl_{{ client.id }}"
-                         {% if client.id in linked %}checked{% endif %}>
-                  <label for="cl_{{ client.id }}"></label>
-                </span>
+                <input type="checkbox" name="clients" value="{{ client.id }}"
+                       id="cl_{{ client.id }}"
+                       {% if client.id in linked %}checked{% endif %}>
+                <label for="cl_{{ client.id }}"></label>
               </td>
               <td>{{ client.name }}</td>
               <td>{{ client.phone }}</td>
