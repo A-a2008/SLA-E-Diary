@@ -35,6 +35,11 @@ def client_balance(client):
 
 
 @register.filter
+def caseclient_ids(case):
+    return ','.join(str(cc.client_id) for cc in case.case_clients.all())
+
+
+@register.filter
 def filter_charges(charge_types, entry_type):
     if entry_type == 'mediation':
         return [ct for ct in charge_types if ct.code == 'mediation_attended']

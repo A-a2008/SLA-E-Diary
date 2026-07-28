@@ -397,10 +397,15 @@ def add_transaction(request, case_id=None):
                 transaction_date=txn_date,
                 notes=notes,
             )
+            linked_cases = []
             for cid in case_ids:
                 c = Case.objects.filter(id=int(cid)).first()
                 if c:
                     TransactionCase.objects.create(transaction=txn, case=c)
+                    linked_cases.append(c)
+            from .services import generate_transaction_no
+            txn.transaction_no = generate_transaction_no(linked_cases)
+            txn.save(update_fields=['transaction_no'])
             messages.success(request, f'Transaction of \u20b9{amount} recorded for {client.name}.')
             if case:
                 return redirect('payments:case_pricing', case_id=case.id)

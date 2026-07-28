@@ -173,6 +173,7 @@ class Transaction(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     other_method_detail = models.CharField(max_length=100, blank=True, default='')
     transaction_date = models.DateTimeField()
+    transaction_no = models.CharField(max_length=50, unique=True, blank=True, null=True)
     notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 

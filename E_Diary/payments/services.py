@@ -122,16 +122,11 @@ def generate_invoice_no(case):
     year_str = str(year)
 
     # Global counter — 6 digits, resets yearly
-    year_prefix = f"INV-{year_str}"
-    global_prefix = f"INV-{year_str}-"
-    # Find max global counter for this year by scanning invoice_no that start with INV-{year}-
-    all_this_year = Invoice.objects.filter(
-        invoice_no__startswith=year_prefix
-    ).values_list('invoice_no', flat=True)
+    all_invs = Invoice.objects.values_list('invoice_no', flat=True)
     max_global = 0
-    for inv_no in all_this_year:
+    for inv_no in all_invs:
         parts = inv_no.split('-')
-        if len(parts) >= 2:
+        if len(parts) >= 5 and parts[3] == year_str:
             try:
                 g = int(parts[1])
                 if g > max_global:
@@ -148,9 +143,9 @@ def generate_invoice_no(case):
     max_case = 0
     for inv_no in case_invs:
         parts = inv_no.split('-')
-        if len(parts) >= 4:
+        if len(parts) >= 5:
             try:
-                c = int(parts[3])
+                c = int(parts[4])
                 if c > max_case:
                     max_case = c
             except ValueError:
@@ -158,6 +153,50 @@ def generate_invoice_no(case):
     new_case = max_case + 1
 
     return f"INV-{new_global:06d}-{case_id_str}-{year_str}-{new_case:04d}"
+
+
+# ── Transaction Number Generation ──
+
+@db_transaction.atomic
+def generate_transaction_no(cases):
+    year = datetime.now().year
+    year_str = str(year)
+    all_txns = Transaction.objects.values_list('transaction_no', flat=True)
+    max_global = 0
+    for txn_no in all_txns:
+        if not txn_no:
+            continue
+        parts = txn_no.split('-')
+        if len(parts) >= 5 and parts[3] == year_str:
+            try:
+                g = int(parts[1])
+                if g > max_global:
+                    max_global = g
+            except ValueError:
+                continue
+    new_global = max_global + 1
+
+    if cases:
+        case_id_str = str(cases[0].id)
+        case_txns = Transaction.objects.filter(
+            transaction_no__regex=rf"^TXN-\d+-{re.escape(case_id_str)}-{year_str}-"
+        ).values_list('transaction_no', flat=True)
+        max_case = 0
+        for txn_no in case_txns:
+            if not txn_no:
+                continue
+            parts = txn_no.split('-')
+            if len(parts) >= 5:
+                try:
+                    c = int(parts[4])
+                    if c > max_case:
+                        max_case = c
+                except ValueError:
+                    continue
+        new_case = max_case + 1
+        return f"TXN-{new_global:06d}-{case_id_str}-{year_str}-{new_case:04d}"
+    else:
+        return f"TXN-{new_global:06d}-0-{year_str}-0001"
 
 
 def sync_invoice(classification):
