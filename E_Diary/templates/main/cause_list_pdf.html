@@ -11,12 +11,12 @@
         .subtitle { text-align: center; font-size: 12pt; color: #555; margin-bottom: 0.5cm; }
         h2 { font-size: 13pt; color: #c44569; margin-top: 0.4cm; margin-bottom: 0.1cm; border-bottom: 1px solid #ddd; padding-bottom: 0.05cm; }
         table { width: 18.2cm; max-width: 18.2cm; border-collapse: collapse; margin: 0 auto 0.3cm auto; table-layout: fixed; }
-        th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: left; font-size: 9pt; overflow: hidden; }
+        th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: left; font-size: 11pt; overflow: hidden; }
         th { background: #f5f5f5; font-weight: bold; text-align: center; }
         .sl { text-align: center; }
         .floor { text-align: center; }
         .cl { word-break: break-all; }
-        .wed-sat-box { font-size: 9pt; margin-bottom: 0.3cm; padding: 0.15cm 0.3cm; border: 1px solid #ccc; border-radius: 0.1cm; line-height: 1.6; }
+        .wed-sat-box { font-size: 11pt; margin-bottom: 0.3cm; padding: 0.15cm 0.3cm; border: 1px solid #ccc; border-radius: 0.1cm; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -89,7 +89,7 @@
                 </td>
             </tr>
             {% endfor %}
-            <tr><td colspan="7" style="padding: 0.15cm 0.3cm; background: #f9f9f9; font-size: 8pt; color: #666; border-bottom: 2px solid #ccc;">
+            <tr><td colspan="7" style="padding: 0.15cm 0.3cm; background: #f9f9f9; font-size: 10pt; color: #666; border-bottom: 2px solid #ccc;">
                 <strong>Further dates:</strong>
                 {% with dates=family_further_dates|dict_key:group.grouper %}
                 {% if dates %}{{ dates|join:", " }}{% else %}—{% endif %}
