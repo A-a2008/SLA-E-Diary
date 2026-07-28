@@ -117,7 +117,8 @@ def get_all_outstanding():
 # ── Invoice Number Generation ──
 
 @db_transaction.atomic
-def generate_invoice_no(case):
+def generate_invoice_no(entry):
+    case = entry.case
     year = datetime.now().year
     year_str = str(year)
 
@@ -135,24 +136,20 @@ def generate_invoice_no(case):
                 continue
     new_global = max_global + 1
 
-    # Per-case counter for this year
+    # Per-case sequence — chronological based on entry's position
     case_id_str = str(case.id)
-    case_invs = Invoice.objects.filter(
-        invoice_no__regex=rf"^INV-\d+-{re.escape(case_id_str)}-{year_str}-"
-    ).values_list('invoice_no', flat=True)
-    max_case = 0
-    for inv_no in case_invs:
-        parts = inv_no.split('-')
-        if len(parts) >= 5:
-            try:
-                c = int(parts[4])
-                if c > max_case:
-                    max_case = c
-            except ValueError:
-                continue
-    new_case = max_case + 1
+    earlier = DiaryEntry.objects.filter(
+        case=case, entry_type=entry.entry_type,
+        previous_date__lt=entry.previous_date
+    ).count()
+    same_date = DiaryEntry.objects.filter(
+        case=case, entry_type=entry.entry_type,
+        previous_date=entry.previous_date,
+        id__lt=entry.id
+    ).count()
+    case_seq = earlier + same_date + 1
 
-    return f"INV-{new_global:06d}-{case_id_str}-{year_str}-{new_case:04d}"
+    return f"INV-{new_global:06d}-{case_id_str}-{year_str}-{case_seq:04d}"
 
 
 # ── Transaction Number Generation ──
@@ -228,7 +225,7 @@ def sync_invoice(classification):
     invoice, created = Invoice.objects.get_or_create(
         diary_entry=entry,
         defaults={
-            'invoice_no': generate_invoice_no(case),
+            'invoice_no': generate_invoice_no(entry),
             'client': client,
             'case': case,
             'particulars': particulars,
