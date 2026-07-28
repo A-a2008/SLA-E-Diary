@@ -26,16 +26,17 @@ from .telegram_utils import send_message
 logger = logging.getLogger(__name__)
 
 
-def _get_wed_sat_dates():
-    today = datetime.date.today()
-    target_month = today.month + 3
-    target_year = today.year
+def _get_wed_sat_dates(ref_date=None):
+    if ref_date is None:
+        ref_date = datetime.date.today()
+    target_month = ref_date.month + 3
+    target_year = ref_date.year
     if target_month > 12:
         target_month -= 12
         target_year += 1
     last_day = calendar.monthrange(target_year, target_month)[1]
-    end_date = datetime.date(target_year, target_month, min(today.day, last_day))
-    start = today + datetime.timedelta(days=1)
+    end_date = datetime.date(target_year, target_month, min(ref_date.day, last_day))
+    start = ref_date + datetime.timedelta(days=1)
 
     days_until_wed = (2 - start.weekday()) % 7
     wednesdays = []
@@ -1047,7 +1048,7 @@ def cause_list(request):
             actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
             building_groups.append((actual_code, list(group)))
 
-    wednesdays, saturdays = _get_wed_sat_dates()
+    wednesdays, saturdays = _get_wed_sat_dates(date_obj if date_str else None)
 
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1158,7 +1159,7 @@ def cause_list_docx(request):
             tcW.set(qn('w:w'), str(int(width.emu / 635)))
             tcW.set(qn('w:type'), 'dxa')
 
-    def set_run_font(run, size=Pt(9)):
+    def set_run_font(run, size=Pt(10)):
         run.font.name = 'Helvetica'
         run.font.size = size
 
@@ -1179,7 +1180,7 @@ def cause_list_docx(request):
     sub_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
     sub_para.paragraph_format.space_after = Pt(6)
 
-    wednesdays, saturdays = _get_wed_sat_dates()
+    wednesdays, saturdays = _get_wed_sat_dates(date_obj)
     if wednesdays or saturdays:
         wed_para = doc.add_paragraph()
         wed_run = wed_para.add_run('Wednesdays: ')
@@ -1262,7 +1263,7 @@ def cause_list_docx(request):
             is_mediation = (bldg_code == 'mediation_centre')
             hdr = table.rows[0].cells
             headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Time' if is_mediation else 'Cause List']
-            col_widths = [Cm(1.5), Cm(1.0), Cm(3.0), Cm(5.0), Cm(2.5), Cm(2.0), Cm(3.2)]
+            col_widths = [Cm(1.5), Cm(1.5), Cm(3.0), Cm(4.5), Cm(2.5), Cm(2.0), Cm(3.2)]
             for i, h in enumerate(headers):
                 set_cell_width(hdr[i], col_widths[i])
                 hdr[i].text = ''
@@ -1403,7 +1404,7 @@ def cause_list_pdf(request):
             seen_halls.add(key)
             court_halls_on_date.append(key)
 
-    wednesdays, saturdays = _get_wed_sat_dates()
+    wednesdays, saturdays = _get_wed_sat_dates(date_obj)
 
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'building_groups': building_groups,
