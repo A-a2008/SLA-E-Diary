@@ -58,6 +58,45 @@
             </tr>
         </thead>
         <tbody>
+            {% if bldg_code == 'family_court' and family_further_dates %}
+            {% regroup bldg_entries by case.court_hall as hall_groups %}
+            {% for group in hall_groups %}
+            {% for entry in group.list %}
+            <tr>
+                <td class="sl" style="width: 1.5cm;">{{ entry.sl_no }}</td>
+                <td class="floor" style="width: 1.0cm;">{{ entry.case.floor }}</td>
+                <td class="ch" style="width: 3.0cm;">
+                    {% with effective_court=entry.mediation_court|default:entry.case.court %}
+                    {% with effective_hall=entry.mediation_court_hall|default:entry.case.court_hall %}
+                    {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
+                    {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
+                    {% if hall_key in court_hall_incharges %}
+                    <span style="color: #c44569;">★ Incharge</span>
+                    {% endif %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                </td>
+                <td class="case-col" style="width: 5.3cm;">
+                    <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
+                    {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
+                </td>
+                <td class="rep-col" style="width: 2.6cm;">{{ entry.case.representing }}</td>
+                <td class="stage-col" style="width: 2.5cm;">{{ entry.stage|default:'—' }}</td>
+                <td class="cl" style="width: 2.3cm;">
+                    List I: {{ entry.list_i|default:'—' }}<br>
+                    List II: {{ entry.list_ii|default:'—' }}
+                </td>
+            </tr>
+            {% endfor %}
+            <tr><td colspan="7" style="padding: 0.15cm 0.3cm; background: #f9f9f9; font-size: 8pt; color: #666; border-bottom: 2px solid #ccc;">
+                <strong>Further dates:</strong>
+                {% with dates=family_further_dates|dict_key:group.grouper %}
+                {% if dates %}{{ dates|join:", " }}{% else %}—{% endif %}
+                {% endwith %}
+            </td></tr>
+            {% endfor %}
+            {% else %}
             {% for entry in bldg_entries %}
             <tr>
                 <td class="sl" style="width: 1.5cm;">{{ entry.sl_no }}</td>
@@ -92,6 +131,7 @@
                 {% endif %}
             </tr>
             {% endfor %}
+            {% endif %}
         </tbody>
     </table>
     {% endfor %}

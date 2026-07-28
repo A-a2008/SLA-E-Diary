@@ -26,6 +26,35 @@ from .telegram_utils import send_message
 logger = logging.getLogger(__name__)
 
 
+FAMILY_HALL_ORDER = ['Prl. FC', '1st FC', '2nd FC', '3rd FC', '4th FC', '5th FC', '6th FC']
+
+
+def _tertiary_sort_key(e):
+    court = getattr(e, 'mediation_court', None) or e.case.court
+    list_sum = e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0)
+    if court == 'family':
+        hall = getattr(e, 'mediation_court_hall', None) or e.case.court_hall
+        hi = FAMILY_HALL_ORDER.index(hall) if hall in FAMILY_HALL_ORDER else 999
+        return (hi, list_sum)
+    return (0, list_sum)
+
+
+def _get_family_further_dates(date_obj):
+    if not date_obj:
+        return {}
+    from main.models import DiaryEntry
+    qs = DiaryEntry.objects.filter(
+        case__court='family', next_date__gt=date_obj
+    ).values('case__court_hall', 'next_date').distinct().order_by('case__court_hall', 'next_date')
+    result = {}
+    for row in qs:
+        hall = row['case__court_hall']
+        if hall not in result:
+            result[hall] = []
+        result[hall].append(f"{row['next_date'].day}/{row['next_date'].month}")
+    return result
+
+
 def _get_wed_sat_dates(ref_date=None):
     if ref_date is None:
         ref_date = datetime.date.today()
@@ -1000,7 +1029,7 @@ def cause_list(request):
                     getattr(e, 'mediation_court', None) or e.case.court, 'other'))
                     if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
                 court_order.index(e.case.court) if e.case.court in court_order else 999,
-                e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
+                _tertiary_sort_key(e),
             ))
             for sl, e in enumerate(entries, 1):
                 e.sl_no = sl
@@ -1049,6 +1078,7 @@ def cause_list(request):
             building_groups.append((actual_code, list(group)))
 
     wednesdays, saturdays = _get_wed_sat_dates(date_obj if date_str else None)
+    family_further_dates = _get_family_further_dates(date_obj if date_str else None)
 
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1060,6 +1090,7 @@ def cause_list(request):
         'court_halls_on_date': court_halls_on_date,
         'wednesdays': wednesdays,
         'saturdays': saturdays,
+        'family_further_dates': family_further_dates,
     })
 
 
@@ -1120,7 +1151,7 @@ def cause_list_docx(request):
             getattr(e, 'mediation_court', None) or e.case.court, 'other'))
             if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
-        e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
+        _tertiary_sort_key(e),
     ))
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
@@ -1181,6 +1212,7 @@ def cause_list_docx(request):
     sub_para.paragraph_format.space_after = Pt(6)
 
     wednesdays, saturdays = _get_wed_sat_dates(date_obj)
+    family_further_dates = _get_family_further_dates(date_obj)
     if wednesdays or saturdays:
         wed_para = doc.add_paragraph()
         wed_run = wed_para.add_run('Wednesdays: ')
@@ -1202,87 +1234,19 @@ def cause_list_docx(request):
         sat_val.font.name = 'Helvetica'
         sat_para.paragraph_format.space_after = Pt(8)
 
+    from itertools import groupby
     current_building = None
 
-    for entry in entries:
-        effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
-        bldg_code = COURT_TO_BUILDING.get(effective_court, '')
-        bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(effective_court, effective_court))
-        if bldg_name != current_building:
-            current_building = bldg_name
-            bldg_para = doc.add_paragraph()
-            bldg_para.paragraph_format.space_before = Pt(8)
-            bldg_para.paragraph_format.space_after = Pt(2)
-            pPr = bldg_para._p.get_or_add_pPr()
-            pBdr = parse_xml(
-                f'<w:pBdr {nsdecls("w")}>'
-                f'  <w:bottom w:val="single" w:sz="4" w:space="1" w:color="dddddd"/>'
-                f'</w:pBdr>'
-            )
-            pPr.append(pBdr)
-            bldg_run = bldg_para.add_run(bldg_name)
-            bldg_run.bold = True
-            bldg_run.font.size = Pt(13)
-            bldg_run.font.name = 'Helvetica'
-            bldg_run.font.color.rgb = RGBColor(0xc4, 0x45, 0x69)
-
-            table = doc.add_table(rows=1, cols=7)
-            table.alignment = WD_TABLE_ALIGNMENT.CENTER
-            table.autofit = False
-
-            tbl = table._tbl
-            tblPr = tbl.tblPr
-            if tblPr is None:
-                tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
-                tbl.insert(0, tblPr)
-
-            existing_tblW = tblPr.find(qn('w:tblW'))
-            if existing_tblW is not None:
-                tblPr.remove(existing_tblW)
-            tblPr.append(parse_xml(f'<w:tblW {nsdecls("w")} w:w="{int(Cm(18.2).emu / 635)}" w:type="dxa"/>'))
-
-            existing_layout = tblPr.find(qn('w:tblLayout'))
-            if existing_layout is not None:
-                tblPr.remove(existing_layout)
-            tblPr.append(parse_xml(f'<w:tblLayout {nsdecls("w")} w:type="fixed"/>'))
-
-            existing_borders = tblPr.find(qn('w:tblBorders'))
-            if existing_borders is not None:
-                tblPr.remove(existing_borders)
-            tblPr.append(parse_xml(
-                f'<w:tblBorders {nsdecls("w")}>'
-                f'  <w:top w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'  <w:left w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'  <w:bottom w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'  <w:right w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'  <w:insideH w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'  <w:insideV w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
-                f'</w:tblBorders>'
-            ))
-
-            is_mediation = (bldg_code == 'mediation_centre')
-            hdr = table.rows[0].cells
-            headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Time' if is_mediation else 'Cause List']
-            col_widths = [Cm(1.5), Cm(1.5), Cm(3.0), Cm(4.9), Cm(2.8), Cm(2.2), Cm(2.3)]
-            for i, h in enumerate(headers):
-                set_cell_width(hdr[i], col_widths[i])
-                hdr[i].text = ''
-                p = hdr[i].paragraphs[0]
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                run = p.add_run(h)
-                run.bold = True
-                set_run_font(run)
-                set_cell_shading(hdr[i], 'f5f5f5')
-
+    def _add_docx_data_row(table, entry, col_widths):
         row = table.add_row().cells
         case_num = f"{entry.case.case_type}/{entry.case.case_number}/{entry.case.case_year}"
-        parties = f"{entry.case.party_1} vs {entry.case.party_2}"
         effective_hall = getattr(entry, 'mediation_court_hall', None) or entry.case.court_hall
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
+        bldg_code = COURT_TO_BUILDING.get(effective_court, '')
         if bldg_code == 'mediation_centre':
-            mediation_val = entry.mediation_time.strftime('%I:%M %p') if entry.mediation_time else '—'
-            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', mediation_val]
+            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—',
+                    entry.mediation_time.strftime('%I:%M %p') if entry.mediation_time else '—']
         else:
             cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
             data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing, entry.stage or '—', cause_list_nos]
@@ -1317,6 +1281,136 @@ def cause_list_docx(request):
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(val)
                 set_run_font(run)
+
+    def _add_docx_new_table(doc, bldg_name):
+        bldg_para = doc.add_paragraph()
+        bldg_para.paragraph_format.space_before = Pt(8)
+        bldg_para.paragraph_format.space_after = Pt(2)
+        pPr = bldg_para._p.get_or_add_pPr()
+        pBdr = parse_xml(
+            f'<w:pBdr {nsdecls("w")}>'
+            f'  <w:bottom w:val="single" w:sz="4" w:space="1" w:color="dddddd"/>'
+            f'</w:pBdr>'
+        )
+        pPr.append(pBdr)
+        bldg_run = bldg_para.add_run(bldg_name)
+        bldg_run.bold = True
+        bldg_run.font.size = Pt(13)
+        bldg_run.font.name = 'Helvetica'
+        bldg_run.font.color.rgb = RGBColor(0xc4, 0x45, 0x69)
+
+        table = doc.add_table(rows=1, cols=7)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = False
+
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        if tblPr is None:
+            tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
+            tbl.insert(0, tblPr)
+
+        existing_tblW = tblPr.find(qn('w:tblW'))
+        if existing_tblW is not None:
+            tblPr.remove(existing_tblW)
+        tblPr.append(parse_xml(f'<w:tblW {nsdecls("w")} w:w="{int(Cm(18.2).emu / 635)}" w:type="dxa"/>'))
+
+        existing_layout = tblPr.find(qn('w:tblLayout'))
+        if existing_layout is not None:
+            tblPr.remove(existing_layout)
+        tblPr.append(parse_xml(f'<w:tblLayout {nsdecls("w")} w:type="fixed"/>'))
+
+        existing_borders = tblPr.find(qn('w:tblBorders'))
+        if existing_borders is not None:
+            tblPr.remove(existing_borders)
+        tblPr.append(parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>'
+            f'  <w:top w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'  <w:left w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'  <w:bottom w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'  <w:right w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'  <w:insideH w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'  <w:insideV w:val="single" w:sz="4" w:space="0" w:color="cccccc"/>'
+            f'</w:tblBorders>'
+        ))
+        return table
+
+    def _add_docx_further_dates_row(table, dates, col_widths):
+        row = table.add_row().cells
+        merged = row[0].merge(row[-1])
+        p = merged.paragraphs[0]
+        p.clear()
+        run_label = p.add_run('Further dates: ')
+        run_label.bold = True
+        set_run_font(run_label)
+        dates_text = ', '.join(dates) if dates else '—'
+        run_val = p.add_run(dates_text)
+        set_run_font(run_val)
+
+    i = 0
+    while i < len(entries):
+        entry = entries[i]
+        effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
+        bldg_code = COURT_TO_BUILDING.get(effective_court, '')
+        bldg_name = BUILDING_LABELS.get(bldg_code, COURT_LABELS.get(effective_court, effective_court))
+
+        if bldg_code == 'family_court':
+            if bldg_name != current_building:
+                current_building = bldg_name
+                table = _add_docx_new_table(doc, bldg_name)
+                is_mediation = False
+                hdr = table.rows[0].cells
+                headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Cause List']
+                col_widths = [Cm(1.5), Cm(1.5), Cm(3.0), Cm(4.9), Cm(2.8), Cm(2.2), Cm(2.3)]
+                for j, h in enumerate(headers):
+                    set_cell_width(hdr[j], col_widths[j])
+                    hdr[j].text = ''
+                    p = hdr[j].paragraphs[0]
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    run = p.add_run(h)
+                    run.bold = True
+                    set_run_font(run)
+                    set_cell_shading(hdr[j], 'f5f5f5')
+
+            # Collect all consecutive family entries
+            family_entries = []
+            while i < len(entries):
+                e = entries[i]
+                ec = getattr(e, 'mediation_court', None) or e.case.court
+                bc = COURT_TO_BUILDING.get(ec, '')
+                if bc != 'family_court':
+                    break
+                family_entries.append(e)
+                i += 1
+
+            # Group by hall and render
+            for hall, hall_group in groupby(family_entries, key=lambda e: getattr(e, 'mediation_court_hall', None) or e.case.court_hall):
+                hall_list = list(hall_group)
+                for entry_h in hall_list:
+                    _add_docx_data_row(table, entry_h, col_widths)
+                fwd_dates = family_further_dates.get(hall, [])
+                _add_docx_further_dates_row(table, fwd_dates, col_widths)
+            continue
+
+        else:
+            if bldg_name != current_building:
+                current_building = bldg_name
+                table = _add_docx_new_table(doc, bldg_name)
+                is_mediation = (bldg_code == 'mediation_centre')
+                hdr = table.rows[0].cells
+                headers = ['Sl No.', 'Floor', 'Court Hall', 'Case & Parties', 'Representing', 'Stage', 'Time' if is_mediation else 'Cause List']
+                col_widths = [Cm(1.5), Cm(1.5), Cm(3.0), Cm(4.9), Cm(2.8), Cm(2.2), Cm(2.3)]
+                for j, h in enumerate(headers):
+                    set_cell_width(hdr[j], col_widths[j])
+                    hdr[j].text = ''
+                    p = hdr[j].paragraphs[0]
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    run = p.add_run(h)
+                    run.bold = True
+                    set_run_font(run)
+                    set_cell_shading(hdr[j], 'f5f5f5')
+
+            _add_docx_data_row(table, entry, col_widths)
+            i += 1
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="cause_list_{date_str}.docx"'
@@ -1376,7 +1470,7 @@ def cause_list_pdf(request):
             getattr(e, 'mediation_court', None) or e.case.court, 'other'))
             if (getattr(e, 'mediation_court', None) or e.case.court) in COURT_TO_BUILDING else 999,
         court_order.index(e.case.court) if e.case.court in court_order else 999,
-        e.mediation_time.hour * 60 + e.mediation_time.minute if e.mediation_time else (e.list_i or 0) + (e.list_ii or 0),
+        _tertiary_sort_key(e),
     ))
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
@@ -1405,6 +1499,7 @@ def cause_list_pdf(request):
             court_halls_on_date.append(key)
 
     wednesdays, saturdays = _get_wed_sat_dates(date_obj)
+    family_further_dates = _get_family_further_dates(date_obj)
 
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1414,6 +1509,7 @@ def cause_list_pdf(request):
         'court_halls_on_date': court_halls_on_date,
         'wednesdays': wednesdays,
         'saturdays': saturdays,
+        'family_further_dates': family_further_dates,
     }).content.decode()
 
     pdf_file = BytesIO()
