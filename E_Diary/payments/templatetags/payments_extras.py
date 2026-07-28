@@ -29,6 +29,13 @@ def is_cc_criminal(case):
 
 
 @register.filter
+def filter_charges(charge_types, entry_type):
+    if entry_type == 'mediation':
+        return [ct for ct in charge_types if ct.code == 'mediation_attended']
+    return [ct for ct in charge_types if ct.code != 'mediation_attended']
+
+
+@register.filter
 def dict_key(d, key):
     if d is None:
         return ''

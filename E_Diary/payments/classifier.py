@@ -71,6 +71,28 @@ def classify_business_entry(entry):
     ecourts_text = (entry.ecourts_business or '').strip()
     stage = (entry.stage or '').strip()
 
+    # Mediation-specific classification
+    if entry.entry_type == 'mediation':
+        text = (advocate_text + ' ' + ecourts_text).lower()
+        stage_lower = stage.lower()
+        # Not our mediation — just a date trail or other party's private mediation
+        not_ours = ['their mediation', 'private mediation', 'their private',
+                    'date fixed for mediation', 'referred to mediation',
+                    'referred to kkc', 'referred to mediation centre']
+        # We attended — joint or our mediation session
+        we_attended = ['mediation held', 'both parties present', 'parties present',
+                       'joint mediation', 'we attended', 'present for mediation',
+                       'attended mediation', 'participated', 'mediation conducted',
+                       'settlement discussion', 'we appeared']
+        if any(kw in text for kw in not_ours):
+            if not any(kw in text for kw in we_attended):
+                return []
+        if any(kw in text for kw in we_attended):
+            return ['mediation_attended']
+        if 'mediation' in stage_lower:
+            return ['mediation_attended']
+        return []
+
     combined = f"Stage: {stage}\nAdvocate Notes: {advocate_text}\n"
     if ecourts_text:
         combined += f"eCourts: {ecourts_text}"
@@ -132,7 +154,7 @@ def classify_business_entry(entry):
         "8. evidence_chief: Only if WE conducted examination-in-chief of OUR witness.\n"
         "9. evidence_cross: Only if WE cross-examined THEIR witness.\n"
         "10. arguments: Only if WE made final arguments/submissions.\n"
-        "11. mediation: Only if mediation session occurred.\n"
+        "11. mediation_attended: Only for mediation entries if we attended.\n"
         "12. filing_vakalat: Only if WE filed vakalatnama (respondent side).\n"
         "13. filing_objections: Only if WE filed objections (respondent side).\n\n"
 

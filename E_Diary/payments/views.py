@@ -334,6 +334,10 @@ def edit_classification(request, entry_id):
         defaults={'auto_classified': True}
     )
     charge_types = get_applicable_charge_types(case)
+    if entry.entry_type == 'mediation':
+        charge_types = charge_types.filter(code='mediation_attended')
+    else:
+        charge_types = charge_types.exclude(code='mediation_attended')
     custom_charges = CustomCharge.objects.filter(case_pricing=pricing)
     if request.method == 'POST':
         with transaction.atomic():

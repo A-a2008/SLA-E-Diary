@@ -14,12 +14,16 @@ class PaymentsConfig(AppConfig):
             from django.db import transaction
             from django.db.utils import OperationalError
             from .models import ChargeType
+            # First, rename existing 'mediation' to 'mediation_attended'
+            ChargeType.objects.filter(code='mediation').update(
+                code='mediation_attended', name='Mediation Attended'
+            )
             charges = [
                 ('hearing', 'Hearing/Appearance', 'both', False, 1),
                 ('evidence_chief', 'Evidence: Chief', 'both', False, 2),
                 ('evidence_cross', 'Evidence: Cross Examination', 'both', False, 3),
                 ('arguments', 'Arguments', 'both', False, 4),
-                ('mediation', 'Mediation sitting charge', 'both', False, 5),
+                ('mediation_attended', 'Mediation Attended', 'both', False, 5),
                 ('filing_ep', 'Filing EP', 'both', True, 6),
                 ('ia', 'IA', 'both', False, 7),
                 ('ia_objections', 'IA Objections', 'both', False, 8),

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def auto_classify_entry(sender, instance, created, **kwargs):
     if getattr(instance, '_skip_payments', False):
         return
-    if not instance.entry_type == 'business':
+    if instance.entry_type not in ('business', 'mediation'):
         return
     try:
         old = DiaryEntry.objects.filter(pk=instance.pk).values('business', 'ecourts_business').first()

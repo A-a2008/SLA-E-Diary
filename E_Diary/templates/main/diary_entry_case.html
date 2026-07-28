@@ -199,10 +199,10 @@
                     {% endfor %}
                 </div>
                 {% endif %}
-                {% if show_payments_ui and entry.entry_type == 'business' %}
+                {% if show_payments_ui %}
                 <div class="payments-section" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #ce93d8;">
                   <div id="charges-display-{{ entry.id }}" style="margin: 0.5rem 0; line-height: 2.5;">
-                    {% for ct in payments_charge_types %}
+                    {% for ct in payments_charge_types|filter_charges:entry.entry_type %}
                     <span class="pay-cb-wrap">
                       <input type="checkbox" value="{{ ct.id }}" disabled
                              id="pay_{{ entry.id }}_{{ ct.id }}"
