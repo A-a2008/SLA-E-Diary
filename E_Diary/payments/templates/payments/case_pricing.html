@@ -75,17 +75,7 @@
 
     <form method="post">
       {% csrf_token %}
-      <h2>Client Contact</h2>
-      <div class="row gtr-uniform">
-        <div class="col-4 col-12-xsmall">
-          <input type="text" name="client_name" placeholder="Client name" value="{{ pricing.client_name|default:'' }}">
-        </div>
-        <div class="col-4 col-12-xsmall">
-          <input type="text" name="client_phone" placeholder="Client phone" value="{{ pricing.client_phone|default:'' }}">
-        </div>
-      </div>
-
-      <h2 style="margin-top: 1.5rem;">Charges</h2>
+      <h2>Charges</h2>
       <div class="table-wrapper">
         <table>
           <thead><tr><th>Charge Description</th><th>Amount</th></tr></thead>

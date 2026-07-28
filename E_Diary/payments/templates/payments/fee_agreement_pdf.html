@@ -46,9 +46,11 @@
       <tr><td><strong>Court:</strong></td><td>{{ case.court }} — {{ case.court_hall }}</td></tr>
       <tr><td><strong>Parties:</strong></td><td>{{ case.party_1 }} ({{ case.party_1_type }}) vs {{ case.party_2 }} ({{ case.party_2_type }})</td></tr>
       <tr><td><strong>Representing:</strong></td><td>{{ case.representing_display }}</td></tr>
-      {% if pricing.client_name %}
-      <tr><td><strong>Client(s):</strong></td><td>{{ pricing.client_name }}</td></tr>
+      {% with cc=case.case_clients.first %}
+      {% if cc %}
+      <tr><td><strong>Client(s):</strong></td><td>{{ cc.client.name }} — {{ cc.client.phone }}</td></tr>
       {% endif %}
+      {% endwith %}
     </table>
   </div>
   <div class="agreement-text">

@@ -39,7 +39,7 @@
     <table>
       <tr><td><strong>Case:</strong> {{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}</td><td><strong>Date:</strong> {{ entry.previous_date|date:"d M Y" }}</td></tr>
       <tr><td><strong>Court:</strong> {{ case.court }} — {{ case.court_hall }}</td><td><strong>Stage:</strong> {{ entry.stage }}</td></tr>
-      <tr><td><strong>Client:</strong> {{ pricing.client_name|default:case.party_1 }}{% if pricing.client_phone %} — {{ pricing.client_phone }}{% endif %}</td><td></td></tr>
+      <tr><td><strong>Client:</strong> {% with cc=case.case_clients.first %}{% if cc %}{{ cc.client.name }} — {{ cc.client.phone }}{% else %}{{ case.party_1 }}{% endif %}{% endwith %}</td><td></td></tr>
     </table>
   </div>
   {% if custom_message %}

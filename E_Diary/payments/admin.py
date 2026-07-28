@@ -26,7 +26,7 @@ class CaseClientAdmin(admin.ModelAdmin):
 
 @admin.register(CasePricing)
 class CasePricingAdmin(admin.ModelAdmin):
-    list_display = ['case', 'client_name', 'client_phone', 'is_one_time', 'fully_paid']
+    list_display = ['case', 'is_one_time', 'fully_paid']
 
 
 @admin.register(CaseChargeAmount)

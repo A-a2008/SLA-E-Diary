@@ -189,8 +189,6 @@ def case_pricing(request, case_id):
 
     if request.method == 'POST':
         with transaction.atomic():
-            pricing.client_name = request.POST.get('client_name', '')
-            pricing.client_phone = request.POST.get('client_phone', '')
             pricing.is_one_time = request.POST.get('is_one_time') == 'on'
             pricing.one_time_amount = request.POST.get('one_time_amount') or None
             pricing.appearance_included = request.POST.get('appearance_included') == 'on'

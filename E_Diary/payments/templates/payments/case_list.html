@@ -35,8 +35,8 @@
           <tr>
             <td><strong>{{ item.case.case_type }}/{{ item.case.case_number }}/{{ item.case.case_year }}</strong></td>
             <td>{{ item.case.party_1 }} vs {{ item.case.party_2 }}</td>
-            <td>{{ item.pricing.client_name|default:item.case.party_1 }}</td>
-            <td>{{ item.pricing.client_phone|default:'--' }}</td>
+            <td>{% with cc=item.case.case_clients.first %}{% if cc %}{{ cc.client.name }}{% else %}{{ item.case.party_1 }}{% endif %}{% endwith %}</td>
+            <td>{% with cc=item.case.case_clients.first %}{% if cc %}{{ cc.client.phone }}{% else %}--{% endif %}{% endwith %}</td>
             <td>{{ item.unpaid_count }}</td>
             <td>{{ item.total_unpaid }}</td>
             <td>{% if item.pricing.fully_paid %}<span style="color: #2e7d32;">Paid</span>{% else %}<span style="color: #c62828;">Pending</span>{% endif %}</td>

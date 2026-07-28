@@ -54,8 +54,6 @@ class CaseClient(models.Model):
 
 class CasePricing(models.Model):
     case = models.OneToOneField(Case, on_delete=models.CASCADE, related_name='pricing')
-    client_phone = models.CharField(max_length=20, blank=True, default='')
-    client_name = models.CharField(max_length=200, blank=True, default='')
     is_one_time = models.BooleanField(default=False)
     one_time_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     appearance_included = models.BooleanField(default=False)
