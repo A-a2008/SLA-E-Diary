@@ -136,22 +136,25 @@ def generate_invoice_no(entry):
                 continue
     new_global = max_global + 1
 
-    # Per-case sequence — sequential among entries that have charge items
+    # Per-case sequence — chronological among entries that have charge items
     case_id_str = str(case.id)
-    case_invs = Invoice.objects.filter(
-        invoice_no__regex=rf"^INV-\d+-{re.escape(case_id_str)}-{year_str}-"
-    ).values_list('invoice_no', flat=True)
-    max_case = 0
-    for inv_no in case_invs:
-        parts = inv_no.split('-')
-        if len(parts) >= 5:
-            try:
-                c = int(parts[4])
-                if c > max_case:
-                    max_case = c
-            except ValueError:
-                continue
-    case_seq = max_case + 1
+    entry_ids_with_charges = set(
+        EntryChargeItem.objects.values_list('entry_classification__diary_entry', flat=True)
+    )
+    earlier = DiaryEntry.objects.filter(
+        case=case,
+        entry_type=entry.entry_type,
+        previous_date__lt=entry.previous_date,
+        id__in=entry_ids_with_charges,
+    ).count()
+    same_date = DiaryEntry.objects.filter(
+        case=case,
+        entry_type=entry.entry_type,
+        previous_date=entry.previous_date,
+        id__lt=entry.id,
+        id__in=entry_ids_with_charges,
+    ).count()
+    case_seq = earlier + same_date + 1
 
     return f"INV-{new_global:06d}-{case_id_str}-{year_str}-{case_seq:04d}"
 

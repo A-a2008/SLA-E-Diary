@@ -828,7 +828,7 @@ def generate_invoices_for_case(request, case_id):
         cca.charge_type_id: cca.amount
         for cca in CaseChargeAmount.objects.filter(case_pricing=pricing)
     }
-    entries = case.diary_entries.filter(entry_type='business')
+    entries = case.diary_entries.filter(entry_type='business').order_by('previous_date', 'id')
     generated = 0
     for entry in entries:
         try:
