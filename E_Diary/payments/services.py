@@ -99,7 +99,7 @@ def get_case_ledger(case):
 
 def get_all_outstanding():
     clients = Client.objects.annotate(
-        total_invoiced=db_models.Sum('invoice_set__amount'),
+        total_invoiced=db_models.Sum('invoice__amount'),
         total_paid=db_models.Sum('transactions__amount'),
     )
     result = []
