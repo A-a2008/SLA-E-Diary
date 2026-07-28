@@ -104,9 +104,15 @@
 
       <h2>One-Time Payment</h2>
       <div class="row gtr-uniform">
-        <div class="col-12"><label><input type="checkbox" name="is_one_time" {% if pricing.is_one_time %}checked{% endif %}> This case is a one-time payment</label></div>
+        <div class="col-12">
+          <input type="checkbox" name="is_one_time" id="is_one_time" {% if pricing.is_one_time %}checked{% endif %}>
+          <label for="is_one_time">This case is a one-time payment</label>
+        </div>
         <div class="col-4 col-12-xsmall"><input type="text" name="one_time_amount" placeholder="One-time amount" value="{% if pricing.one_time_amount %}{{ pricing.one_time_amount }}{% endif %}"></div>
-        <div class="col-12"><label><input type="checkbox" name="appearance_included" {% if pricing.appearance_included %}checked{% endif %}> Appearance included in one-time</label></div>
+        <div class="col-12">
+          <input type="checkbox" name="appearance_included" id="appearance_included" {% if pricing.appearance_included %}checked{% endif %}>
+          <label for="appearance_included">Appearance included in one-time</label>
+        </div>
         <div class="col-4 col-12-xsmall"><input type="text" name="appearance_amount" placeholder="Per-appearance amount" value="{% if pricing.appearance_amount %}{{ pricing.appearance_amount }}{% endif %}"></div>
       </div>
 
