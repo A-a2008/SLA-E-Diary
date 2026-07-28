@@ -16,11 +16,19 @@
         .sl { text-align: center; }
         .floor { text-align: center; }
         .cl { word-break: break-all; }
+        .wed-sat-box { font-size: 9pt; margin-bottom: 0.3cm; padding: 0.15cm 0.3cm; border: 1px solid #ccc; border-radius: 0.1cm; line-height: 1.6; }
     </style>
 </head>
 <body>
     <h1>Cause List: {{ date_obj|date:"d/m/Y" }}</h1>
     <p class="subtitle"><strong>{{ date_obj|date:"l" }}</strong></p>
+
+    {% if wednesdays or saturdays %}
+    <div class="wed-sat-box">
+        <strong>Wednesdays:</strong> {{ wednesdays|join:", " }}<br>
+        <strong>Saturdays:</strong> {{ saturdays|join:", " }}
+    </div>
+    {% endif %}
 
     {% for bldg_code, bldg_entries in building_groups %}
     <h2>{{ bldg_code|building_label }}</h2>

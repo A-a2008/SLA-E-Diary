@@ -26,6 +26,33 @@ from .telegram_utils import send_message
 logger = logging.getLogger(__name__)
 
 
+def _get_wed_sat_dates():
+    today = datetime.date.today()
+    target_month = today.month + 3
+    target_year = today.year
+    if target_month > 12:
+        target_month -= 12
+        target_year += 1
+    last_day = calendar.monthrange(target_year, target_month)[1]
+    end_date = datetime.date(target_year, target_month, min(today.day, last_day))
+    start = today + datetime.timedelta(days=1)
+
+    days_until_wed = (2 - start.weekday()) % 7
+    wednesdays = []
+    current = start + datetime.timedelta(days=days_until_wed)
+    while current <= end_date:
+        wednesdays.append(f"{current.day}/{current.month}")
+        current += datetime.timedelta(days=7)
+
+    days_until_sat = (5 - start.weekday()) % 7
+    saturdays = []
+    current = start + datetime.timedelta(days=days_until_sat)
+    while current <= end_date:
+        saturdays.append(f"{current.day}/{current.month}")
+        current += datetime.timedelta(days=7)
+
+    return wednesdays, saturdays
+
 
 # ── ADMIN / SUPERUSER USER MANAGEMENT ──
 
@@ -1020,31 +1047,7 @@ def cause_list(request):
             actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
             building_groups.append((actual_code, list(group)))
 
-    today = datetime.date.today()
-    target_month = today.month + 3
-    target_year = today.year
-    if target_month > 12:
-        target_month -= 12
-        target_year += 1
-    last_day = calendar.monthrange(target_year, target_month)[1]
-    end_date = datetime.date(target_year, target_month, min(today.day, last_day))
-
-    start = today + datetime.timedelta(days=1)
-
-    days_until_wed = (2 - start.weekday()) % 7
-    days_until_sat = (5 - start.weekday()) % 7
-
-    wednesdays = []
-    current = start + datetime.timedelta(days=days_until_wed)
-    while current <= end_date:
-        wednesdays.append(f"{current.day}/{current.month}")
-        current += datetime.timedelta(days=7)
-
-    saturdays = []
-    current = start + datetime.timedelta(days=days_until_sat)
-    while current <= end_date:
-        saturdays.append(f"{current.day}/{current.month}")
-        current += datetime.timedelta(days=7)
+    wednesdays, saturdays = _get_wed_sat_dates()
 
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1175,6 +1178,28 @@ def cause_list_docx(request):
     sub_run.font.name = 'Helvetica'
     sub_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
     sub_para.paragraph_format.space_after = Pt(6)
+
+    wednesdays, saturdays = _get_wed_sat_dates()
+    if wednesdays or saturdays:
+        wed_para = doc.add_paragraph()
+        wed_run = wed_para.add_run('Wednesdays: ')
+        wed_run.bold = True
+        wed_run.font.size = Pt(9)
+        wed_run.font.name = 'Helvetica'
+        wed_val = wed_para.add_run(', '.join(wednesdays))
+        wed_val.font.size = Pt(9)
+        wed_val.font.name = 'Helvetica'
+        wed_para.paragraph_format.space_after = Pt(2)
+
+        sat_para = doc.add_paragraph()
+        sat_run = sat_para.add_run('Saturdays: ')
+        sat_run.bold = True
+        sat_run.font.size = Pt(9)
+        sat_run.font.name = 'Helvetica'
+        sat_val = sat_para.add_run(', '.join(saturdays))
+        sat_val.font.size = Pt(9)
+        sat_val.font.name = 'Helvetica'
+        sat_para.paragraph_format.space_after = Pt(8)
 
     current_building = None
 
@@ -1378,12 +1403,16 @@ def cause_list_pdf(request):
             seen_halls.add(key)
             court_halls_on_date.append(key)
 
+    wednesdays, saturdays = _get_wed_sat_dates()
+
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'building_groups': building_groups,
         'date_str': date_str, 'date_obj': date_obj,
         'court_labels': COURT_LABELS, 'court_to_building': COURT_TO_BUILDING,
         'court_hall_incharges': court_hall_incharges,
         'court_halls_on_date': court_halls_on_date,
+        'wednesdays': wednesdays,
+        'saturdays': saturdays,
     }).content.decode()
 
     pdf_file = BytesIO()
