@@ -35,6 +35,13 @@
         </div>
         {% endif %}
 
+        {% if wednesdays or saturdays %}
+        <div style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; font-size: 0.95rem; line-height: 2;">
+            <div><strong>Wednesdays:</strong> {{ wednesdays|join:", " }}</div>
+            <div><strong>Saturdays:</strong> {{ saturdays|join:", " }}</div>
+        </div>
+        {% endif %}
+
         {% if entries %}
         {% if unique_hall_keys %}
         {% for court_code, hall_name in unique_hall_keys %}

@@ -1,6 +1,7 @@
 import json
 import re
 import datetime
+import calendar
 import logging
 from io import BytesIO
 
@@ -1019,6 +1020,32 @@ def cause_list(request):
             actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
             building_groups.append((actual_code, list(group)))
 
+    today = datetime.date.today()
+    target_month = today.month + 3
+    target_year = today.year
+    if target_month > 12:
+        target_month -= 12
+        target_year += 1
+    last_day = calendar.monthrange(target_year, target_month)[1]
+    end_date = datetime.date(target_year, target_month, min(today.day, last_day))
+
+    start = today + datetime.timedelta(days=1)
+
+    days_until_wed = (2 - start.weekday()) % 7
+    days_until_sat = (5 - start.weekday()) % 7
+
+    wednesdays = []
+    current = start + datetime.timedelta(days=days_until_wed)
+    while current <= end_date:
+        wednesdays.append(f"{current.day}/{current.month}")
+        current += datetime.timedelta(days=7)
+
+    saturdays = []
+    current = start + datetime.timedelta(days=days_until_sat)
+    while current <= end_date:
+        saturdays.append(f"{current.day}/{current.month}")
+        current += datetime.timedelta(days=7)
+
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'building_groups': building_groups,
         'date_str': date_str, 'date_obj': date_obj if date_str else None,
@@ -1027,6 +1054,8 @@ def cause_list(request):
         'unique_hall_keys': unique_hall_keys,
         'court_hall_incharges': court_hall_incharges,
         'court_halls_on_date': court_halls_on_date,
+        'wednesdays': wednesdays,
+        'saturdays': saturdays,
     })
 
 
