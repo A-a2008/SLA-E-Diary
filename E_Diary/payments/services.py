@@ -141,9 +141,9 @@ def generate_invoice_no(case):
     new_global = max_global + 1
 
     # Per-case counter for this year
-    case_prefix = f"INV-*-{case.case_number}-{year_str}-"
+    case_id_str = str(case.id)
     case_invs = Invoice.objects.filter(
-        invoice_no__regex=rf"^INV-\d+-{re.escape(case.case_number)}-{year_str}-"
+        invoice_no__regex=rf"^INV-\d+-{re.escape(case_id_str)}-{year_str}-"
     ).values_list('invoice_no', flat=True)
     max_case = 0
     for inv_no in case_invs:
@@ -157,7 +157,7 @@ def generate_invoice_no(case):
                 continue
     new_case = max_case + 1
 
-    return f"INV-{new_global:06d}-{case.case_number}-{year_str}-{new_case:04d}"
+    return f"INV-{new_global:06d}-{case_id_str}-{year_str}-{new_case:04d}"
 
 
 def sync_invoice(classification):
