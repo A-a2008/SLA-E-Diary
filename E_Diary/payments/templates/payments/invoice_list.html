@@ -22,7 +22,7 @@
           {% for inv in invoices %}
           <tr>
             <td><strong>{{ inv.invoice_no }}</strong></td>
-            <td>{{ inv.created_at|date:"d-m-Y H:i" }}</td>
+            <td>{{ inv.invoice_date|date:"d-m-Y" }}</td>
             <td>{{ inv.client.name|default:'—' }}</td>
             <td>{{ inv.case.case_type }}/{{ inv.case.case_number }}/{{ inv.case.case_year }}</td>
             <td>{{ inv.particulars|default:'—' }}</td>

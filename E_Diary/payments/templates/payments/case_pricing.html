@@ -142,7 +142,7 @@
           {% for inv in invoices %}
           <tr>
             <td><strong>{{ inv.invoice_no }}</strong></td>
-            <td>{{ inv.created_at|date:"d-m-Y" }}</td>
+            <td>{{ inv.invoice_date|date:"d-m-Y" }}</td>
             <td>{{ inv.client.name|default:'—' }}</td>
             <td>{{ inv.particulars|default:'—' }}</td>
             <td>{{ inv.amount|format_amount }}</td>

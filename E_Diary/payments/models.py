@@ -141,6 +141,7 @@ class Invoice(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE)
     particulars = models.TextField(blank=True, default='')
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    invoice_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

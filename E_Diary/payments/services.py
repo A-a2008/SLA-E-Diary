@@ -33,10 +33,10 @@ def get_client_balance(client):
 
 def get_client_ledger(client):
     rows = []
-    invoices = Invoice.objects.filter(client=client).order_by('created_at')
+    invoices = Invoice.objects.filter(client=client).order_by('invoice_date', 'created_at')
     for inv in invoices:
         rows.append({
-            'date': inv.created_at,
+            'date': inv.invoice_date or inv.created_at,
             'type': 'Invoice',
             'ref': inv.invoice_no,
             'case': str(inv.case),
@@ -66,11 +66,11 @@ def get_client_ledger(client):
 
 def get_case_ledger(case):
     rows = []
-    invoices = Invoice.objects.filter(case=case).order_by('created_at')
+    invoices = Invoice.objects.filter(case=case).order_by('invoice_date', 'created_at')
     for inv in invoices:
         client_name = inv.client.name if inv.client else '—'
         rows.append({
-            'date': inv.created_at,
+            'date': inv.invoice_date or inv.created_at,
             'type': 'Invoice',
             'ref': inv.invoice_no,
             'client': client_name,
@@ -237,12 +237,14 @@ def sync_invoice(classification):
             'case': case,
             'particulars': particulars,
             'amount': total,
+            'invoice_date': entry.previous_date,
         }
     )
     if not created:
         invoice.client = client
         invoice.particulars = particulars
         invoice.amount = total
+        invoice.invoice_date = entry.previous_date
         invoice.save()
     return invoice
 
