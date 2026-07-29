@@ -5,6 +5,20 @@
 <div id="main">
   <div class="inner">
     <h1>Transactions</h1>
+    <div class="row gtr-uniform" style="margin: 1rem 0;">
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; text-align: center; background: #f3e5f5; border-radius: 8px;">
+          <strong style="color: #7b1fa2;">Total</strong>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #4a148c; margin: 0.3rem 0;">{{ transactions|length }}</p>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; text-align: center; background: #e8f5e9; border-radius: 8px;">
+          <strong style="color: #2e7d32;">Total Amount</strong>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #1b5e20; margin: 0.3rem 0;">{{ transactions|transaction_total }}</p>
+        </div>
+      </div>
+    </div>
     <form method="get" style="margin: 1rem 0;">
       <div class="row gtr-uniform">
         <div class="col-6 col-12-xsmall">
@@ -14,25 +28,26 @@
           <ul class="actions"><li><input type="submit" value="Search" class="primary"></li></ul>
         </div>
         <div class="col-3 col-12-xsmall">
-          <a href="{% url 'payments:transaction_list' %}" class="button primary" onclick="alert('Use the Record Payment button on a specific case page, or go to Clients section.'); return false;">+ Record Payment</a>
+          <a href="{% url 'payments:client_list' %}" class="button primary">+ Record Payment</a>
         </div>
       </div>
     </form>
     <div class="table-wrapper">
       <table>
-          <thead><tr><th>TXN #</th><th>Date</th><th>Client</th><th>Method</th><th>Amount</th><th>Cases</th><th>Notes</th></tr></thead>
+        <thead><tr><th>TXN #</th><th>Date</th><th>Client</th><th>Method</th><th>Amount</th><th>Cases</th><th>Notes</th></tr></thead>
         <tbody>
           {% for txn in transactions %}
           <tr>
+            <td><strong>{{ txn.transaction_no|default:txn.id }}</strong></td>
             <td>{{ txn.transaction_date|date:"d-m-Y H:i" }}</td>
-            <td><a href="{% url 'payments:client_statement' txn.client.id %}">{{ txn.client.name }}</a></td>
+            <td><a href="{% url 'payments:client_detail' txn.client.id %}">{{ txn.client.name }}</a></td>
             <td>{{ txn.get_payment_method_display }}{% if txn.other_method_detail %} ({{ txn.other_method_detail }}){% endif %}</td>
             <td style="color: #2e7d32;">{{ txn.amount|format_amount }}</td>
-            <td>{% for tc in txn.cases.all %}{{ tc.case.case_type }}/{{ tc.case.case_number }}/{{ tc.case.case_year }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+            <td>{% for tc in txn.cases.all %}<a href="{% url 'payments:case_pricing' tc.case.id %}">{{ tc.case.case_type }}/{{ tc.case.case_number }}/{{ tc.case.case_year }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
             <td>{{ txn.notes|default:'—' }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="6">No transactions yet.</td></tr>
+          <tr><td colspan="7">No transactions yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

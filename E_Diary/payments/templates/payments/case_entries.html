@@ -8,35 +8,30 @@
     <p>{{ case.party_1 }} vs {{ case.party_2 }} — {{ case.court }}</p>
     {% with case_clients=case.case_clients.all %}
     {% if case_clients %}
-    <p><strong>Client(s):</strong> {% for cc in case_clients %}{{ cc.client.name }} ({{ cc.client.phone }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    <p><strong>Client(s):</strong> {% for cc in case_clients %}<a href="{% url 'payments:client_detail' cc.client.id %}">{{ cc.client.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
     {% endif %}
     {% endwith %}
     <ul class="actions">
-      <li><a href="{% url 'payments:case_pricing' case.id %}" class="button small">Pricing</a></li>
-      <li><a href="{% url 'payments:fee_agreement_pdf' case.id %}" class="button small">Fee Agreement PDF</a></li>
-      <li><a href="{% url 'payments:fee_agreement_image' case.id %}" class="button small">Fee Agreement Image</a></li>
+      <li><a href="{% url 'payments:case_pricing' case.id %}" class="button small">Back to Case</a></li>
       <li><a href="{% url 'payments:case_statement' case.id %}" class="button small">Statement</a></li>
       <li>
-        <form method="post" action="{% url 'payments:refresh_amounts' case.id %}" style="display:inline;">
+        <form method="post" action="{% url 'payments:generate_invoices_for_case' case.id %}" style="display:inline;">
           {% csrf_token %}
-          <button type="submit" class="button small">Refresh Amounts</button>
+          <button type="submit" class="button small">Generate Invoices</button>
         </form>
       </li>
     </ul>
     <div class="table-wrapper">
       <table>
-        <thead>
-          <tr><th>Date</th><th>Stage</th><th>Business</th><th>Charges</th><th>Amount</th><th>Invoice</th><th>Actions</th></tr>
-        </thead>
+        <thead><tr><th>Date</th><th>Stage</th><th>Charges</th><th>Amount</th><th>Invoice</th><th></th></tr></thead>
         <tbody>
           {% for ed in entry_data %}
           <tr>
             <td>{{ ed.entry.previous_date|date:"d-m-Y" }}</td>
             <td>{{ ed.entry.stage }}</td>
-            <td style="max-width: 300px;">{{ ed.entry.business|truncatewords:20 }}</td>
             <td>{{ ed.charge_labels }}</td>
             <td>{{ ed.total }}</td>
-            <td>{% if ed.invoice_no %}{{ ed.invoice_no }}{% else %}—{% endif %}</td>
+            <td>{% if ed.invoice_no %}<a href="{% url 'payments:invoice_pdf' ed.entry.id %}">{{ ed.invoice_no }}</a>{% else %}—{% endif %}</td>
             <td>
               <a href="{% url 'payments:edit_classification' ed.entry.id %}" class="button small">Classify</a>
               <a href="{% url 'payments:invoice_pdf' ed.entry.id %}" class="button small">PDF</a>
@@ -44,7 +39,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="7">No entries yet.</td></tr>
+          <tr><td colspan="6">No entries yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

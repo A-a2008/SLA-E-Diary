@@ -5,6 +5,22 @@
 <div id="main">
   <div class="inner">
     <h1>Invoices</h1>
+    {% with total_amt=invoices|invoice_total %}
+    <div class="row gtr-uniform" style="margin: 1rem 0;">
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; text-align: center; background: #e8f5e9; border-radius: 8px;">
+          <strong style="color: #2e7d32;">Total Invoices</strong>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #1b5e20; margin: 0.3rem 0;">{{ invoices|length }}</p>
+        </div>
+      </div>
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; text-align: center; background: #fff8e1; border-radius: 8px;">
+          <strong style="color: #f57f17;">Total Amount</strong>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #e65100; margin: 0.3rem 0;">{{ total_amt }}</p>
+        </div>
+      </div>
+    </div>
+    {% endwith %}
     <form method="get" style="margin: 1rem 0;">
       <div class="row gtr-uniform">
         <div class="col-6 col-12-xsmall">
@@ -23,8 +39,8 @@
           <tr>
             <td><strong>{{ inv.invoice_no }}</strong></td>
             <td>{{ inv.invoice_date|date:"d-m-Y" }}</td>
-            <td>{{ inv.client.name|default:'—' }}</td>
-            <td>{{ inv.case.case_type }}/{{ inv.case.case_number }}/{{ inv.case.case_year }}</td>
+            <td><a href="{% url 'payments:client_detail' inv.client.id %}">{{ inv.client.name|default:'—' }}</a></td>
+            <td><a href="{% url 'payments:case_pricing' inv.case.id %}">{{ inv.case.case_type }}/{{ inv.case.case_number }}/{{ inv.case.case_year }}</a></td>
             <td>{{ inv.particulars|default:'—' }}</td>
             <td>{{ inv.amount|format_amount }}</td>
           </tr>

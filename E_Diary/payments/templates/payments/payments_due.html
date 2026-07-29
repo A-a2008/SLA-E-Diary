@@ -5,6 +5,14 @@
 <div id="main">
   <div class="inner">
     <h1>Outstanding Balances</h1>
+    <div class="row gtr-uniform" style="margin: 1rem 0;">
+      <div class="col-3 col-6-medium col-12-small">
+        <div style="padding: 1rem; text-align: center; background: #fff5f5; border-radius: 8px;">
+          <strong style="color: #c62828;">Total Outstanding</strong>
+          <p style="font-size: 1.5rem; font-weight: 900; color: #c62828; margin: 0.3rem 0;">{{ total_outstanding|format_amount }}</p>
+        </div>
+      </div>
+    </div>
     <form method="get" style="margin: 1rem 0;">
       <div class="row gtr-uniform">
         <div class="col-6 col-12-xsmall">
@@ -19,21 +27,20 @@
     <div style="margin-bottom: 1.5rem; border: 1px solid #ddd; border-radius: 8px; padding: 1rem;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <strong style="font-size: 1.1rem;">{{ item.client.name }}</strong> — {{ item.client.phone }}
+          <a href="{% url 'payments:client_detail' item.client.id %}" style="font-size: 1.1rem; font-weight: 700;">{{ item.client.name }}</a> — {{ item.client.phone }}
         </div>
         <div style="text-align: right;">
           <strong style="font-size: 1.2rem; color: #c62828;">{{ item.balance|format_amount }}</strong>
-          <br>
-          <span style="font-size: 0.85rem; color: #888;">Billed: {{ item.invoiced|format_amount }} | Paid: {{ item.paid|format_amount }}</span>
+          <br><span style="font-size: 0.85rem; color: #888;">Billed: {{ item.invoiced|format_amount }} | Paid: {{ item.paid|format_amount }}</span>
         </div>
       </div>
-      <div style="margin-top: 0.5rem;">
+      <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
         <a href="{% url 'payments:client_statement' item.client.id %}" class="button small">Statement</a>
         <a href="{% url 'payments:client_add_transaction' item.client.id %}" class="button small">Record Payment</a>
       </div>
     </div>
     {% empty %}
-    <p>No outstanding balances. All clients are up to date!</p>
+    <p>All clients are up to date!</p>
     {% endfor %}
   </div>
 </div>

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <p><a href="{% url 'payments:client_list' %}" class="button small">&larr; Back to Clients</a></p>
+    <h1>{{ client.name }}</h1>
+    <p style="color: #585858; font-size: 1.1rem;">{{ client.phone }}{% if client.address %} | {{ client.address }}{% endif %}</p>
+
+    <div class="row gtr-uniform" style="margin: 1.5rem 0;">
+      <div class="col-4 col-12-small">
+        <div style="padding: 1.2rem; background: #fff8e1; border-radius: 8px; text-align: center;">
+          <strong style="color: #f57f17;">Total Billed</strong>
+          <p style="font-size: 1.4rem; font-weight: 900; color: #e65100; margin: 0.3rem 0;">{{ total_billed|format_amount }}</p>
+        </div>
+      </div>
+      <div class="col-4 col-12-small">
+        <div style="padding: 1.2rem; background: #e8f5e9; border-radius: 8px; text-align: center;">
+          <strong style="color: #2e7d32;">Total Paid</strong>
+          <p style="font-size: 1.4rem; font-weight: 900; color: #1b5e20; margin: 0.3rem 0;">{{ total_paid|format_amount }}</p>
+        </div>
+      </div>
+      <div class="col-4 col-12-small">
+        <div style="padding: 1.2rem; background: {% if balance >= 0 %}#e8f5e9{% else %}#fff5f5{% endif %}; border-radius: 8px; text-align: center;">
+          <strong style="color: {% if balance >= 0 %}#2e7d32{% else %}#c62828{% endif %};">Balance</strong>
+          <p style="font-size: 1.4rem; font-weight: 900; color: {% if balance >= 0 %}#1b5e20{% else %}#c62828{% endif %}; margin: 0.3rem 0;">{{ balance|format_amount }}</p>
+        </div>
+      </div>
+    </div>
+
+    <ul class="actions" style="margin-bottom: 1.5rem;">
+      <li><a href="{% url 'payments:client_add_transaction' client.id %}" class="button primary">Record Payment</a></li>
+      <li><a href="{% url 'payments:client_statement' client.id %}" class="button">View Statement</a></li>
+      <li><a href="{% url 'payments:client_edit' client.id %}" class="button">Edit Client</a></li>
+    </ul>
+
+    <hr>
+
+    <h2>Linked Cases</h2>
+    {% if case_clients %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Case</th><th>Parties</th></tr></thead>
+        <tbody>
+          {% for cc in case_clients %}
+          <tr>
+            <td><a href="{% url 'payments:case_pricing' cc.case.id %}" style="font-weight: 700;">{{ cc.case.case_type }}/{{ cc.case.case_number }}/{{ cc.case.case_year }}</a></td>
+            <td>{{ cc.case.party_1 }} vs {{ cc.case.party_2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: #888;">Not linked to any cases.</p>
+    {% endif %}
+
+    <hr>
+
+    <div class="row gtr-uniform">
+      <div class="col-6 col-12-medium">
+        <h2>Recent Invoices</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Invoice #</th><th>Date</th><th>Amount</th></tr></thead>
+            <tbody>
+              {% for inv in invoices %}
+              <tr>
+                <td><strong>{{ inv.invoice_no }}</strong></td>
+                <td>{{ inv.invoice_date|date:"d-m-Y" }}</td>
+                <td>{{ inv.amount|format_amount }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3">No invoices yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-6 col-12-medium">
+        <h2>Recent Payments</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Date</th><th>Method</th><th>Amount</th></tr></thead>
+            <tbody>
+              {% for txn in transactions %}
+              <tr>
+                <td>{{ txn.transaction_date|date:"d-m-Y" }}</td>
+                <td>{{ txn.get_payment_method_display }}</td>
+                <td style="color: #2e7d32;">{{ txn.amount|format_amount }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3">No payments yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

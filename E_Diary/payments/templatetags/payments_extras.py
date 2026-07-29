@@ -35,6 +35,22 @@ def client_balance(client):
 
 
 @register.filter
+def invoice_total(invoices):
+    total = sum(inv.amount or 0 for inv in invoices)
+    if total == int(total):
+        return f'\u20b9{int(total):,}'
+    return f'\u20b9{total:,.2f}'
+
+
+@register.filter
+def transaction_total(transactions):
+    total = sum(txn.amount or 0 for txn in transactions)
+    if total == int(total):
+        return f'\u20b9{int(total):,}'
+    return f'\u20b9{total:,.2f}'
+
+
+@register.filter
 def caseclient_ids(case):
     return ','.join(str(cc.client_id) for cc in case.case_clients.all())
 

@@ -58,8 +58,10 @@ def client_list(request):
     clients = Client.objects.all().order_by('name')
     if q:
         clients = clients.filter(Q(name__icontains=q) | Q(phone__icontains=q))
+    total_outstanding = sum(abs(get_client_balance(c)) for c in clients)
     return render(request, 'payments/client_list.html', {
         'clients': clients, 'q': q,
+        'total_outstanding': total_outstanding,
     })
 
 
@@ -98,6 +100,22 @@ def client_edit(request, client_id):
             messages.success(request, 'Client updated.')
             return redirect('payments:client_list')
     return render(request, 'payments/client_form.html', {'client': client})
+
+
+@payments_access_required
+def client_detail(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    case_clients = CaseClient.objects.filter(client=client).select_related('case')
+    invoices = Invoice.objects.filter(client=client).order_by('-invoice_date')[:10]
+    transactions = Transaction.objects.filter(client=client).order_by('-transaction_date')[:10]
+    balance = get_client_balance(client)
+    total_billed = Invoice.objects.filter(client=client).aggregate(t=Sum('amount'))['t'] or 0
+    total_paid = Transaction.objects.filter(client=client).aggregate(t=Sum('amount'))['t'] or 0
+    return render(request, 'payments/client_detail.html', {
+        'client': client, 'case_clients': case_clients,
+        'invoices': invoices, 'transactions': transactions,
+        'balance': balance, 'total_billed': total_billed, 'total_paid': total_paid,
+    })
 
 
 # ── CASE CLIENTS ──
@@ -276,6 +294,40 @@ def case_pricing(request, case_id):
         id__in=list(txn_ids)
     ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
     total_due = total_billed - total_collected
+
+    # Entries data for the tab
+    entry_data = []
+    for entry in entries:
+        try:
+            classification = entry.classification
+            items = classification.charge_items.all()
+        except EntryClassification.DoesNotExist:
+            items = []
+        try:
+            inv = entry.invoice
+            invoice_no = inv.invoice_no
+        except Invoice.DoesNotExist:
+            invoice_no = None
+        total = sum(float(i.amount or 0) for i in items)
+        entry_data.append({
+            'entry': entry,
+            'charge_items': items,
+            'invoice_no': invoice_no,
+            'total': f'\u20b9{int(total):,}' if total == int(total) else f'\u20b9{total:,.2f}',
+            'charge_labels': ', '.join(
+                (i.charge_type.name if i.charge_type else i.custom_charge_name)
+                for i in items
+            ) if items else 'Not classified',
+        })
+
+    # Clients list for the Clients tab
+    linked_client_ids = set(CaseClient.objects.filter(case=case).values_list('client_id', flat=True))
+    all_clients = Client.objects.all().order_by('name')
+
+    # Ledger for Statement tab
+    ledger = get_case_ledger(case)
+
+    tab = request.GET.get('tab', 'charges')
     return render(request, 'payments/case_pricing.html', {
         'case': case, 'pricing': pricing,
         'charge_types': charge_types, 'charge_amounts': charge_amounts,
@@ -286,6 +338,11 @@ def case_pricing(request, case_id):
         'case_clients': case_clients_list,
         'invoices': invoices_list,
         'case_transactions': case_transactions,
+        'entry_data': entry_data,
+        'tab': tab,
+        'linked_client_ids': linked_client_ids,
+        'all_clients': all_clients,
+        'ledger': ledger,
     })
 
 
@@ -332,8 +389,9 @@ def payments_due(request):
     outstanding = get_all_outstanding()
     if q:
         outstanding = [r for r in outstanding if q.lower() in r['client'].name.lower()]
+    total_outstanding = sum(abs(r['balance']) for r in outstanding)
     return render(request, 'payments/payments_due.html', {
-        'outstanding': outstanding, 'q': q,
+        'outstanding': outstanding, 'q': q, 'total_outstanding': total_outstanding,
     })
 
 
