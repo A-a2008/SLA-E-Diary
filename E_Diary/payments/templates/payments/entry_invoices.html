@@ -46,8 +46,8 @@
               </td>
               <td>
                 {% if inv %}
-                <a href="{% url 'payments:invoice_pdf' entry.id %}" class="button small">PDF</a>
-                <a href="{% url 'payments:invoice_image' entry.id %}" class="button small">Img</a>
+                <a href="{% url 'payments:invoice_pdf' entry.id %}?client_id={{ cc.client.id }}" class="button small">PDF</a>
+                <a href="{% url 'payments:invoice_image' entry.id %}?client_id={{ cc.client.id }}" class="button small">Img</a>
                 {% endif %}
               </td>
             </tr>

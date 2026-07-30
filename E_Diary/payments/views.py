@@ -766,16 +766,49 @@ def _invoice_context(entry, request=None):
     except EntryClassification.DoesNotExist:
         items = []
         saved_message = ''
+        classification = None
     total = sum(float(i.amount or 0) for i in items)
-    custom_message = request.GET.get('message', None) or None if request else None
-    if not custom_message and saved_message:
-        custom_message = saved_message
-    inv_first = entry.invoices.first()
-    invoice_no = inv_first.invoice_no if inv_first else None
+
+    # Per-client invoice via ?client_id= parameter
+    invoice = None
+    invoice_client = None
+    invoice_no = None
+    invoice_amount = total
+    custom_message = None
+
+    if request:
+        client_id = request.GET.get('client_id')
+        if client_id:
+            invoice = entry.invoices.filter(client_id=int(client_id)).first()
+        if not invoice:
+            invoice = entry.invoices.first()
+
+        if invoice:
+            invoice_no = invoice.invoice_no
+            invoice_amount = float(invoice.amount)
+            invoice_client = invoice.client
+            if invoice.invoice_message:
+                custom_message = invoice.invoice_message
+
+        # ?message= GET param overrides everything
+        get_msg = request.GET.get('message')
+        if get_msg:
+            custom_message = get_msg
+
+        if not custom_message and saved_message:
+            custom_message = saved_message
+    else:
+        inv = entry.invoices.first()
+        if inv:
+            invoice_no = inv.invoice_no
+            invoice_amount = float(inv.amount)
+            invoice_client = inv.client
+
     return {
         'case': case, 'entry': entry, 'pricing': pricing,
-        'items': items, 'total': total,
+        'items': items, 'total': invoice_amount,
         'custom_message': custom_message, 'invoice_no': invoice_no,
+        'invoice_client': invoice_client,
     }
 
 
