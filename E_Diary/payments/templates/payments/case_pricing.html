@@ -188,8 +188,8 @@
     <p style="color: #888; margin-bottom: 1rem;">Type in the search box to find and select clients for this case.</p>
     <form method="post" action="{% url 'payments:case_clients' case.id %}">
       {% csrf_token %}
-      <input type="text" id="client-search" placeholder="Search for client..." style="width: 100%; margin-bottom: 0.5rem;">
-      <div class="table-wrapper">
+      <input type="text" id="client-search" placeholder="Search for a client..." style="width: 100%; margin-bottom: 0.5rem;">
+      <div class="table-wrapper" id="client-table-wrapper" style="display: none;">
         <table>
           <thead><tr><th>Select</th><th>Name</th><th>Phone</th></tr></thead>
           <tbody id="client-results">
@@ -216,6 +216,7 @@
     <script>
     document.getElementById('client-search')?.addEventListener('keyup', function() {
       var q = this.value.toLowerCase();
+      var wrapper = document.getElementById('client-table-wrapper');
       var found = 0;
       document.querySelectorAll('.client-row').forEach(function(row) {
         if (q.length === 0) {
@@ -226,17 +227,15 @@
           if (match) found++;
         }
       });
+      wrapper.style.display = q.length > 0 ? '' : 'none';
       var msg = document.getElementById('no-results-msg');
+      if (msg) msg.remove();
       if (q.length > 0 && found === 0) {
-        if (!msg) {
-          msg = document.createElement('p');
-          msg.id = 'no-results-msg';
-          msg.style.cssText = 'color: #888; margin-top: 0.5rem;';
-          document.getElementById('client-results').parentElement.parentElement.after(msg);
-        }
-        msg.textContent = 'No clients match "' + q + '". <a href="{% url "payments:client_add" %}">Add a new client</a>.';
-      } else if (msg) {
-        msg.remove();
+        msg = document.createElement('p');
+        msg.id = 'no-results-msg';
+        msg.style.cssText = 'color: #888; margin-top: 0.5rem;';
+        document.getElementById('client-results').parentElement.parentElement.after(msg);
+        msg.textContent = 'No clients match "' + q + '".';
       }
     });
     </script>
