@@ -185,33 +185,59 @@
 
     {# ── TAB: Clients ── #}
     {% if tab == 'clients' %}
-    <form method="post" action="{% url 'payments:case_clients' case.id %}" style="margin-bottom: 1rem;">
+    <p style="color: #888; margin-bottom: 1rem;">Type in the search box to find and select clients for this case.</p>
+    <form method="post" action="{% url 'payments:case_clients' case.id %}">
       {% csrf_token %}
-      <div class="row gtr-uniform">
-        <div class="col-6 col-12-xsmall">
-          <input type="text" id="client-search" placeholder="Search clients..." style="width: 100%;">
-        </div>
-        <div class="col-12">
-          {% for client in all_clients %}
-          <label style="display: block; margin: 0.3rem 0; cursor: pointer;">
-            <input type="checkbox" name="clients" value="{{ client.id }}" {% if client.id in linked_client_ids %}checked{% endif %}>
-            {{ client.name }} — {{ client.phone }}
-          </label>
-          {% empty %}
-          <p style="color: #888;">No clients in database. <a href="{% url 'payments:client_add' %}">Add one</a>.</p>
-          {% endfor %}
-        </div>
-        <div class="col-12" style="margin-top: 0.5rem;">
-          <ul class="actions">
-            <li><input type="submit" value="Save Clients" class="primary"></li>
-          </ul>
-        </div>
+      <input type="text" id="client-search" placeholder="Search for client..." style="width: 100%; margin-bottom: 0.5rem;">
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Select</th><th>Name</th><th>Phone</th></tr></thead>
+          <tbody id="client-results">
+            {% for client in all_clients %}
+            <tr class="client-row" data-search="{{ client.name|lower }} {{ client.phone }}" style="display: none;">
+              <td>
+                <input type="checkbox" name="clients" value="{{ client.id }}" id="tcl_{{ client.id }}"
+                       {% if client.id in linked_client_ids %}checked{% endif %}>
+                <label for="tcl_{{ client.id }}"></label>
+              </td>
+              <td>{{ client.name }}</td>
+              <td>{{ client.phone }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">No clients in database. <a href="{% url 'payments:client_add' %}">Add one</a>.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      <ul class="actions" style="margin-top: 0.5rem;">
+        <li><input type="submit" value="Save Clients" class="primary"></li>
+      </ul>
     </form>
     <script>
     document.getElementById('client-search')?.addEventListener('keyup', function() {
       var q = this.value.toLowerCase();
-      document.querySelectorAll('.payments-section label').forEach(function(lbl) { lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+      var found = 0;
+      document.querySelectorAll('.client-row').forEach(function(row) {
+        if (q.length === 0) {
+          row.style.display = 'none';
+        } else {
+          var match = row.getAttribute('data-search').includes(q);
+          row.style.display = match ? '' : 'none';
+          if (match) found++;
+        }
+      });
+      var msg = document.getElementById('no-results-msg');
+      if (q.length > 0 && found === 0) {
+        if (!msg) {
+          msg = document.createElement('p');
+          msg.id = 'no-results-msg';
+          msg.style.cssText = 'color: #888; margin-top: 0.5rem;';
+          document.getElementById('client-results').parentElement.parentElement.after(msg);
+        }
+        msg.textContent = 'No clients match "' + q + '". <a href="{% url "payments:client_add" %}">Add a new client</a>.';
+      } else if (msg) {
+        msg.remove();
+      }
     });
     </script>
     {% endif %}
