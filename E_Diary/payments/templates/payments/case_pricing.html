@@ -185,16 +185,31 @@
 
     {# ── TAB: Clients ── #}
     {% if tab == 'clients' %}
-    <p style="color: #888; margin-bottom: 1rem;">Type in the search box to find and select clients for this case.</p>
+
+    {% if case_clients %}
+    <div style="margin-bottom: 1rem;">
+      <strong>Current Clients:</strong>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+        {% for cc in case_clients %}
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem; background: #e8eaf6; padding: 0.3rem 0.8rem; border-radius: 4px;">
+          <strong>{{ cc.client.name }}</strong> — {{ cc.client.phone }}
+          <a href="{% url 'payments:client_statement' cc.client.id %}" class="button small" style="font-size: 0.75rem; padding: 0.15rem 0.4rem;">Statement</a>
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <form method="post" action="{% url 'payments:case_clients' case.id %}">
       {% csrf_token %}
       <input type="text" id="client-search" placeholder="Search for a client..." style="width: 100%; margin-bottom: 0.5rem;">
-      <div class="table-wrapper" id="client-table-wrapper" style="display: none;">
+      <div class="table-wrapper" id="client-table-wrapper" style="{% if linked_client_ids %}display: block;{% else %}display: none;{% endif %}">
         <table>
           <thead><tr><th>Select</th><th>Name</th><th>Phone</th></tr></thead>
           <tbody id="client-results">
             {% for client in all_clients %}
-            <tr class="client-row" data-search="{{ client.name|lower }} {{ client.phone }}" style="display: none;">
+            <tr class="client-row" data-search="{{ client.name|lower }} {{ client.phone }}"
+                style="{% if client.id not in linked_client_ids and not linked_client_ids %}display: none;{% endif %}">
               <td>
                 <input type="checkbox" name="clients" value="{{ client.id }}" id="tcl_{{ client.id }}"
                        {% if client.id in linked_client_ids %}checked{% endif %}>
@@ -220,14 +235,14 @@
       var found = 0;
       document.querySelectorAll('.client-row').forEach(function(row) {
         if (q.length === 0) {
-          row.style.display = 'none';
+          row.style.display = '';
         } else {
           var match = row.getAttribute('data-search').includes(q);
           row.style.display = match ? '' : 'none';
           if (match) found++;
         }
       });
-      wrapper.style.display = q.length > 0 ? '' : 'none';
+      wrapper.style.display = '';
       var msg = document.getElementById('no-results-msg');
       if (msg) msg.remove();
       if (q.length > 0 && found === 0) {
