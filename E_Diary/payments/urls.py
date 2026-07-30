@@ -23,6 +23,7 @@ urlpatterns = [
     path('clients/<int:client_id>/edit/', views.client_edit, name='client_edit'),
     path('clients/<int:client_id>/statement/', views.client_statement, name='client_statement'),
     path('clients/<int:client_id>/transactions/add/', views.client_add_transaction, name='client_add_transaction'),
+    path('entries/<int:entry_id>/invoices/', views.entry_invoices, name='entry_invoices'),
     path('entries/<int:entry_id>/classify/', views.edit_classification, name='edit_classification'),
     path('entries/<int:entry_id>/payment/', views.toggle_payment, name='toggle_payment'),
     path('entries/<int:entry_id>/quick-classify/', views.quick_classify, name='quick_classify'),

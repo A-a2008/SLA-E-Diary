@@ -209,11 +209,6 @@ def sync_invoice(classification):
     items = classification.charge_items.all()
     if not items:
         return None
-    first_client = CaseClient.objects.filter(case=case).first()
-    if not first_client:
-        return None
-    client = first_client.client
-    # Compute total from current pricing, not snapshot
     pricing = get_or_create_pricing(case)
     charge_amounts = {
         cca.charge_type_id: cca.amount or Decimal('0')
@@ -229,24 +224,31 @@ def sync_invoice(classification):
         i.charge_type.name if i.charge_type else i.custom_charge_name
         for i in items
     )
-    invoice, created = Invoice.objects.get_or_create(
-        diary_entry=entry,
-        defaults={
-            'invoice_no': generate_invoice_no(entry),
-            'client': client,
-            'case': case,
-            'particulars': particulars,
-            'amount': total,
-            'invoice_date': entry.previous_date,
-        }
-    )
-    if not created:
-        invoice.client = client
-        invoice.particulars = particulars
-        invoice.amount = total
-        invoice.invoice_date = entry.previous_date
-        invoice.save()
-    return invoice
+    clients = CaseClient.objects.filter(case=case).select_related('client')
+    if not clients:
+        return None
+    created_invoices = []
+    num_clients = clients.count()
+    per_client = total / Decimal(str(num_clients)) if num_clients > 0 else total
+    for cc in clients:
+        invoice, created = Invoice.objects.get_or_create(
+            diary_entry=entry,
+            client=cc.client,
+            defaults={
+                'invoice_no': generate_invoice_no(entry),
+                'case': case,
+                'particulars': particulars,
+                'amount': per_client,
+                'invoice_date': entry.previous_date,
+            }
+        )
+        if not created:
+            invoice.particulars = particulars
+            invoice.amount = per_client
+            invoice.invoice_date = entry.previous_date
+            invoice.save()
+        created_invoices.append(invoice)
+    return created_invoices
 
 
 # ── Existing helpers ──

@@ -136,17 +136,19 @@ class DiaryEntryPayment(models.Model):
 
 class Invoice(models.Model):
     invoice_no = models.CharField(max_length=50, unique=True)
-    diary_entry = models.OneToOneField(DiaryEntry, on_delete=models.CASCADE, related_name='invoice')
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, null=True, blank=True)
+    diary_entry = models.ForeignKey(DiaryEntry, on_delete=models.CASCADE, related_name='invoices')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
     case = models.ForeignKey(Case, on_delete=models.CASCADE)
     particulars = models.TextField(blank=True, default='')
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     invoice_date = models.DateField(null=True, blank=True)
+    invoice_message = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
+        unique_together = ('diary_entry', 'client')
 
     def __str__(self):
         return f"Invoice {self.invoice_no} – {self.amount}"

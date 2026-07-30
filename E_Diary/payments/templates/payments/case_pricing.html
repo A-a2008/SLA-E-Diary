@@ -126,8 +126,8 @@
             <td>{% if ed.invoice_no %}<a href="{% url 'payments:invoice_pdf' ed.entry.id %}">{{ ed.invoice_no }}</a>{% else %}—{% endif %}</td>
             <td>
               <a href="{% url 'payments:edit_classification' ed.entry.id %}" class="button small">Classify</a>
+              <a href="{% url 'payments:entry_invoices' ed.entry.id %}" class="button small">Invoices</a>
               <a href="{% url 'payments:invoice_pdf' ed.entry.id %}" class="button small">PDF</a>
-              <a href="{% url 'payments:invoice_image' ed.entry.id %}" class="button small">Img</a>
             </td>
           </tr>
           {% empty %}

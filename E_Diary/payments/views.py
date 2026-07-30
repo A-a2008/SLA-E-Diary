@@ -303,11 +303,8 @@ def case_pricing(request, case_id):
             items = classification.charge_items.all()
         except EntryClassification.DoesNotExist:
             items = []
-        try:
-            inv = entry.invoice
-            invoice_no = inv.invoice_no
-        except Invoice.DoesNotExist:
-            invoice_no = None
+        inv = entry.invoices.first()
+        invoice_no = inv.invoice_no if inv else None
         total = sum(float(i.amount or 0) for i in items)
         entry_data.append({
             'entry': entry,
@@ -360,11 +357,8 @@ def case_entries(request, case_id):
             items = classification.charge_items.all()
         except EntryClassification.DoesNotExist:
             items = []
-        try:
-            invoice = entry.invoice
-            invoice_no = invoice.invoice_no
-        except Invoice.DoesNotExist:
-            invoice_no = None
+        inv_first = entry.invoices.first()
+        invoice_no = inv_first.invoice_no if inv_first else None
         total = sum(float(i.amount or 0) for i in items)
         entry_data.append({
             'entry': entry,
@@ -776,16 +770,73 @@ def _invoice_context(entry, request=None):
     custom_message = request.GET.get('message', None) or None if request else None
     if not custom_message and saved_message:
         custom_message = saved_message
-    try:
-        invoice = entry.invoice
-        invoice_no = invoice.invoice_no
-    except Invoice.DoesNotExist:
-        invoice_no = None
+    inv_first = entry.invoices.first()
+    invoice_no = inv_first.invoice_no if inv_first else None
     return {
         'case': case, 'entry': entry, 'pricing': pricing,
         'items': items, 'total': total,
         'custom_message': custom_message, 'invoice_no': invoice_no,
     }
+
+
+# ── ENTRY INVOICES (multi-client) ──
+
+@payments_access_required
+def entry_invoices(request, entry_id):
+    entry = get_object_or_404(DiaryEntry, id=entry_id)
+    case = entry.case
+    pricing = get_or_create_pricing(case)
+    try:
+        classification = entry.classification
+        items = classification.charge_items.all()
+    except EntryClassification.DoesNotExist:
+        classification = None
+        items = []
+    total = sum(Decimal(str(i.amount or 0)) for i in items)
+
+    if request.method == 'POST':
+        client_ids = request.POST.getlist('client_id')
+        amounts = request.POST.getlist('amount')
+        messages_list = request.POST.getlist('invoice_message')
+        with transaction.atomic():
+            for i in range(len(client_ids)):
+                cid = int(client_ids[i])
+                amt = Decimal(amounts[i]) if amounts[i].strip() else Decimal('0')
+                msg = messages_list[i].strip() if i < len(messages_list) else ''
+                client = get_object_or_404(Client, id=cid)
+                existing = Invoice.objects.filter(diary_entry=entry, client=client).first()
+                defaults = {
+                    'case': case,
+                    'particulars': ', '.join(
+                        item.charge_type.name if item.charge_type else item.custom_charge_name
+                        for item in items
+                    ) if items else '',
+                    'amount': amt,
+                    'invoice_date': entry.previous_date,
+                    'invoice_message': msg,
+                }
+                if existing:
+                    existing.amount = amt
+                    existing.particulars = defaults['particulars']
+                    existing.invoice_date = entry.previous_date
+                    existing.invoice_message = msg
+                    existing.save()
+                else:
+                    defaults['invoice_no'] = generate_invoice_no(entry)
+                    Invoice.objects.create(diary_entry=entry, client=client, **defaults)
+        messages.success(request, 'Client invoices saved.')
+        return redirect('payments:entry_invoices', entry_id=entry.id)
+
+    clients = CaseClient.objects.filter(case=case).select_related('client')
+    invoices = {
+        inv.client_id: inv
+        for inv in Invoice.objects.filter(diary_entry=entry)
+    }
+    return render(request, 'payments/entry_invoices.html', {
+        'entry': entry, 'case': case,
+        'clients': clients, 'invoices': invoices,
+        'total': total, 'items': items,
+    })
 
 
 @payments_access_required

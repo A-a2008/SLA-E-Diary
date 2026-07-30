@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load payments_extras %}
+{% block content %}
+<div id="main">
+  <div class="inner">
+    <p><a href="{% url 'payments:case_entries' case.id %}" class="button small">&larr; Back to Entries</a></p>
+    <h1>Invoices for {{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
+    <p><strong>{{ entry.previous_date|date:"d-m-Y" }}</strong> — {{ entry.stage }}</p>
+    <div style="background: #f9f9f9; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem;">
+      <p style="margin: 0;"><strong>Business:</strong><br>{{ entry.business|linebreaksbr }}</p>
+    </div>
+
+    <div class="row gtr-uniform" style="margin-bottom: 1rem;">
+      <div class="col-3 col-12-small">
+        <div style="padding: 0.5rem; background: #fff8e1; border-radius: 4px; text-align: center;">
+          <strong>Total Charge</strong><br><span style="color: #e65100; font-weight: 900;">{{ total|format_amount }}</span>
+        </div>
+      </div>
+      <div class="col-3 col-12-small">
+        <div style="padding: 0.5rem; background: #e3f2fd; border-radius: 4px; text-align: center;">
+          <strong>Linked Clients</strong><br><span style="font-size: 1.2rem;">{{ clients|length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Client</th><th>Amount</th><th>Invoice #</th><th>Invoice Message</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for cc in clients %}
+            {% with inv=invoices|dict_key:cc.client_id %}
+            <tr>
+              <td><strong>{{ cc.client.name }}</strong><br><small style="color: #888;">{{ cc.client.phone }}</small></td>
+              <td>
+                <input type="hidden" name="client_id" value="{{ cc.client.id }}">
+                <input type="text" name="amount" value="{% if inv %}{{ inv.amount }}{% endif %}" placeholder="0" style="width: 100px;">
+              </td>
+              <td>{% if inv %}<strong>{{ inv.invoice_no }}</strong>{% else %}—{% endif %}</td>
+              <td>
+                <textarea name="invoice_message" rows="2" style="width: 100%; font-size: 0.85rem;">{% if inv %}{{ inv.invoice_message }}{% endif %}</textarea>
+              </td>
+              <td>
+                {% if inv %}
+                <a href="{% url 'payments:invoice_pdf' entry.id %}" class="button small">PDF</a>
+                <a href="{% url 'payments:invoice_image' entry.id %}" class="button small">Img</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="5">No clients linked to this case. <a href="{% url 'payments:case_clients' case.id %}">Link clients first</a>.</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr><td><strong>Total</strong></td><td colspan="4"></td></tr>
+          </tfoot>
+        </table>
+      </div>
+      {% if clients %}
+      <ul class="actions">
+        <li><input type="submit" value="Save Client Invoices" class="primary"></li>
+        <li><a href="{% url 'payments:case_entries' case.id %}" class="button">Cancel</a></li>
+      </ul>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}
