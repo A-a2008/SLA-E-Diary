@@ -39,7 +39,7 @@ def _tertiary_sort_key(e):
     return (0, list_sum)
 
 
-def _get_family_further_dates(date_obj):
+def _get_family_further_dates(date_obj, excluded_dates=None):
     if not date_obj:
         return {}
     from main.models import DiaryEntry
@@ -49,9 +49,12 @@ def _get_family_further_dates(date_obj):
     result = {}
     for row in qs:
         hall = row['case__court_hall']
+        date_str = f"{row['next_date'].day}/{row['next_date'].month}"
+        if excluded_dates and date_str in excluded_dates:
+            continue
         if hall not in result:
             result[hall] = []
-        result[hall].append(f"{row['next_date'].day}/{row['next_date'].month}")
+        result[hall].append(date_str)
     return result
 
 
@@ -82,6 +85,13 @@ def _get_wed_sat_dates(ref_date=None):
         current += datetime.timedelta(days=7)
 
     return wednesdays, saturdays
+
+
+def _get_not_to_be_taken(ref_date=None):
+    wed, sat = _get_wed_sat_dates(ref_date)
+    combined = set(wed + sat)
+    result = sorted(combined, key=lambda x: (int(x.split('/')[1]), int(x.split('/')[0])))
+    return result
 
 
 # ── ADMIN / SUPERUSER USER MANAGEMENT ──
@@ -1077,8 +1087,8 @@ def cause_list(request):
             actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
             building_groups.append((actual_code, list(group)))
 
-    wednesdays, saturdays = _get_wed_sat_dates(date_obj if date_str else None)
-    family_further_dates = _get_family_further_dates(date_obj if date_str else None)
+    not_to_be_taken = _get_not_to_be_taken(date_obj if date_str else None)
+    family_further_dates = _get_family_further_dates(date_obj if date_str else None, set(not_to_be_taken) if not_to_be_taken else None)
 
     return render(request, 'main/cause_list.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1088,8 +1098,7 @@ def cause_list(request):
         'unique_hall_keys': unique_hall_keys,
         'court_hall_incharges': court_hall_incharges,
         'court_halls_on_date': court_halls_on_date,
-        'wednesdays': wednesdays,
-        'saturdays': saturdays,
+        'not_to_be_taken': not_to_be_taken,
         'family_further_dates': family_further_dates,
     })
 
@@ -1211,28 +1220,18 @@ def cause_list_docx(request):
     sub_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
     sub_para.paragraph_format.space_after = Pt(6)
 
-    wednesdays, saturdays = _get_wed_sat_dates(date_obj)
-    family_further_dates = _get_family_further_dates(date_obj)
-    if wednesdays or saturdays:
-        wed_para = doc.add_paragraph()
-        wed_run = wed_para.add_run('Wednesdays: ')
-        wed_run.bold = True
-        wed_run.font.size = Pt(9)
-        wed_run.font.name = 'Helvetica'
-        wed_val = wed_para.add_run(', '.join(wednesdays))
-        wed_val.font.size = Pt(9)
-        wed_val.font.name = 'Helvetica'
-        wed_para.paragraph_format.space_after = Pt(2)
-
-        sat_para = doc.add_paragraph()
-        sat_run = sat_para.add_run('Saturdays: ')
-        sat_run.bold = True
-        sat_run.font.size = Pt(9)
-        sat_run.font.name = 'Helvetica'
-        sat_val = sat_para.add_run(', '.join(saturdays))
-        sat_val.font.size = Pt(9)
-        sat_val.font.name = 'Helvetica'
-        sat_para.paragraph_format.space_after = Pt(8)
+    not_to_be_taken = _get_not_to_be_taken(date_obj)
+    family_further_dates = _get_family_further_dates(date_obj, set(not_to_be_taken) if not_to_be_taken else None)
+    if not_to_be_taken:
+        ntb_para = doc.add_paragraph()
+        ntb_run = ntb_para.add_run('Not to be taken: ')
+        ntb_run.bold = True
+        ntb_run.font.size = Pt(9)
+        ntb_run.font.name = 'Helvetica'
+        ntb_val = ntb_para.add_run(', '.join(not_to_be_taken))
+        ntb_val.font.size = Pt(9)
+        ntb_val.font.name = 'Helvetica'
+        ntb_para.paragraph_format.space_after = Pt(8)
 
     from itertools import groupby
     current_building = None
@@ -1334,12 +1333,13 @@ def cause_list_docx(request):
         ))
         return table
 
-    def _add_docx_further_dates_row(table, dates, col_widths):
+    def _add_docx_further_dates_row(table, dates, col_widths, hall=''):
         row = table.add_row().cells
         merged = row[0].merge(row[-1])
         p = merged.paragraphs[0]
         p.clear()
-        run_label = p.add_run('Further dates: ')
+        label = f'To be taken ({hall}): ' if hall else 'Further dates: '
+        run_label = p.add_run(label)
         run_label.bold = True
         set_run_font(run_label)
         dates_text = ', '.join(dates) if dates else 'No further dates available'
@@ -1388,7 +1388,7 @@ def cause_list_docx(request):
                 for entry_h in hall_list:
                     _add_docx_data_row(table, entry_h, col_widths)
                 fwd_dates = family_further_dates.get(hall, [])
-                _add_docx_further_dates_row(table, fwd_dates, col_widths)
+                _add_docx_further_dates_row(table, fwd_dates, col_widths, hall)
             continue
 
         else:
@@ -1498,8 +1498,8 @@ def cause_list_pdf(request):
             seen_halls.add(key)
             court_halls_on_date.append(key)
 
-    wednesdays, saturdays = _get_wed_sat_dates(date_obj)
-    family_further_dates = _get_family_further_dates(date_obj)
+    not_to_be_taken = _get_not_to_be_taken(date_obj)
+    family_further_dates = _get_family_further_dates(date_obj, set(not_to_be_taken) if not_to_be_taken else None)
 
     html_str = render(request, 'main/cause_list_pdf.html', {
         'entries': entries, 'building_groups': building_groups,
@@ -1507,8 +1507,7 @@ def cause_list_pdf(request):
         'court_labels': COURT_LABELS, 'court_to_building': COURT_TO_BUILDING,
         'court_hall_incharges': court_hall_incharges,
         'court_halls_on_date': court_halls_on_date,
-        'wednesdays': wednesdays,
-        'saturdays': saturdays,
+        'not_to_be_taken': not_to_be_taken,
         'family_further_dates': family_further_dates,
     }).content.decode()
 

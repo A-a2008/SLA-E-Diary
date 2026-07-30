@@ -23,10 +23,9 @@
     <h1>Cause List: {{ date_obj|date:"d/m/Y" }}</h1>
     <p class="subtitle"><strong>{{ date_obj|date:"l" }}</strong></p>
 
-    {% if wednesdays or saturdays %}
+    {% if not_to_be_taken %}
     <div class="wed-sat-box">
-        <strong>Wednesdays:</strong> {{ wednesdays|join:", " }}<br>
-        <strong>Saturdays:</strong> {{ saturdays|join:", " }}
+        <strong>Not to be taken:</strong> {{ not_to_be_taken|join:", " }}
     </div>
     {% endif %}
 
@@ -90,7 +89,7 @@
             </tr>
             {% endfor %}
             <tr><td colspan="7" style="padding: 0.15cm 0.3cm; background: #f9f9f9; font-size: 10pt; color: #666; border-bottom: 2px solid #ccc;">
-                <strong>Further dates:</strong>
+                <strong>To be taken ({{ group.grouper }}):</strong>
                 {% if group.grouper in family_further_dates %}
                 {{ family_further_dates|dict_key:group.grouper|join:", " }}
                 {% else %}

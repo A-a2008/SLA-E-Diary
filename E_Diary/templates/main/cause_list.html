@@ -35,10 +35,9 @@
         </div>
         {% endif %}
 
-        {% if wednesdays or saturdays %}
+        {% if not_to_be_taken %}
         <div style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; font-size: 0.95rem; line-height: 2;">
-            <div><strong>Wednesdays:</strong> {{ wednesdays|join:", " }}</div>
-            <div><strong>Saturdays:</strong> {{ saturdays|join:", " }}</div>
+            <div><strong>Not to be taken:</strong> {{ not_to_be_taken|join:", " }}</div>
         </div>
         {% endif %}
 
@@ -135,7 +134,7 @@
                         </tr>
                         {% endfor %}
                         <tr><td colspan="7" style="padding: 0.3rem 0.75rem; background: #f9f9f9; font-size: 1.1rem; color: #666; border-bottom: 2px solid #ddd;">
-                            <strong>Further dates:</strong>
+                            <strong>To be taken ({{ group.grouper }}):</strong>
                             {% if group.grouper in family_further_dates %}
                             {{ family_further_dates|dict_key:group.grouper|join:", " }}
                             {% else %}
