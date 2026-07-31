@@ -224,7 +224,7 @@
                         <input type="text" class="incharge-hall-input" name="incharge_hall_{{ ch_key }}"
                                value="{% if ch_key in court_hall_incharges %}{{ court_hall_incharges|dict_key:ch_key }}{% endif %}"
                                placeholder="Incharge hall (optional)"
-                               style="padding: 0.3rem 0.6rem; font-size: 0.85rem; border: 1px solid #ccc; border-radius: 4px; width: 140px; text-align: center; {% if ch_key not in court_hall_incharges %}display: none;{% endif %}">
+                               style="padding: 0.3rem 0.6rem; font-size: 0.85rem; border: 2px solid #555; border-radius: 4px; width: 140px; text-align: center; color: #333; background: #fff; {% if ch_key not in court_hall_incharges %}display: none;{% endif %}">
                     </div>
                     {% endwith %}
                     {% endfor %}
