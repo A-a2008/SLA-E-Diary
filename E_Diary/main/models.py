@@ -282,6 +282,7 @@ class CourtHallIncharge(models.Model):
     court = models.CharField(max_length=100)
     court_hall = models.CharField(max_length=100)
     is_incharge = models.BooleanField(default=False)
+    incharge_court_hall = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

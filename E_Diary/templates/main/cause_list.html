@@ -110,7 +110,10 @@
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
                                 {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
                                 {% if hall_key in court_hall_incharges %}
-                                <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
+                                <br><span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
+                                {% with ich=court_hall_incharges|dict_key:hall_key %}
+                                {% if ich %}<br><strong>{{ ich }}</strong>{% endif %}
+                                {% endwith %}
                                 {% endif %}
                                 {% endwith %}
                                 {% endwith %}
@@ -152,7 +155,10 @@
                                 {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
                                 {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
                                 {% if hall_key in court_hall_incharges %}
-                                <span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
+                                <br><span style="color: #f2849e; font-weight: 900;">★ Incharge</span>
+                                {% with ich=court_hall_incharges|dict_key:hall_key %}
+                                {% if ich %}<br><strong>{{ ich }}</strong>{% endif %}
+                                {% endwith %}
                                 {% endif %}
                                 {% endwith %}
                                 {% endwith %}
@@ -194,26 +200,32 @@
                 <div id="incharge-section" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9;">
                     <h4 style="margin: 0 0 0.75rem 0; color: #333;">Mark Incharge Court Halls</h4>
                     <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: #777;">Click a court hall to toggle it as incharge for this date.</p>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                     {% for court_code, hall_name in court_halls_on_date %}
                     {% with ch_key=court_code|stringformat:"s"|add:"__"|add:hall_name %}
-                    <label class="incharge-btn" data-key="{{ ch_key }}"
-                           style="display: inline-flex; align-items: center; gap: 0.4rem;
-                                  padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer;
-                                  font-size: 0.85rem; font-weight: 600; user-select: none;
-                                  transition: all 0.15s ease;
-                                  border: 2px solid #ccc; background: #fff; color: #555;
-                                  {% if ch_key in court_hall_incharges %}
-                                  border-color: #f2849e; background: #f2849e; color: #fff;
-                                  {% endif %}">
-                        <input type="checkbox" name="incharge_{{ ch_key }}" value="1"
-                               {% if ch_key in court_hall_incharges %}checked{% endif %}
-                               style="display: none;">
-                        <span class="incharge-indicator" style="font-size: 1.1rem;">
-                            {% if ch_key in court_hall_incharges %}★{% else %}☆{% endif %}
-                        </span>
-                        {{ court_labels|dict_key:court_code }}, {{ hall_name }}
-                    </label>
+                    <div class="incharge-item" style="display: inline-flex; flex-direction: column; align-items: center; gap: 0.35rem;">
+                        <label class="incharge-btn" data-key="{{ ch_key }}"
+                               style="display: inline-flex; align-items: center; gap: 0.4rem;
+                                      padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer;
+                                      font-size: 0.85rem; font-weight: 600; user-select: none;
+                                      transition: all 0.15s ease;
+                                      border: 2px solid #ccc; background: #fff; color: #555;
+                                      {% if ch_key in court_hall_incharges %}
+                                      border-color: #f2849e; background: #f2849e; color: #fff;
+                                      {% endif %}">
+                            <input type="checkbox" name="incharge_{{ ch_key }}" value="1"
+                                   {% if ch_key in court_hall_incharges %}checked{% endif %}
+                                   style="display: none;">
+                            <span class="incharge-indicator" style="font-size: 1.1rem;">
+                                {% if ch_key in court_hall_incharges %}★{% else %}☆{% endif %}
+                            </span>
+                            {{ court_labels|dict_key:court_code }}, {{ hall_name }}
+                        </label>
+                        <input type="text" class="incharge-hall-input" name="incharge_hall_{{ ch_key }}"
+                               value="{% if ch_key in court_hall_incharges %}{{ court_hall_incharges|dict_key:ch_key }}{% endif %}"
+                               placeholder="Incharge hall (optional)"
+                               style="padding: 0.3rem 0.6rem; font-size: 0.85rem; border: 1px solid #ccc; border-radius: 4px; width: 140px; text-align: center; {% if ch_key not in court_hall_incharges %}display: none;{% endif %}">
+                    </div>
                     {% endwith %}
                     {% endfor %}
                     </div>
@@ -232,6 +244,11 @@
                         this.style.background = cb.checked ? '#f2849e' : '#fff';
                         this.style.color = cb.checked ? '#fff' : '#555';
                         this.querySelector('.incharge-indicator').textContent = cb.checked ? '★' : '☆';
+                        var item = this.closest('.incharge-item');
+                        var input = item ? item.querySelector('.incharge-hall-input') : null;
+                        if (input) {
+                            input.style.display = cb.checked ? 'block' : 'none';
+                        }
                     });
                 });
 

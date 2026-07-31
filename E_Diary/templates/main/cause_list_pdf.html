@@ -70,7 +70,10 @@
                     {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
                     {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
                     {% if hall_key in court_hall_incharges %}
-                    <span style="color: #c44569;">★ Incharge</span>
+                    <br><span style="color: #c44569;">★ Incharge</span>
+                    {% with ich=court_hall_incharges|dict_key:hall_key %}
+                    {% if ich %}<br><strong>{{ ich }}</strong>{% endif %}
+                    {% endwith %}
                     {% endif %}
                     {% endwith %}
                     {% endwith %}
@@ -108,7 +111,10 @@
                     {% with hall_key=effective_court|stringformat:"s"|add:"__"|add:effective_hall %}
                     {{ court_labels|dict_key:effective_court }}<br><strong>{{ effective_hall }}</strong>
                     {% if hall_key in court_hall_incharges %}
-                    <span style="color: #c44569;">★ Incharge</span>
+                    <br><span style="color: #c44569;">★ Incharge</span>
+                    {% with ich=court_hall_incharges|dict_key:hall_key %}
+                    {% if ich %}<br><strong>{{ ich }}</strong>{% endif %}
+                    {% endwith %}
                     {% endif %}
                     {% endwith %}
                     {% endwith %}

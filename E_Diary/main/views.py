@@ -976,11 +976,13 @@ def cause_list(request):
             for ch_key in incharge_keys:
                 parts = ch_key.split('__', 1)
                 if len(parts) == 2:
+                    hall_val = request.POST.get(f'incharge_hall_{ch_key}', '').strip()
                     CourtHallIncharge.objects.create(
                         date=date_obj_incharge,
                         court=parts[0],
                         court_hall=parts[1],
                         is_incharge=True,
+                        incharge_court_hall=hall_val or None,
                     )
 
         return redirect(f'{request.path}?date={date_str}')
@@ -1062,10 +1064,10 @@ def cause_list(request):
         key = f"{n.court}__{n.court_hall}"
         court_hall_notes[key] = n.note
 
-    court_hall_incharges = set()
+    court_hall_incharges = {}
     if date_str and date_obj:
         for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
-            court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
+            court_hall_incharges[f"{chi.court}__{chi.court_hall}"] = chi.incharge_court_hall or ''
 
     unique_hall_keys = []
     seen = set()
@@ -1165,9 +1167,9 @@ def cause_list_docx(request):
     for sl, e in enumerate(entries, 1):
         e.sl_no = sl
 
-    court_hall_incharges = set()
+    court_hall_incharges = {}
     for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
-        court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
+        court_hall_incharges[f"{chi.court}__{chi.court_hall}"] = chi.incharge_court_hall or ''
 
     doc = Document()
 
@@ -1261,6 +1263,16 @@ def cause_list_docx(request):
                     run_hall = p.add_run(effective_hall)
                     run_hall.bold = True
                     set_run_font(run_hall)
+                    hall_key = f"{effective_court}__{effective_hall}"
+                    ich_hall = court_hall_incharges.get(hall_key)
+                    if hall_key in court_hall_incharges:
+                        run_inc = p.add_run("\n★ Incharge")
+                        run_inc.font.color.rgb = RGBColor(0xc4, 0x45, 0x69)
+                        set_run_font(run_inc)
+                        if ich_hall:
+                            run_ich = p.add_run(f"\n{ich_hall}")
+                            run_ich.bold = True
+                            set_run_font(run_ich)
                 elif i == 3:
                     run0 = p.add_run(f"{case_num}\n")
                     run0.bold = True
@@ -1484,9 +1496,9 @@ def cause_list_pdf(request):
         actual_code = BUILDING_ORDER[bldg_code] if bldg_code < len(BUILDING_ORDER) else 'other'
         building_groups.append((actual_code, list(group)))
 
-    court_hall_incharges = set()
+    court_hall_incharges = {}
     for chi in CourtHallIncharge.objects.filter(date=date_obj, is_incharge=True):
-        court_hall_incharges.add(f"{chi.court}__{chi.court_hall}")
+        court_hall_incharges[f"{chi.court}__{chi.court_hall}"] = chi.incharge_court_hall or ''
 
     court_halls_on_date = []
     seen_halls = set()
