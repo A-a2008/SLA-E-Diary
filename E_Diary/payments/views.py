@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
 from main.models import Case, DiaryEntry
+from main.constants import COURT_LABELS
 from .decorators import payments_access_required, superuser_required
 from .models import (
     ChargeType, CasePricing, CaseChargeAmount, CustomCharge,
@@ -198,6 +199,7 @@ def case_list(request):
 @payments_access_required
 def case_pricing(request, case_id):
     case = get_object_or_404(Case, id=case_id)
+    case.court_display_name = COURT_LABELS.get(case.court, case.court)
     pricing = get_or_create_pricing(case)
     charge_types = get_applicable_charge_types(case)
     case_clients_list = CaseClient.objects.filter(case=case).select_related('client')

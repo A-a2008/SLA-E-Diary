@@ -6,7 +6,7 @@
   <div class="inner">
     <p><a href="{% url 'payments:case_list' %}" class="button small">&larr; Back to Cases</a></p>
     <h1>{{ case.case_type }}/{{ case.case_number }}/{{ case.case_year }}</h1>
-    <p style="color: #585858;">{{ case.party_1 }} vs {{ case.party_2 }} — {{ case.court }}</p>
+    <p style="color: #585858;">{{ case.party_1 }} vs {{ case.party_2 }} — {% if case.court_display_name %}{{ case.court_display_name }}{% if case.court_hall %} (Hall: {{ case.court_hall }}){% endif %}{% else %}{{ case.court }}{% endif %}</p>
 
     <div class="row gtr-uniform" style="margin: 1rem 0;">
       <div class="col-3 col-6-medium col-12-small">
