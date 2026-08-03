@@ -69,6 +69,7 @@
             </div>
             <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <a href="{% url 'add_business' case.id %}" class="button primary small">+ Add Business</a>
+                <a href="{% url 'edit_case' case.id %}" class="button small">Edit Case</a>
                 <a href="{% url 'case_export_docx' case.id %}" class="button small">Export DOCX</a>
                 <a href="{% url 'case_export_pdf' case.id %}" class="button small">Export PDF</a>
                 {% if user_can_payments %}

@@ -5,6 +5,7 @@ from .api import pending_messages, mark_sent, mark_sent_batch, ecourts_pending, 
 urlpatterns = [
     path('', home, name='home'),
     path('new_case/', new_case, name='new_case'),
+    path('case/<int:case_id>/edit/', edit_case, name='edit_case'),
     path('batch_new_case/', batch_new_case, name='batch_new_case'),
     path('diary_entry/', diary_entry, name='diary_entry'),
     path('diary_entry_case/<int:case_id>/', diary_entry_case, name='diary_entry_case'),

@@ -350,6 +350,79 @@ def new_case(request):
 
 
 @login_required
+def edit_case(request, case_id):
+    case = get_object_or_404(Case, pk=case_id)
+
+    if request.method == 'POST':
+        court_level = (request.POST.get('court_level') or '').strip()
+        jurisdiction = (request.POST.get('jurisdiction') or '').strip()
+        court = (request.POST.get('court') or '').strip()
+        court_hall = (request.POST.get('court_hall') or '').strip()
+        case_type = (request.POST.get('case_type') or '').strip()
+        case_number = (request.POST.get('case_number') or '').strip()
+        party_1 = (request.POST.get('party_1') or '').strip()
+        party_1_type = (request.POST.get('party_1_type') or '').strip()
+        party_2 = (request.POST.get('party_2') or '').strip()
+        party_2_type = (request.POST.get('party_2_type') or '').strip()
+        representing = (request.POST.get('representing') or '').strip()
+        cnr = (request.POST.get('cnr') or '').strip()
+
+        floor = int(request.POST.get('floor') or 0)
+        case_year = int(request.POST.get('case_year') or 2024)
+
+        party_1_total = int(request.POST.get('party_1_total') or 1)
+        party_2_total = int(request.POST.get('party_2_total') or 1)
+
+        safe_rep = re.sub(r'\W+', '_', representing.lower()).strip('_')
+        representing_party_field = f'representing_{safe_rep}_indices'
+        representing_parties_list = request.POST.getlist(representing_party_field)
+        if representing_parties_list:
+            representing_parties = ','.join(representing_parties_list)
+        else:
+            representing_parties = request.POST.get('representing_parties', '1')
+
+        disposed = request.POST.get('disposed') == '1'
+
+        case.court_level = court_level
+        case.jurisdiction = jurisdiction
+        case.court = court
+        case.court_hall = court_hall
+        case.floor = floor
+        case.case_type = case_type
+        case.case_number = case_number
+        case.case_year = case_year
+        case.party_1 = party_1
+        case.party_1_type = party_1_type
+        case.party_2 = party_2
+        case.party_2_type = party_2_type
+        case.representing = representing
+        case.representing_parties = representing_parties
+        case.party_1_total = party_1_total
+        case.party_2_total = party_2_total
+        case.cnr = cnr
+        case.disposed = disposed
+        case.save()
+
+        CourtHallNote.objects.get_or_create(court=court, court_hall=court_hall, defaults={'note': ''})
+
+        messages.success(request, f'Case {case_type}/{case_number}/{case_year} updated successfully.')
+        return redirect('diary_entry_case', case_id=case.id)
+    else:
+        import json
+        court_display = COURT_LABELS.get(case.court, case.court)
+        data = {
+            'case': case,
+            'court_display': court_display,
+            'party1_choices': Party1Type.choices,
+            'party2_choices': Party2Type.choices,
+            'jurisdiction_choices': Jurisdiction.choices,
+            'court_level_choices': CourtLevel.choices,
+            'court_hall_floors_json': json.dumps(COURT_HALL_FLOORS),
+        }
+        return render(request, 'main/edit_case.html', data)
+
+
+@login_required
 def diary_entry(request):
     query = request.GET.get('q', '').strip()
     court_level = request.GET.get('court_level', '')
