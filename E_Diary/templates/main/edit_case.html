@@ -8,19 +8,19 @@
         <h1>Edit Case</h1>
 
         <!-- ── CASE SUMMARY HEADER ── -->
-        <div style="background: rgba(242,132,158,0.04); border: 1px solid rgba(242,132,158,0.15); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div style="background: rgba(242,132,158,0.04); border: 1px solid rgba(242,132,158,0.15); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <h2 style="margin: 0 0 0.4rem 0; font-size: 1.4rem; color: #333;">
+                    <h2 style="margin: 0 0 0.25rem 0; font-size: 1.15rem; color: #333;">
                         {{ case.case_type }} {{ case.case_number }}/{{ case.case_year }}
                     </h2>
-                    <p style="margin: 0; font-size: 1.05rem; color: #585858;">
+                    <p style="margin: 0; font-size: 0.95rem; color: #585858; white-space: nowrap;">
                         <strong>{{ case.party_1 }}</strong>
-                        <span style="color: #f2849e; font-weight: 900; margin: 0 0.5rem;">VS</span>
+                        <span style="color: #f2849e; font-weight: 900; margin: 0 0.4rem;">VS</span>
                         <strong>{{ case.party_2 }}</strong>
                     </p>
                 </div>
-                <div style="text-align: right; color: #585858; font-size: 0.9rem; line-height: 1.5;">
+                <div style="text-align: right; color: #585858; font-size: 0.85rem; line-height: 1.5; max-width: 55%;">
                     <div><strong>Court Complex:</strong> {{ court_display }}</div>
                     <div><strong>Court Hall:</strong> {{ case.court_hall }} &nbsp;|&nbsp; <strong>Floor:</strong> {{ case.floor }}</div>
                 </div>
@@ -193,12 +193,10 @@
 
             <!-- ── DISPOSED ── -->
             <div class="field" id="disposed-field" style="display:block;">
-                <label>
-                    <input type="checkbox" name="disposed" id="disposed" value="1"
-                           {% if case.disposed %}checked{% endif %}
-                           style="margin-right: 0.4rem;">
-                    Mark case as Disposed
-                </label>
+                <input type="checkbox" name="disposed" id="disposed" value="1"
+                       {% if case.disposed %}checked{% endif %}
+                       style="margin: 0 0.15em 0 0; vertical-align: middle;">
+                <label for="disposed" style="padding-left: 2.55em !important;">Mark case as Disposed</label>
             </div>
             <br>
 
