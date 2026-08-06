@@ -132,10 +132,51 @@ class Case(models.Model):
         return self.representing == self.party_2_type
 
     @property
+    def represents_party(self):
+        if self.represents_party_2:
+            total = self.party_2_total or 1
+            party = self.party_2_type
+        else:
+            total = self.party_1_total or 1
+            party = self.party_1_type
+        return party, total
+
+    @property
     def representing_display(self):
-        if self.representing_parties != '1':
-            return f"{self.representing} {self.representing_parties}"
-        return self.representing
+        return self.representing_formatted()
+
+    def representing_formatted(self):
+        party = self.representing
+        raw = (self.representing_parties or '').strip()
+        if not raw:
+            return party
+
+        numbers = []
+        for part in raw.split(','):
+            p = part.strip()
+            if p.isdigit() and p != '0':
+                numbers.append(int(p))
+        numbers = sorted(set(numbers))
+        if not numbers:
+            return party
+
+        ranges = []
+        start = numbers[0]
+        end = numbers[0]
+        for n in numbers[1:]:
+            if n == end + 1:
+                end = n
+            else:
+                ranges.append((start, end))
+                start = n
+                end = n
+        ranges.append((start, end))
+
+        out = []
+        for s, e in ranges:
+            out.append(str(s) if s == e else f"{s}-{e}")
+        display = f"{party} {', '.join(out)}"
+        return display
 
 
 class DiaryEntry(models.Model):

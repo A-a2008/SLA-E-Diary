@@ -83,7 +83,7 @@
                     <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                     {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                 </td>
-                <td class="rep-col" style="width: 2.6cm;">{{ entry.case.representing }}</td>
+                <td class="rep-col" style="width: 2.6cm;">{{ entry.case.representing_formatted }}</td>
                 <td class="stage-col" style="width: 2.5cm;">{{ entry.stage|default:'—' }}</td>
                 <td class="cl" style="width: 2.3cm;">
                     List I: {{ entry.list_i|default:'—' }}<br>
@@ -124,7 +124,7 @@
                     <strong>{{ entry.case.case_type }}/{{ entry.case.case_number }}/{{ entry.case.case_year }}</strong><br>
                     {% if entry.case.represents_party_1 %}<strong>{{ entry.case.party_1 }}</strong>{% else %}{{ entry.case.party_1 }}{% endif %} vs {% if entry.case.represents_party_2 %}<strong>{{ entry.case.party_2 }}</strong>{% else %}{{ entry.case.party_2 }}{% endif %}
                 </td>
-                <td class="rep-col" style="width: 2.6cm;">{{ entry.case.representing }}</td>
+                <td class="rep-col" style="width: 2.6cm;">{{ entry.case.representing_formatted }}</td>
                 <td class="stage-col" style="width: 2.5cm;">{{ entry.stage|default:'—' }}</td>
                 {% if bldg_code == 'mediation_centre' %}
                 <td class="cl" style="width: 2.3cm;">
