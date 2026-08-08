@@ -175,6 +175,9 @@ class Case(models.Model):
         out = []
         for s, e in ranges:
             out.append(str(s) if s == e else f"{s}-{e}")
+        # Don't show (1) since it's the default; only show if multiple or non-1 numbers
+        if len(ranges) == 1 and ranges[0] == (1, 1):
+            return party
         display = f"{party}<br>({' , '.join(out)})"
         return display
 
