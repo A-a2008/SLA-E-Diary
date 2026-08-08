@@ -175,7 +175,7 @@ class Case(models.Model):
         out = []
         for s, e in ranges:
             out.append(str(s) if s == e else f"{s}-{e}")
-        display = f"{party} {', '.join(out)}"
+        display = f"{party}<br>({' , '.join(out)})"
         return display
 
 

@@ -1318,12 +1318,17 @@ def cause_list_docx(request):
         effective_court = getattr(entry, 'mediation_court', None) or entry.case.court
         effective_court_label = COURT_LABELS.get(effective_court, effective_court)
         bldg_code = COURT_TO_BUILDING.get(effective_court, '')
+        rep_formatted = entry.case.representing_formatted()
+        if '<br>' in rep_formatted:
+            rep_role, rep_numbers = rep_formatted.split('<br>', 1)
+        else:
+            rep_role, rep_numbers = rep_formatted, ''
         if bldg_code == 'mediation_centre':
-            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing_formatted(), entry.stage or '—',
+            data = [str(entry.sl_no), str(entry.case.floor), None, None, (rep_role, rep_numbers), entry.stage or '—',
                     entry.mediation_time.strftime('%I:%M %p') if entry.mediation_time else '—']
         else:
             cause_list_nos = f"List I: {entry.list_i or '—'}\nList II: {entry.list_ii or '—'}"
-            data = [str(entry.sl_no), str(entry.case.floor), None, None, entry.case.representing_formatted(), entry.stage or '—', cause_list_nos]
+            data = [str(entry.sl_no), str(entry.case.floor), None, None, (rep_role, rep_numbers), entry.stage or '—', cause_list_nos]
         for i, val in enumerate(data):
             cell = row[i]
             set_cell_width(cell, col_widths[i])
@@ -1363,8 +1368,16 @@ def cause_list_docx(request):
                 p = cell.paragraphs[0]
                 if i in (0, 1):
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                run = p.add_run(val)
-                set_run_font(run)
+                if i == 4 and isinstance(val, tuple):
+                    run_role = p.add_run(val[0])
+                    set_run_font(run_role)
+                    if val[1]:
+                        p.add_run().add_break()
+                        run_nums = p.add_run(val[1])
+                        set_run_font(run_nums)
+                else:
+                    run = p.add_run(val)
+                    set_run_font(run)
 
     def _add_docx_new_table(doc, bldg_name):
         bldg_para = doc.add_paragraph()
